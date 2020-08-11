@@ -1,0 +1,8 @@
+pandas==1.1.0
+tensorflow-hub==0.8.0
+tensorflow-gpu==2.3.0
+keras==2.4.3
+numpy==1.19.1
+jupyter==1.0.0
+pytest==6.0.1
+searchtweets==1.7.6
