@@ -4,7 +4,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from alpha_media_signal import config
-
+from alpha_media_signal.config import constants
 
 class LoggerFactory():
     rot_handler = None
@@ -17,12 +17,13 @@ class LoggerFactory():
         self.handler_stream.setFormatter(self.formatter)
         self.handler_stream.setLevel(logging.INFO)
 
-        print(f'Will use logging path: {config.LOGGING_PATH}')
+        print(f'Will use logging path: {constants.LOGGING_PATH}')
 
-        log_path = Path(config.LOGGING_PATH, 'alpha_media_signal.log')
+        log_path = Path(constants.LOGGING_PATH, 'alpha_media_signal.log')
 
         self.rot_handler = RotatingFileHandler(str(log_path), maxBytes=200000, backupCount=10)
         self.rot_handler.setFormatter(self.formatter)
+        self.rot_handler.setLevel(logging.INFO)
 
     def create_logger(self, name: str):
         logger = logging.getLogger(name)
