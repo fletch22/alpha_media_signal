@@ -8,7 +8,7 @@ from threading import Thread
 from typing import Sequence, Tuple
 from zipfile import ZipFile
 
-from alpha_media_signal.config import logger_factory
+from ams.config import logger_factory, constants
 
 logger = logger_factory.create(__name__)
 
@@ -27,9 +27,8 @@ def list_files(parent_path: Path, ends_with: str = None):
     return list(filter(lambda x: x.is_file() and (ends_with is None or str(x).endswith(ends_with)), file_paths))
 
 
-
-def create_unique_file_system_name(parent_dir: str, prefix: str, extension: str = None) -> Path:
-    from alpha_media_signal.utils import date_utils
+def create_unique_filename(parent_dir: str, prefix: str, extension: str = None) -> Path:
+    from ams.utils import date_utils
 
     date_str = date_utils.format_file_system_friendly_date(datetime.now())
     proposed_core_item_name = f"{prefix}_{date_str}"
@@ -48,8 +47,8 @@ def create_unique_file_system_name(parent_dir: str, prefix: str, extension: str 
     return proposed_item
 
 
-def get_unique_folder(parent_dir: str, prefix: str, ensure_exists: bool = True) -> str:
-    proposed_dir = str(create_unique_file_system_name(parent_dir, prefix, extension=None))
+def create_unique_folder_name(parent_dir: str, prefix: str, ensure_exists: bool = True) -> str:
+    proposed_dir = str(create_unique_filename(parent_dir, prefix, extension=None))
 
     if ensure_exists:
         os.makedirs(proposed_dir, exist_ok=True)
@@ -107,3 +106,7 @@ def get_folders_in_dir(path: str):
 def fast_copy(files_many: Sequence[Tuple[str, str]]):
     for source_path, destination_path in files_many:
         Thread(target=shutil.copy, args=[source_path, destination_path]).start()
+
+
+def get_eod_ticker_file_path(symbol: str) -> Path:
+    return Path(constants.SHAR_SPLIT_EQUITY_EOD_DIR, f"{symbol}.csv")

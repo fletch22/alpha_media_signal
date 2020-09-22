@@ -1,0 +1,8 @@
+from enum import Enum
+
+
+class Topic(Enum):
+    RAW_DROP = "AMS_RAW_DROP"
+    FLATTENED_DROP = "AMS_FLATTENED_DROP"
+    SENTIMENT_DROP = "AMS_SENTIMENT_DROP"
+    PRE_PROCESS_DROP = "AMS_PRE_PROCESS_DROP"

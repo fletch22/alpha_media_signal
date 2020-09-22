@@ -6,10 +6,10 @@ from typing import List, Generator
 
 import requests
 
-from alpha_media_signal import config
-from alpha_media_signal.services import file_services
-from alpha_media_signal.steaming.BearerTokenAuth import BearerTokenAuth
-from alpha_media_signal.twitter import append_tweets_to_output_file
+from ams import config
+from ams.services import file_services
+from ams.steaming.BearerTokenAuth import BearerTokenAuth
+from ams.twitter import append_tweets_to_output_file
 
 stream_url = "https://api.twitter.com/labs/1/tweets/stream/filter"
 rules_url = "https://api.twitter.com/labs/1/tweets/stream/filter/rules"
@@ -96,7 +96,7 @@ def run(rules: List):
     # Comment this line if you already setup rules and want to keep them
     setup_rules(bearer_token, rules)
 
-    tweet_raw_output_path = file_services.create_unique_file_system_name(config.TWITTER_OUTPUT_RAW_PATH, prefix=config.TWITTER_RAW_TWEETS_PREFIX, extension='txt')
+    tweet_raw_output_path = file_services.create_unique_filename(config.TWITTER_OUTPUT_RAW_PATH, prefix=config.TWITTER_RAW_TWEETS_PREFIX, extension='txt')
 
     print(f'Will write tweets to {tweet_raw_output_path}')
 

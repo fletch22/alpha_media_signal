@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from alpha_media_signal.services import file_services
+from ams.services import file_services
 
 
 def test_file_walk():

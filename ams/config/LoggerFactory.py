@@ -3,8 +3,8 @@ import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from alpha_media_signal import config
-from alpha_media_signal.config import constants
+from ams import config
+from ams.config import constants
 
 class LoggerFactory():
     rot_handler = None
@@ -21,7 +21,7 @@ class LoggerFactory():
 
         log_path = Path(constants.LOGGING_PATH, 'alpha_media_signal.log')
 
-        self.rot_handler = RotatingFileHandler(str(log_path), maxBytes=200000, backupCount=10)
+        self.rot_handler = RotatingFileHandler(str(log_path), maxBytes=200000000, backupCount=10)
         self.rot_handler.setFormatter(self.formatter)
         self.rot_handler.setLevel(logging.INFO)
 

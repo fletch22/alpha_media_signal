@@ -1,4 +1,4 @@
-from alpha_media_signal.config import constants
+from ams.config import constants
 import codecs
 
 

@@ -28,3 +28,4 @@ services:
     volumes:
     - ..\..\:/home/jovyan/work
     - C:\Users\Chris\workspaces\data\:/home/jovyan/work/data
+    - D:\workspaces\data\:/home/jovyan/overflow_workspace/data

@@ -7,6 +7,12 @@ STANDARD_DATE_WITH_SECONDS_FORMAT = '%Y-%m-%d_%H-%M-%S'
 WTD_DATE_WITH_SECONDS_FORMAT = '%Y-%m-%d %H:%M:%S'
 TWITTER_FORMAT = '%Y%m%D%H%M'
 
+TWITTER_LONG_FORMAT = "%a %b %d %H:%M:%S %z %Y"
+
+
+def parse_twitter_date_string(date_string: str):
+    return datetime.strptime(date_string, TWITTER_LONG_FORMAT).timestamp()
+
 
 def parse_std_datestring(datestring):
     return datetime.strptime(datestring, STANDARD_DAY_FORMAT)
@@ -32,4 +38,3 @@ def convert_wtd_nyc_date_to_utc(date_str: str):
     dt_utc = dt_nyz_tz.astimezone(pytz.timezone('UTC'))
 
     return dt_utc
-

@@ -3,8 +3,8 @@ from typing import List
 import pandas as pd
 from pandas import DataFrame
 
-from alpha_media_signal.config import constants
-from alpha_media_signal.services.equities.ExchangeType import ExchangeType
+from ams.config import constants
+from ams.services.equities.ExchangeType import ExchangeType
 
 GOOD_EXCHANGES = [ExchangeType.NYSE, ExchangeType.NASDAQ, ExchangeType.BATS, ExchangeType.IEX, ExchangeType.NYSEARCA, ExchangeType.NYSEMKT]
 

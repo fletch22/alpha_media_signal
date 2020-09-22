@@ -1,5 +1,5 @@
-from alpha_media_signal import config
-from alpha_media_signal.config import constants
+from ams import config
+from ams.config import constants
 
 
 def test_config():
