@@ -2,7 +2,6 @@
 
 md tmp
 
-copy ..\..\requirements.txt .\tmp\
 copy ..\..\pip_requirements.txt .\tmp\
 
 SET TAG="f22-spark-notebook"

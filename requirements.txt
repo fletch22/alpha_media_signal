@@ -1,4 +1,4 @@
-pyspark==3.0.0
+pyspark==3.0.1
 jupyter==1.0.0
 pandas
 tensorflow-hub
@@ -12,3 +12,4 @@ scikit-learn
 pyyaml
 ipykernel
 kafka-python
+findspark

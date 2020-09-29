@@ -1,7 +1,10 @@
 import random
-from datetime import timedelta
+from datetime import timedelta, datetime
+
+import pytz
 
 from ams.utils import date_utils
+from ams.utils.date_utils import TZ_AMERICA_NEW_YORK
 
 
 def test_dt():
@@ -45,3 +48,31 @@ def test_return():
             tots += -amt
 
 
+def test_convert_to_nyc():
+    # Arrange
+    orig_date_str = "2020-07-08_00-15-00"
+    dt_here = datetime.strptime(orig_date_str, date_utils.STANDARD_DATE_WITH_SECONDS_FORMAT)
+    dt_utc = pytz.utc.localize(dt_here)
+
+    # Act
+    dt_nyc = date_utils.convert_utc_timestamp_to_nyc(dt_utc.timestamp())
+    result = dt_nyc.strftime(date_utils.STANDARD_DATE_WITH_SECONDS_FORMAT)
+
+    # Assert
+    assert (result == "2020-07-07_20-15-00")
+
+
+def test_is_after_close():
+    # Arrange
+    orig_date_str = "2020-11-27_13-15-00"
+    dt_here = datetime.strptime(orig_date_str, date_utils.STANDARD_DATE_WITH_SECONDS_FORMAT)
+    tz_nyc = pytz.timezone(TZ_AMERICA_NEW_YORK)
+    dt_nyc = tz_nyc.localize(dt_here)
+    dt_utc = dt_nyc.astimezone(pytz.utc)
+    print(f"\ntest function: {dt_utc}")
+
+    # Act
+    is_closed = date_utils.is_after_nasdaq_closed(utc_timestamp=dt_utc.timestamp())
+
+    # Assert
+    assert (is_closed)

@@ -1,10 +1,11 @@
 import json
 import re
 from pathlib import Path
-from random import random
+from statistics import mean
 from typing import Dict
 
 import yfinance as yf
+from sklearn.neural_network import MLPRegressor
 
 from ams import config
 from ams.DateRange import DateRange
@@ -101,9 +102,10 @@ def test_re():
     result = re.search(ticker, text) and re.search(name, text, re.IGNORECASE)
     print(result is not None)
 
+
 def test_multithreads():
-    from_date = date_utils.parse_std_datestring("2020-09-18")
-    to_date = date_utils.parse_std_datestring("2020-09-19")
+    from_date = date_utils.parse_std_datestring("2020-09-26")
+    to_date = date_utils.parse_std_datestring("2020-09-27")
     date_range = DateRange(from_date=from_date, to_date=to_date)
     twitter_service.search_one_day_at_a_time(date_range=date_range)
 
@@ -143,7 +145,6 @@ def test_tweet():
 
                     if count % 1000 == 0:
                         print(count)
-
 
 
 def test_json():

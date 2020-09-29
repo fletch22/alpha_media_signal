@@ -13,17 +13,19 @@ from ams.config import logger_factory, constants
 logger = logger_factory.create(__name__)
 
 
-def walk(the_path: Path):
+def walk(the_path: Path, use_dir_recursion: bool = True):
     file_paths = []
     for (dirpath, dirnames, filenames) in walker(str(the_path)):
         for f in filenames:
             file_paths.append(Path(dirpath, f))
+        if not use_dir_recursion:
+            break
 
     return file_paths
 
 
-def list_files(parent_path: Path, ends_with: str = None):
-    file_paths = walk(parent_path)
+def list_files(parent_path: Path, ends_with: str = None, use_dir_recursion: bool = True):
+    file_paths = walk(parent_path, use_dir_recursion=use_dir_recursion)
     return list(filter(lambda x: x.is_file() and (ends_with is None or str(x).endswith(ends_with)), file_paths))
 
 
@@ -110,3 +112,12 @@ def fast_copy(files_many: Sequence[Tuple[str, str]]):
 
 def get_eod_ticker_file_path(symbol: str) -> Path:
     return Path(constants.SHAR_SPLIT_EQUITY_EOD_DIR, f"{symbol}.csv")
+
+
+def get_single_file_from_path(dir_path: Path, filename_ends_with: str):
+    assert (dir_path.exists())
+
+    files = list_files(dir_path, filename_ends_with)
+    assert (len(files) == 1)
+
+    return files[0]

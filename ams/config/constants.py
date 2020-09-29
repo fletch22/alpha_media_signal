@@ -1,10 +1,17 @@
 from pathlib import Path
+
 import yaml
+
 from ams.config.Credentials import Credentials
 
 PROJECT_ROOT = Path(__file__).parent.parent
 
 import os
+
+
+def make_dir(dir):
+    os.makedirs(dir, exist_ok=True)
+
 
 if os.name == 'nt':
     WORKSPACE_PATH = Path('C:\\Users\\Chris\\workspaces\\')
@@ -24,6 +31,10 @@ TWITTER_RAW_TWEETS_PREFIX = 'tweets_raw'
 
 DATA_PATH = Path(WORKSPACE_PATH, 'data')
 OVERFLOW_DATA_PATH = Path(OVERFLOW_WORKSPACE_PATH, 'data')
+
+WEATHER_DATA_DIR = Path(OVERFLOW_DATA_PATH, "weather")
+WEATHER_DATA_PATH = Path(WEATHER_DATA_DIR, "station_1.txt")
+
 FIN_DATA = Path(OVERFLOW_DATA_PATH, 'financial')
 
 TWITTER_OUTPUT = Path(FIN_DATA, 'twitter')
@@ -53,7 +64,10 @@ STANDARD_CREDS = Credentials(creds_yaml, standard_search_key)
 QUANDL_DIR = os.path.join(FIN_DATA, "quandl")
 QUANDL_TBLS_DIR = os.path.join(QUANDL_DIR, "tables")
 
+SHARADAR_ACTIONS_DIR = os.path.join(QUANDL_TBLS_DIR, "shar_actions")
+make_dir(SHARADAR_ACTIONS_DIR)
+SHARADAR_ACTIONS_FILEPATH = Path(SHARADAR_ACTIONS_DIR, "actions.csv")
+
 SHAR_SPLIT_EQUITY_EOD_DIR = Path(QUANDL_TBLS_DIR, "splits_eod")
 
 KAFKA_URL = "localhost:9092"
-

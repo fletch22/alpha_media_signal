@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import pandas as pd
+import pyspark
 import requests
 from searchtweets import load_credentials, gen_rule_payload, ResultStream
 
@@ -21,6 +22,10 @@ from ams.services.equities.TickerService import TickerService
 from ams.steaming.BearerTokenAuth import BearerTokenAuth
 from ams.utils import date_utils, equity_utils
 from ams.utils.PrinterThread import PrinterThread
+from ams.utils.date_utils import get_standard_ymd_format, TZ_AMERICA_NEW_YORK, STANDARD_DAY_FORMAT
+from datetime import datetime
+from pyspark.sql import functions as F
+import pytz
 
 logger = logger_factory.create(__name__)
 
@@ -271,7 +276,7 @@ def search_one_day_at_a_time(date_range: DateRange):
 def search_with_multi_thread(date_range: DateRange):
     ticker_tuples = get_ticker_searchable_tuples()
 
-    # ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='YY', delete_before=True)
+    # ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='GDS', delete_before=True)
 
     parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop')
     tweet_raw_output_path = file_services.create_unique_filename(str(parent), prefix="multithreaded_drop", extension='txt')
@@ -298,6 +303,8 @@ def search_with_multi_thread(date_range: DateRange):
         pt.print(results)
     finally:
         pt.end()
+
+
 
 
 if __name__ == '__main__':
