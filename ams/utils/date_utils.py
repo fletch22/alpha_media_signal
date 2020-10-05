@@ -7,6 +7,7 @@ from pyspark.sql.types import StringType
 TZ_AMERICA_NEW_YORK = 'America/New_York'
 
 STANDARD_DAY_FORMAT = '%Y-%m-%d'
+US_DATE_FORMAT = '%m/%d/%Y'
 STANDARD_DATE_WITH_SECONDS_FORMAT = '%Y-%m-%d_%H-%M-%S'
 WTD_DATE_WITH_SECONDS_FORMAT = '%Y-%m-%d %H:%M:%S'
 TWITTER_FORMAT = '%Y%m%D%H%M'
@@ -25,6 +26,10 @@ def parse_twitter_date_string(date_string: str):
 
 def parse_std_datestring(datestring):
     return datetime.strptime(datestring, STANDARD_DAY_FORMAT)
+
+
+def get_us_mdy_format(date: datetime):
+    return date.strftime(US_DATE_FORMAT)
 
 
 def get_standard_ymd_format(date: datetime):
@@ -85,4 +90,3 @@ def is_after_nasdaq_closed(utc_timestamp: int):
 def convert_timestamp_to_nyc_date_str(utc_timestamp):
     dt_nyc = convert_utc_timestamp_to_nyc(utc_timestamp=utc_timestamp)
     return get_standard_ymd_format(dt_nyc)
-

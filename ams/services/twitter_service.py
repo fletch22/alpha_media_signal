@@ -306,6 +306,5 @@ def search_with_multi_thread(date_range: DateRange):
 
 
 
-
 if __name__ == '__main__':
     save_nasdaq_tweets()

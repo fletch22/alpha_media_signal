@@ -104,8 +104,8 @@ def test_re():
 
 
 def test_multithreads():
-    from_date = date_utils.parse_std_datestring("2020-09-26")
-    to_date = date_utils.parse_std_datestring("2020-09-27")
+    from_date = date_utils.parse_std_datestring("2020-09-29")
+    to_date = date_utils.parse_std_datestring("2020-10-03")
     date_range = DateRange(from_date=from_date, to_date=to_date)
     twitter_service.search_one_day_at_a_time(date_range=date_range)
 
@@ -117,35 +117,6 @@ def test_queue():
     printer_thread.print('foofoo')
 
     printer_thread.end()
-
-
-def test_tweet():
-    parent_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop", "stage")
-    files = file_services.walk(parent_path)
-
-    print(f"Num files: {len(files)}")
-
-    for f in files:
-        count = 0
-        f_fixed_path = str(f) + ".doitright.txt"
-        with open(f_fixed_path, 'a+') as aw:
-            with open(str(f), 'r+') as r:
-                print(f"Loading {str(f)}")
-                while True:
-                    count += 1
-                    line = r.readline()
-                    if len(line) == 0:
-                        break
-                    try:
-                        obj = json.loads(line)
-                        line_alt = json.dumps(obj)
-                        aw.write(line_alt + "\n")
-                    except Exception as e:
-                        pass
-
-                    if count % 1000 == 0:
-                        print(count)
-
 
 def test_json():
     # Arrange

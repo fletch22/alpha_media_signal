@@ -1,11 +1,12 @@
+import time
 from datetime import datetime, timedelta
 from typing import List, Dict
-import time
 
 import pandas as pd
 from pandas import DataFrame
 
 from ams.DateRange import DateRange
+from ams.config import constants
 from ams.services import file_services
 from ams.services.EquityFields import EquityFields
 from ams.utils import date_utils
@@ -88,13 +89,21 @@ def get_start_end_dates(date_strs: List[str]):
 def get_ticker_on_dates(tick_dates: Dict[str, List[str]]) -> pd.DataFrame:
     df_list = []
     for ticker, date_strs in tick_dates.items():
-        df = get_equity_on_dates(ticker=ticker, date_strs=date_strs)
-        if df is None:
+        df_equity = get_equity_on_dates(ticker=ticker, date_strs=date_strs)
+        if df_equity is None:
             print(f"No data for ticker '{ticker}' in {date_strs}")
         else:
-            df_list.append(df)
-    return pd.concat(df_list).dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
+            df_list.append(df_equity)
+    df_ticker = pd.concat(df_list).dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
 
+    # df_equity_info = get_ticker_info()
+    # df_equity_min = df_equity_info.drop(columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
+    #                                      "secfilings", "companysite", "lastupdated", "cusips",
+    #                                      "isdelisted", "name", "exchange", "firstadded"])
+    #
+    # return pd.merge(df_list, df_equity_min, how="inner", on="ticker")
+
+    return df_ticker
 
 def get_equity_on_dates(ticker: str, date_strs: List[str]) -> pd.DataFrame:
     df = get_ticker_eod_data(ticker)
@@ -185,9 +194,7 @@ def get_tickers_in_range(tickers: List[str], date_range: DateRange) -> DataFrame
     all_dfs = []
     for t in tickers:
         df = get_ticker_eod_data(ticker=t)
-        if df is None:
-            print(f"Ticker {t} does not exist.")
-        else:
+        if df is not None:
             df_dated = df[(df['date'] > start_date_str) & (df['date'] < end_date_str)]
             all_dfs.append(df_dated)
 
@@ -205,3 +212,39 @@ def extract_ticker_tweet_dates(df_tweets: pd.DataFrame):
         stock_days[ticker] = dates
 
     return stock_days
+
+
+def get_all_tickers():
+    da_paths = file_services.walk(constants.SHAR_SPLIT_EQUITY_EOD_DIR)
+
+    tickers = []
+    for d in da_paths:
+        tickers.append(d.stem)
+
+    return tickers
+
+
+def get_tickers_w_filters(min_price: float = 5.0, min_volume: int = 100000):
+    da_paths = file_services.walk(constants.SHAR_SPLIT_EQUITY_EOD_DIR)
+
+    tickers = []
+    for d in da_paths:
+        ticker = d.stem
+        print(f"Inspecting '{ticker}'")
+        df = get_ticker_eod_data(ticker)
+        row = df.iloc[-1]
+        price = row["close"]
+        volume = row["volume"]
+        if price > min_price and volume > min_volume:
+            tickers.append(ticker)
+
+    return tickers
+
+
+def get_ticker_info():
+    return pd.read_csv(constants.SHAR_TICKER_DETAIL_INFO_PATH)
+
+
+def get_nasdaq_info():
+    df = get_ticker_info()
+    return df[df["exchange"] == "NASDAQ"]
