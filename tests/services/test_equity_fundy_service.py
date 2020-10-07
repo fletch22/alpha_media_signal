@@ -28,18 +28,15 @@ def test_max():
 
 def test_get_tickers_in_range():
     # Arrange
-    equity_fundy_service.get_nasdaq_tickers_std_and_cat()
+    df_nasdaq = ticker_service.get_nasdaq_info()
 
+    df_dropped = df_nasdaq.drop(columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
+                                         "secfilings", "companysite", "lastupdated", "cusips",
+                                         "isdelisted", "name", "exchange", "firstadded", "permaticker", "sicindustry", "relatedtickers"])
+
+    for c in df_dropped.columns:
+        print(f"{c}: {len(df_dropped[c].unique().tolist())}")
 
     # print(df.head(20))
-
-
-
-
-
-
-
-
-
 
     # Assert

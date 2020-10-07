@@ -26,8 +26,11 @@ def revert_to_original_location(source_dir_path: Path, files_in_transition: List
 
 def remove_remaining_files(staging_path: Path):
     files = file_services.list_files(staging_path, use_dir_recursion=False)
+
+    tmp_trash = file_services.create_unique_folder_name(constants.TWITTER_TRASH_OUTPUT, prefix="batchy_bae")
     for f in files:
-        f.unlink()
+        file_path_new = Path(tmp_trash, f.name)
+        shutil.move(str(f), str(file_path_new))
 
 
 def revert_in_transition_files(source_dir_path: Path):

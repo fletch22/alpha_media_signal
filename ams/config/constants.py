@@ -41,6 +41,9 @@ TWITTER_OUTPUT = Path(FIN_DATA, 'twitter')
 TWITTER_OUTPUT.mkdir(exist_ok=True)
 TICKER_NAME_SEARCHABLE_PATH = Path(TWITTER_OUTPUT, 'ticker_names_searchable.csv')
 
+TWITTER_TRASH_OUTPUT = Path(TWITTER_OUTPUT, "trash")
+make_dir(TWITTER_TRASH_OUTPUT)
+
 YAHOO_OUTPUT_PATH = Path(FIN_DATA, 'yahoo')
 YAHOO_COMPANY_INFO = Path(YAHOO_OUTPUT_PATH, 'company_info')
 YAHOO_COMPANY_INFO.mkdir(exist_ok=True)
@@ -57,9 +60,13 @@ with open(TWITTER_CREDS_PATH) as file:
 
 fletch22_key = 'search_tweets_fullarchive_development'
 standard_search_key = 'standard_search_tweets'
+rogd_key = "standard_search_tweets_rogd"
 
 FLETCH22_CREDS = Credentials(creds_yaml, fletch22_key)
 STANDARD_CREDS = Credentials(creds_yaml, standard_search_key)
+ROGD_CREDS = Credentials(creds_yaml, standard_search_key)
+
+CURRENT_CREDS = ROGD_CREDS
 
 QUANDL_DIR = os.path.join(FIN_DATA, "quandl")
 QUANDL_TBLS_DIR = os.path.join(QUANDL_DIR, "tables")

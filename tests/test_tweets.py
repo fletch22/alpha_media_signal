@@ -104,8 +104,8 @@ def test_re():
 
 
 def test_multithreads():
-    from_date = date_utils.parse_std_datestring("2020-09-29")
-    to_date = date_utils.parse_std_datestring("2020-10-03")
+    from_date = date_utils.parse_std_datestring("2020-09-30")
+    to_date = date_utils.parse_std_datestring("2020-10-07")
     date_range = DateRange(from_date=from_date, to_date=to_date)
     twitter_service.search_one_day_at_a_time(date_range=date_range)
 

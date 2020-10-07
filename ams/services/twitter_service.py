@@ -95,10 +95,8 @@ def search_standard(query: str, tweet_raw_output_path: Path, date_range: DateRan
         pt.start()
         language = 'lang:en'
         query_esc = urllib.parse.quote(f'{query} {language}')
-
-        endpoint = constants.STANDARD_CREDS.endpoint
-
-        bearer_token_auth = BearerTokenAuth(constants.STANDARD_CREDS.api_key, constants.STANDARD_CREDS.api_secret_key)
+        creds = constants.CURRENT_CREDS
+        endpoint = creds.endpoint
 
         start_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
         end_date_str = date_utils.get_standard_ymd_format(date_range.to_date)
@@ -112,10 +110,11 @@ def search_standard(query: str, tweet_raw_output_path: Path, date_range: DateRan
         count = 0
         while True:
             try:
-                response = requests.get(url, auth=bearer_token_auth)
+                response = requests.get(url, headers={"Authorization": f"Bearer {creds.default_bearer_token}"})
 
                 search_results = response.json()
-            except Exception:
+            except Exception as e:
+                pt.print(e)
                 time.sleep(120)
                 continue
 
@@ -276,7 +275,7 @@ def search_one_day_at_a_time(date_range: DateRange):
 def search_with_multi_thread(date_range: DateRange):
     ticker_tuples = get_ticker_searchable_tuples()
 
-    # ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='GDS', delete_before=True)
+    # ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='PSEC', delete_before=True)
 
     parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop')
     tweet_raw_output_path = file_services.create_unique_filename(str(parent), prefix="multithreaded_drop", extension='txt')

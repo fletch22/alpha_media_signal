@@ -1,5 +1,7 @@
-import re
+from pathlib import Path
 
+from ams.DateRange import DateRange
+from ams.config import constants
 from ams.services import twitter_service
 
 
@@ -26,3 +28,15 @@ def test_get_cashtags():
     # Assert
     # assert(result is not None)
     print(index)
+
+
+def test_twitter_service():
+    from ams.services import file_services
+    # Arrange
+    query = "AAPL"
+    date_range = DateRange.from_date_strings("2020-10-04", "2020-10-06")
+    output_path = file_services.create_unique_filename(constants.TWITTER_TRASH_OUTPUT, prefix="search_twitter_test")
+
+    # Act
+    twitter_service.search_standard(query=query, tweet_raw_output_path=output_path, date_range=date_range)
+    # Assert
