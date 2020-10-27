@@ -76,3 +76,16 @@ def test_is_after_close():
 
     # Assert
     assert (is_closed)
+
+
+def test_get_prev_nasdaq_dt():
+    # Arrange
+    dt_sept = date_utils.parse_std_datestring("2020-09-10")
+
+    print(list(range(-3)))
+
+    # Act
+    dt_prev = date_utils.get_nasdaq_trading_days_from(dt=dt_sept, num_days=-7)
+
+    # Assert
+    assert(abs((dt_prev - dt_sept).days) > 7)

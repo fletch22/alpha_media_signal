@@ -90,3 +90,26 @@ def is_after_nasdaq_closed(utc_timestamp: int):
 def convert_timestamp_to_nyc_date_str(utc_timestamp):
     dt_nyc = convert_utc_timestamp_to_nyc(utc_timestamp=utc_timestamp)
     return get_standard_ymd_format(dt_nyc)
+
+
+def is_stock_market_closed(dt: datetime):
+    is_closed = False
+    if dt.weekday() > 5:
+        is_closed = True
+    else:
+        dt_str = get_standard_ymd_format(dt)
+        if dt_str in stock_market_holidays:
+            is_closed = True
+    return is_closed
+
+
+def get_nasdaq_trading_days_from(dt: datetime, num_days: int):
+    time_dir = -1
+    if num_days > 0:
+        time_dir = 1
+    for n in range(abs(num_days)):
+        while True:
+            dt = dt + timedelta(days=time_dir)
+            if not is_stock_market_closed(dt):
+                break
+    return dt

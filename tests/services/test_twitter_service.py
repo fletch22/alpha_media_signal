@@ -40,3 +40,12 @@ def test_twitter_service():
     # Act
     twitter_service.search_standard(query=query, tweet_raw_output_path=output_path, date_range=date_range)
     # Assert
+
+def test_dict():
+    ticker = "AAA"
+    group_preds = {}
+    info = {}
+    group_preds[ticker] = info
+    info["foo"] = 1
+
+    print(group_preds)

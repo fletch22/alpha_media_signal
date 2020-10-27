@@ -1,16 +1,14 @@
 import json
 import re
 from pathlib import Path
-from statistics import mean
 from typing import Dict
 
 import yfinance as yf
-from sklearn.neural_network import MLPRegressor
 
 from ams import config
 from ams.DateRange import DateRange
-from ams.config import logger_factory, constants
-from ams.services import pickle_service, twitter_service, file_services
+from ams.config import logger_factory
+from ams.services import pickle_service, twitter_service
 from ams.services.equities.ExchangeType import ExchangeType
 from ams.services.equities.TickerService import TickerService
 from ams.utils import date_utils, equity_utils
@@ -104,8 +102,8 @@ def test_re():
 
 
 def test_multithreads():
-    from_date = date_utils.parse_std_datestring("2020-09-30")
-    to_date = date_utils.parse_std_datestring("2020-10-07")
+    from_date = date_utils.parse_std_datestring("2020-10-23")
+    to_date = date_utils.parse_std_datestring("2020-10-24")
     date_range = DateRange(from_date=from_date, to_date=to_date)
     twitter_service.search_one_day_at_a_time(date_range=date_range)
 
@@ -117,6 +115,7 @@ def test_queue():
     printer_thread.print('foofoo')
 
     printer_thread.end()
+
 
 def test_json():
     # Arrange

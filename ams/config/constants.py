@@ -37,7 +37,7 @@ WEATHER_DATA_PATH = Path(WEATHER_DATA_DIR, "station_1.txt")
 
 FIN_DATA = Path(OVERFLOW_DATA_PATH, 'financial')
 
-TWITTER_OUTPUT = Path(FIN_DATA, 'twitter')
+TWITTER_OUTPUT = Path(OVERFLOW_DATA_PATH, 'twitter')
 TWITTER_OUTPUT.mkdir(exist_ok=True)
 TICKER_NAME_SEARCHABLE_PATH = Path(TWITTER_OUTPUT, 'ticker_names_searchable.csv')
 
@@ -82,3 +82,5 @@ SHAR_TICKER_DETAIL_INFO_PATH = Path(QUANDL_TBLS_DIR, "shar_tickers.csv")
 KAFKA_URL = "localhost:9092"
 
 GOOGLE_NEWS_OUTPUT_DIR_PATH = Path(OVERFLOW_DATA_PATH, "news\\google\\alpha_media_signal")
+
+TRAIN_READY_TWEETS = Path(TWITTER_OUTPUT, "inference_models", "train_ready_tweets.mod")

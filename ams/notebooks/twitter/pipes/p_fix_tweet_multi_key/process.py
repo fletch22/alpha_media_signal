@@ -36,7 +36,7 @@ def process(source_path: Path, output_dir_path: Path):
 
 
 def start():
-    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop", "staging")
+    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop")
     output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "fixed_drop")
 
     batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process)

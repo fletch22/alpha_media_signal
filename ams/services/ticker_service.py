@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 from typing import List, Dict
 
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, CategoricalDtype
+from sklearn.preprocessing import StandardScaler
 
 from ams.DateRange import DateRange
 from ams.config import constants
@@ -90,20 +91,12 @@ def get_ticker_on_dates(tick_dates: Dict[str, List[str]]) -> pd.DataFrame:
     df_list = []
     for ticker, date_strs in tick_dates.items():
         df_equity = get_equity_on_dates(ticker=ticker, date_strs=date_strs)
-        if df_equity is None:
-            print(f"No data for ticker '{ticker}' in {date_strs}")
-        else:
+        if df_equity is not None:
             df_list.append(df_equity)
     df_ticker = pd.concat(df_list).dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
 
-    # df_equity_info = get_ticker_info()
-    # df_equity_min = df_equity_info.drop(columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
-    #                                      "secfilings", "companysite", "lastupdated", "cusips",
-    #                                      "isdelisted", "name", "exchange", "firstadded"])
-    #
-    # return pd.merge(df_list, df_equity_min, how="inner", on="ticker")
-
     return df_ticker
+
 
 def get_equity_on_dates(ticker: str, date_strs: List[str]) -> pd.DataFrame:
     df = get_ticker_eod_data(ticker)
@@ -248,3 +241,191 @@ def get_ticker_info():
 def get_nasdaq_info():
     df = get_ticker_info()
     return df[df["exchange"] == "NASDAQ"]
+
+
+def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[str]):
+    df_one_hots = []
+    for c in cols:
+        df_all_tickers[c] = df_all_tickers[c].fillna("<unknown>")
+        uniques = df_all_tickers[c].unique().tolist()
+        uniques.append("<unknown>")
+        uniques = list(set(uniques))
+
+        df[c] = df[c].fillna("<unknown>")
+        df[c] = df[c].astype(CategoricalDtype(uniques))
+        df_new_cols = pd.get_dummies(df[c], prefix=c)
+        df_one_hots.append(df_new_cols)
+
+    df_one_dropped = df.drop(columns=cols)
+    df_one_hots.append(df_one_dropped)
+
+    return pd.concat(df_one_hots, axis=1)
+
+
+def make_one_hotted_for_one_column(df: pd.DataFrame, unique_values: List[str], col: str):
+    df[col] = df[col].fillna("<unknown>")
+    df[col] = df[col].astype(CategoricalDtype(unique_values))
+    df_new_cols = pd.get_dummies(df[col], prefix=col)
+
+    df_dropped = df.drop(columns=[col])
+
+    return pd.concat([df_dropped, df_new_cols], axis=1)
+
+
+def get_nasdaq_tickers():
+    df_nasdaq = get_nasdaq_info()
+
+    df_dropped = df_nasdaq.drop(columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
+                                         "secfilings", "companysite", "lastupdated", "cusips",
+                                         "isdelisted", "name", "exchange", "firstadded", "permaticker", "sicindustry", "relatedtickers"
+                                         ])
+
+    df_all_tickers = get_ticker_info()
+    df_rem = df_all_tickers[df_dropped.columns]
+
+    columns = [c for c in df_rem.columns if str(df_rem[c].dtype) == "object"]
+    columns.remove("ticker")
+
+    df_one_hotted = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns)
+
+    df_ren = df_one_hotted.rename(columns={"ticker": "ticker_drop"})
+
+    return df_ren
+
+
+def std_dataframe(df_train: pd.DataFrame, df_test: pd.DataFrame, df_val: pd.DataFrame):
+    df_train = df_train.copy()
+    df_test = df_test.copy()
+    df_val = df_val.copy()
+    num_cols = [c for c in df_train.columns if str(df_train[c].dtype) == "float64"]  # need logic to get numeric
+
+    for c in num_cols:
+        standard_scaler = StandardScaler()
+
+        df_train = fillna_column(df=df_train, col=c)
+        df_test = fillna_column(df=df_test, col=c)
+        df_val = fillna_column(df=df_val, col=c)
+
+        # NOTE: 2020-10-11: chris.flesche: Consider adding another column here
+        # col_new = f"{c}_na_filled"
+        # df_train[col_new] = False
+        # df_train.loc[df_train[c] == None, col_new] = True
+
+        with pd.option_context('mode.chained_assignment', None):
+            df_train.loc[:, c] = standard_scaler.fit_transform(df_train[[c]])
+            df_test.loc[:, c] = standard_scaler.transform(df_test[[c]])
+            df_val.loc[:, c] = standard_scaler.transform(df_val[[c]])
+
+    return df_train, df_test, df_val
+
+
+def fillna_column(df: pd.DataFrame, col: str):
+    median = df[col].median()
+    median = 0 if str(median) == 'nan' else median
+    with pd.option_context('mode.chained_assignment', None):
+        df.loc[df[col].isnull(), col] = median
+        # df[col] = df[col].fillna(median)
+
+    return df
+
+
+def get_single_attr(df: pd.DataFrame, col: str):
+    col_values = df[col].tolist()
+    result = None
+    if len(col_values) > 0:
+        result = col_values[0]
+    return result
+
+
+def get_stock_info(df: pd.DataFrame, ticker: str, date_str: str):
+    df_ticker_on_date = df[(df["f22_ticker"] == ticker) & (df["purchase_date"] == date_str)]
+
+    original_open = get_single_attr(df_ticker_on_date, "open")
+    if original_open is None:
+        raise Exception("original_open is None.")
+
+    close = get_single_attr(df_ticker_on_date, "original_close_price")
+    if close is None:
+        raise Exception("close is None.")
+
+    split_share_multiplier = get_single_attr(df_ticker_on_date, "split_share_multiplier")
+    if split_share_multiplier is None:
+        raise Exception("split_share_multiplier is None.")
+    split_share_multiplier = 1 / split_share_multiplier
+
+    future_close = get_single_attr(df_ticker_on_date, "future_close")
+    if future_close is None:
+        raise Exception("future_close is None.")
+
+    future_high = get_single_attr(df_ticker_on_date, "future_high")
+    if future_high is None:
+        raise Exception("future_high is None.")
+
+    future_open = get_single_attr(df_ticker_on_date, "future_open")
+    if future_open is None:
+        raise Exception("future_open is None.")
+
+    return close, future_close, future_high, future_open, split_share_multiplier
+
+
+def get_roi(close_price: float, target_roi_frac: float, future_high: float, future_close: float):
+    target_price = close_price * (1 + target_roi_frac)
+
+    if target_price < future_high:
+        roi = target_roi_frac
+    else:
+        roi = (future_close - close_price) / close_price
+
+    return roi
+
+
+def calculate_roi(target_roi: float, close_price: float, future_high: float, future_close: float, calc_dict: Dict[str, List[float]], zero_in: bool = False):
+    last_roi = None
+    num_repeats = 0
+    max_repeats = 3
+    if zero_in:
+        calc_tar_roi = target_roi
+        calc_roi = get_roi(close_price=close_price, target_roi_frac=calc_tar_roi, future_high=future_high, future_close=future_close)
+        calc_key = str(round(calc_tar_roi, 6))
+
+        if calc_key not in calc_dict.keys():
+            calc_dict[calc_key] = []
+        calc_list = calc_dict[calc_key]
+        calc_list.append(calc_roi)
+        # print(f"calc_key: {calc_key}: calc_roi: {calc_roi}: {statistics.mean(calc_list):.4f}%")
+    else:
+        for i in range(800):
+            calc_tar_roi = target_roi + (i * .001)
+            calc_roi = get_roi(close_price=close_price, target_roi_frac=calc_tar_roi, future_high=future_high, future_close=future_close)
+            calc_key = str(round(calc_tar_roi, 6))
+
+            if calc_key not in calc_dict.keys():
+                calc_dict[calc_key] = []
+            calc_list = calc_dict[calc_key]
+            calc_list.append(calc_roi)
+            # print(f"calc_key: {calc_key}: calc_roi: {calc_roi}: {statistics.mean(calc_list):.4f}%")
+
+            if calc_roi == last_roi:
+                num_repeats += 1
+                if num_repeats > max_repeats:
+                    break
+            else:
+                num_repeats = 0
+
+            last_roi = calc_roi
+
+
+def add_days_until_sale(df: pd.DataFrame):
+    def days_between(row):
+        date_str = row["purchase_date"]
+        future_date_str = row["future_date"]
+
+        dt_date = date_utils.parse_std_datestring(date_str)
+        dt_fut_date = date_utils.parse_std_datestring(future_date_str)
+        days_bet = (dt_fut_date - dt_date).days
+
+        return days_bet
+
+    df["days_util_sale"] = df.apply(days_between, axis=1)
+
+    return df

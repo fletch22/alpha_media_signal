@@ -1,4 +1,5 @@
 import csv
+from statistics import mean
 
 from ams.config import constants
 from ams.services import file_services
@@ -46,4 +47,3 @@ def test_write_read():
         wr = csv.writer(output, quoting=csv.QUOTE_ALL, lineterminator="\n")
         wr.writerow(row_list)
         wr.writerow(row_list)
-
