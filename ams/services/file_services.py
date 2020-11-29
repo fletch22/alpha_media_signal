@@ -5,12 +5,19 @@ from datetime import datetime
 from os import walk as walker
 from pathlib import Path
 from threading import Thread
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, List
 from zipfile import ZipFile
 
 from ams.config import logger_factory, constants
 
 logger = logger_factory.create(__name__)
+
+
+def is_empty(the_path: Path):
+    for (dirpath, dirnames, filenames) in walker(str(the_path)):
+        if len(dirnames) > 0 or len(filenames) > 0:
+            return False
+    return True
 
 
 def walk(the_path: Path, use_dir_recursion: bool = True):
@@ -26,7 +33,16 @@ def walk(the_path: Path, use_dir_recursion: bool = True):
 
 def list_files(parent_path: Path, ends_with: str = None, use_dir_recursion: bool = True):
     file_paths = walk(parent_path, use_dir_recursion=use_dir_recursion)
-    return list(filter(lambda x: x.is_file() and (ends_with is None or str(x).endswith(ends_with)), file_paths))
+    file_paths =  list(filter(lambda x: x.is_file() and (ends_with is None or str(x).endswith(ends_with)), file_paths))
+    return file_paths if file_paths is not None else []
+
+
+def list_child_folders(parent_path: Path, ends_with: str = None) -> List[Path]:
+    results = []
+    for (_, dirnames, _) in walker(str(parent_path)):
+        folder_names = list(filter(lambda x: ends_with is None or str(x).endswith(ends_with), dirnames))
+        results = [Path(parent_path, x) for x in folder_names]
+    return results
 
 
 def create_unique_filename(parent_dir: str, prefix: str, extension: str = None) -> Path:

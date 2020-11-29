@@ -267,9 +267,9 @@ def search_one_day_at_a_time(date_range: DateRange):
 def search_with_multi_thread(date_range: DateRange):
     ticker_tuples = get_ticker_searchable_tuples()
 
-    # ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='MBIN', delete_before=True)
+    # ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='XERS', delete_before=True)
 
-    parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop')
+    parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop', "main")
     tweet_raw_output_path = file_services.create_unique_filename(str(parent), prefix="multithreaded_drop", extension='txt')
     print(f'Output path: {str(tweet_raw_output_path)}')
 
@@ -532,7 +532,7 @@ def omit_columns(df: pd.DataFrame):
 
 def balance_df(df: pd.DataFrame):
     df_samp_buy = df[df["buy_sell"] == 1]
-    df_samp_sell = df[df["buy_sell"] == -1]
+    df_samp_sell = df[df["buy_sell"] != 1]
 
     num_buy = df_samp_buy.shape[0]
     num_sell = df_samp_sell.shape[0]
@@ -822,5 +822,6 @@ def group_and_mean_preds(df: pd.DataFrame, model, is_model_torch=False):
 
 
 if __name__ == '__main__':
-    date_range = DateRange.from_date_strings(from_date_str="2020-10-24", to_date_str="2020-10-26")
+    date_range = DateRange.from_date_strings(from_date_str="2020-11-21", to_date_str="2020-11-23")
     search_one_day_at_a_time(date_range=date_range)
+    # create_colloquial_twitter_stock_search_tokens()

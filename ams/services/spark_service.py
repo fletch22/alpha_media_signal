@@ -1,13 +1,22 @@
+import findspark
 from pyspark.sql import SparkSession
-# import findspark
 
-def get_or_create(app_name: str):
-    # findspark.init()
-    return SparkSession.builder \
-        .master("local[15]") \
+
+def _get_or_create(app_name):
+    spark_session = SparkSession.builder \
+        .master("local[*]") \
         .appName(app_name) \
         .config("spark.executor.memory", "2g") \
         .getOrCreate()
+    spark_session.sparkContext.setCheckpointDir("c://tmp")
 
-# .config("spark.executor.heartbeatInterval", 36000) \
-        # .config("spark.network.timeout", 37000) \
+    return spark_session
+
+
+def get_or_create(app_name: str):
+    findspark.init()
+    spark_session = _get_or_create(app_name)
+    spark_session.stop()
+    spark_session = _get_or_create(app_name)
+
+    return spark_session

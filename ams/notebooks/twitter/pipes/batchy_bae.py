@@ -6,7 +6,7 @@ from typing import List, Callable, TypeVar
 from ams.config import constants
 from ams.services import file_services
 
-STAGING_FOLDER_NAME = "staging"
+STAGING_FOLDER_NAME = "stage"
 IN_TRANSITION_ENDING = ".in_transition"
 ARCHIVE_FOLDER_NAME = "archive"
 
@@ -17,7 +17,11 @@ def get_files_in_transition(dir_path: Path) -> List[Path]:
     return file_services.list_files(dir_path, IN_TRANSITION_ENDING, use_dir_recursion=False)
 
 
-def revert_to_original_location(source_dir_path: Path, files_in_transition: List[Path]):
+def get_folders_in_transition(dir_path: Path) -> List[Path]:
+    return file_services.list_child_folders(dir_path, ends_with=IN_TRANSITION_ENDING)
+
+
+def revert_files_to_original_location(source_dir_path: Path, files_in_transition: List[Path]):
     for f in files_in_transition:
         filename = f.name
         dest_path = Path(source_dir_path, filename[:-len(IN_TRANSITION_ENDING)])
@@ -34,58 +38,113 @@ def remove_remaining_files(staging_path: Path):
 
 
 def revert_in_transition_files(source_dir_path: Path):
-    staging_path = Path(source_dir_path, STAGING_FOLDER_NAME)
+    staging_path = Path(source_dir_path.parent, STAGING_FOLDER_NAME)
     files_in_transition = get_files_in_transition(staging_path)
+    folders_in_transition = get_folders_in_transition(staging_path)
 
-    revert_to_original_location(source_dir_path, files_in_transition)
+    entities_in_trans = files_in_transition + folders_in_transition
+
+    revert_files_to_original_location(source_dir_path, entities_in_trans)
 
     remove_remaining_files(staging_path)
 
 
-def start(source_path: Path, output_dir_path: Path, process_callback: pipe_process_callback):
+def start(source_path: Path, output_dir_path: Path, process_callback: pipe_process_callback, should_archive: bool=True):
     revert_in_transition_files(source_dir_path=source_path)
 
-    process(source_path, output_dir_path, process_callback=process_callback)
+    process(source_path, output_dir_path=output_dir_path, process_callback=process_callback, should_archive=should_archive)
 
 
-def move_files_to_staging(source_path: Path):
-    staging_dir_path = Path(source_path, STAGING_FOLDER_NAME)
+def move_to_staging(source_path: Path):
+    staging_dir_path = Path(source_path.parent, STAGING_FOLDER_NAME)
+    print(staging_dir_path)
     os.makedirs(staging_dir_path, exist_ok=True)
 
-    files = file_services.list_files(source_path, ends_with=".txt", use_dir_recursion=False)
+    files = file_services.list_files(source_path, use_dir_recursion=False)
     for f in files:
         filename = f.name
         dest_path = Path(staging_dir_path, f"{filename}{IN_TRANSITION_ENDING}")
         shutil.move(str(f), str(dest_path))
 
+    child_path_list = file_services.list_child_folders(source_path)
+    for c_path in child_path_list:
+        folder_name = c_path.name
+        dest_path = Path(staging_dir_path, f"{folder_name}{IN_TRANSITION_ENDING}")
+        shutil.move(str(c_path), str(dest_path))
+
     return staging_dir_path
 
 
 def archive(source_path: Path, staging_dir_path: Path):
-    archive_dir_path = Path(source_path, ARCHIVE_FOLDER_NAME)
+    archive_dir_path = Path(source_path.parent, ARCHIVE_FOLDER_NAME)
     os.makedirs(archive_dir_path, exist_ok=True)
 
     files_in_transition = get_files_in_transition(staging_dir_path)
-    archive_output_dir_path = file_services.create_unique_folder_name(archive_dir_path, prefix="archive")
-    for f in files_in_transition:
-        filename = f.name
-        dest_path = Path(archive_output_dir_path, filename[:-len(IN_TRANSITION_ENDING)])
-        shutil.move(str(f), str(dest_path))
+    total_files = len(files_in_transition)
+    archive_output_dir_path = file_services.create_unique_folder_name(archive_dir_path, prefix="archive", ensure_exists=False)
+    if total_files > 0:
+        os.makedirs(archive_output_dir_path, exist_ok=True)
+        for f in files_in_transition:
+            filename = f.name
+            dest_path = Path(archive_output_dir_path, filename[:-len(IN_TRANSITION_ENDING)])
+            shutil.move(str(f), str(dest_path))
+
+    folders_in_transition = get_folders_in_transition(staging_dir_path)
+    total_folders = len(folders_in_transition)
+    if total_folders > 0:
+        os.makedirs(archive_output_dir_path, exist_ok=True)
+        for f in folders_in_transition:
+            folder_name = f.name
+            dest_path = Path(archive_output_dir_path, folder_name[:-len(IN_TRANSITION_ENDING)])
+            shutil.move(str(f), str(dest_path))
+
+    if total_files + total_folders == 0:
+        print("WARNING: No files found to archive.")
 
 
-def process(source_path: Path, output_dir_path: Path, process_callback: Callable[[Path, Path], None]):
-    staging_dir_path = move_files_to_staging(source_path)
+def unstage(source_path: Path, output_dir_path: Path):
+    print("Unstaging...")
+    files_in_transition = get_files_in_transition(source_path)
+    total_files = len(files_in_transition)
+    if total_files > 0:
+        for f in files_in_transition:
+            filename = f.name
+            dest_path = Path(output_dir_path, filename[:-len(IN_TRANSITION_ENDING)])
+            shutil.move(str(f), str(dest_path))
+
+    folders_in_transition = get_folders_in_transition(source_path)
+    total_folders = len(folders_in_transition)
+    if total_folders > 0:
+        for f in folders_in_transition:
+            folder_name = f.name
+            dest_path = Path(output_dir_path, folder_name[:-len(IN_TRANSITION_ENDING)])
+            shutil.move(str(f), str(dest_path))
+
+    if total_files + total_folders == 0:
+        print("WARNING: No files found to archive.")
+
+
+def process(source_path: Path, output_dir_path: Path, process_callback: Callable[[Path, Path], None], should_archive: bool = True):
+    if not source_path.exists():
+        raise Exception(f"Source folder does not exist: '{source_path}'.")
+
+    staging_dir_path = move_to_staging(source_path)
 
     process_callback(staging_dir_path, output_dir_path)
 
-    archive(source_path=source_path, staging_dir_path=staging_dir_path)
+    if should_archive:
+        archive(source_path=source_path, staging_dir_path=staging_dir_path)
+    else:
+        unstage(source_path=staging_dir_path, output_dir_path=source_path)
 
 
 if __name__ == '__main__':
+    source_dir_path = Path(constants.DATA_PATH, "foo_drop", "main")
     output_dir_path = Path(constants.DATA_PATH, "bar")
-    source_dir_path = Path(constants.DATA_PATH, "foo")
+
 
     def foo(bar: Path, banana: Path):
         pass
 
-    start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=foo)
+
+    start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=foo, should_archive=True)

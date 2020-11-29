@@ -3,8 +3,8 @@ import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from ams import config
 from ams.config import constants
+
 
 class LoggerFactory():
     rot_handler = None

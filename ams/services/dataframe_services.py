@@ -1,16 +1,29 @@
+from enum import Enum
 from pathlib import Path
 
 from pyspark.sql import DataFrame
 
 from ams.services import file_services
 
+class PersistedDataFrameTypes(Enum):
+    CSV = "CSV"
+    PARQUET = "PARQUET"
+    ORC = "ORC"
 
-def persist_dataframe_as_csv(df: DataFrame, output_drop_folder_path: Path, prefix: str, num_output_files: int = -1):
+
+def persist_dataframe(df: DataFrame, output_drop_folder_path: Path, prefix: str, num_output_files: int = -1, type: PersistedDataFrameTypes = PersistedDataFrameTypes.PARQUET):
     output_folder_path = file_services.create_unique_folder_name(str(output_drop_folder_path), prefix=prefix, ensure_exists=False)
 
     if num_output_files > 0:
         df = df.repartition(num_output_files)
 
-    df.write.option("header", True).option("quoteAll", True).csv(str(output_folder_path))
+    if type == PersistedDataFrameTypes.PARQUET:
+        df.write.save(str(output_folder_path), format="parquet")
+    elif type == PersistedDataFrameTypes.ORC:
+        df.write.save(str(output_folder_path), format="orc")
+    elif type == PersistedDataFrameTypes.CSV:
+        df.write.save(str(output_folder_path), format="csv")
 
     print(str(output_folder_path))
+
+    return output_folder_path
