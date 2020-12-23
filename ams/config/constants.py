@@ -107,3 +107,22 @@ TWITTER_TEXT_LABEL_TRAIN_PATH = Path(TWITTER_INFERENCE_MODEL_PATH, "twitter_text
 
 TWITTER_MODEL_PATH = Path(TWITTER_INFERENCE_MODEL_PATH, "models")
 ensure_dir(TWITTER_MODEL_PATH)
+
+TIP_RANKS_DATA_DIR = Path(FIN_DATA, 'tip_ranks')
+ensure_dir(TIP_RANKS_DATA_DIR)
+TIP_RANKS_STOCK_DATA_PATH = os.path.join(TIP_RANKS_DATA_DIR, "tip_ranks_stock.parquet")
+
+DAILY_ROI_NASDAQ_PATH = os.path.join(QUANDL_DIR, "daily_roi_nasdaq.parquet")
+
+TICK_ON_DAY_PATH = Path(FIN_DATA, "tickers_on_day")
+ensure_dir(TICK_ON_DAY_PATH)
+
+TOD_PICKLE_PATH = Path(TICK_ON_DAY_PATH, "tod.pickle")
+
+THREE_BELOW_HISTORY_PATH = Path(TICK_ON_DAY_PATH, "three_below_history.csv")
+
+TWITTER_TRADE_HISTORY_PATH = Path(TWITTER_OUTPUT, "trade_history")
+ensure_dir(TWITTER_TRADE_HISTORY_PATH)
+
+TWITTER_TRADE_HISTORY_FILE_PATH = Path(TWITTER_TRADE_HISTORY_PATH, "twitter_trade_history.csv")
+

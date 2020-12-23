@@ -41,4 +41,20 @@ Phase: BloggerHighScore
     calculate average stock movement
         S&P 500
         Large, Medium and Small cap
-    add cumumlative endorsement score, considering negative and positive prior endorsements.
+    add cumumlatSplit dates for smallive endorsement score, considering negative and positive prior endorsements.
+    
+Process Twitter Feed:
+
+    1. Download
+    2. Fix Tweet Multi Key (fixed_drop)
+    3. Flatten
+    4. Add Id
+    5. Deduped
+    6. Assigned Sentiment
+    7. Learning Prep
+    8. Twitter ML
+    
+Process Price Target:
+
+    1. Download EOD dailies in stock_predictor.
+    2. Execute create_tickers_available_on_day

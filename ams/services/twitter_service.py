@@ -17,7 +17,7 @@ from searchtweets import load_credentials, gen_rule_payload, ResultStream
 from sklearn.metrics import accuracy_score
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from ams import utils
 from ams.DateRange import DateRange
@@ -27,6 +27,7 @@ from ams.services import stock_action_service as sas
 from ams.services.equities import equity_fundy_service
 from ams.services.equities.ExchangeType import ExchangeType
 from ams.services.equities.TickerService import TickerService
+from ams.services.ticker_service import fillna_column
 from ams.utils import date_utils, equity_utils
 from ams.utils.PrinterThread import PrinterThread
 
@@ -75,7 +76,9 @@ def process_tweets_stream(rs):
     cache_length = 9
     count = 0
     tweets = []
-    tweet_raw_output_path = file_services.create_unique_filename(constants.TWITTER_OUTPUT_RAW_PATH, prefix=constants.TWITTER_RAW_TWEETS_PREFIX, extension='txt')
+    tweet_raw_output_path = file_services.create_unique_filename(constants.TWITTER_OUTPUT_RAW_PATH,
+                                                                 prefix=constants.TWITTER_RAW_TWEETS_PREFIX,
+                                                                 extension='txt')
     for tweet in tweet_generator:
         tweets.append(tweet)
         if len(tweets) >= cache_length:
@@ -118,7 +121,8 @@ def search_standard(query: str, tweet_raw_output_path: Path, date_range: DateRan
         count = 0
         while True:
             try:
-                response = requests.get(url, headers={"Authorization": f"Bearer {creds.default_bearer_token}"})
+                response = requests.get(url, headers={
+                    "Authorization": f"Bearer {creds.default_bearer_token}"})
 
                 search_results = response.json()
             except Exception as e:
@@ -163,7 +167,9 @@ def fix_common(name: str, ticker: str, common_words: List[str]):
 
 
 def create_colloquial_twitter_stock_search_tokens():
-    ticker_tuples = TickerService.get_list_of_tickers_by_exchange(cols=['ticker', 'name'], exchange_types=[ExchangeType.NASDAQ])
+    ticker_tuples = TickerService.get_list_of_tickers_by_exchange(cols=['ticker', 'name'],
+                                                                  exchange_types=[
+                                                                      ExchangeType.NASDAQ])
 
     ticker_tuples.sort(key=operator.itemgetter(0))
 
@@ -198,18 +204,22 @@ def get_ticker_searchable_tuples() -> List:
     return ticker_tuples
 
 
-def compose_search_and_query_double(date_range: DateRange, name_1: str, ticker_1: str, name_2: str, ticker_2: str, tweet_raw_output_path: Path):
+def compose_search_and_query_double(date_range: DateRange, name_1: str, ticker_1: str, name_2: str,
+                                    ticker_2: str, tweet_raw_output_path: Path):
     # continue
     query = f'\"{ticker_1}\" {name_1} OR \"{ticker_2}\" {name_2}'
 
-    return search_standard(query=query, tweet_raw_output_path=tweet_raw_output_path, date_range=date_range)
+    return search_standard(query=query, tweet_raw_output_path=tweet_raw_output_path,
+                           date_range=date_range)
 
 
-def compose_search_and_query(date_range: DateRange, name: str, ticker: str, tweet_raw_output_path: Path):
+def compose_search_and_query(date_range: DateRange, name: str, ticker: str,
+                             tweet_raw_output_path: Path):
     # continue
     query = f'\"{ticker}\" {name}'
 
-    return search_standard(query=query, tweet_raw_output_path=tweet_raw_output_path, date_range=date_range)
+    return search_standard(query=query, tweet_raw_output_path=tweet_raw_output_path,
+                           date_range=date_range)
 
 
 def get_cashtag_info(ticker: str, has_cashtag: bool) -> Dict:
@@ -267,10 +277,14 @@ def search_one_day_at_a_time(date_range: DateRange):
 def search_with_multi_thread(date_range: DateRange):
     ticker_tuples = get_ticker_searchable_tuples()
 
-    # ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='XERS', delete_before=True)
+    from_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
+    if from_date_str == "2020-12-07":
+        ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='NYCB', delete_before=True)
 
     parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop', "main")
-    tweet_raw_output_path = file_services.create_unique_filename(str(parent), prefix="multithreaded_drop", extension='txt')
+    tweet_raw_output_path = file_services.create_unique_filename(str(parent),
+                                                                 prefix="multithreaded_drop",
+                                                                 extension='txt')
     print(f'Output path: {str(tweet_raw_output_path)}')
 
     pt = PrinterThread()
@@ -285,7 +299,8 @@ def search_with_multi_thread(date_range: DateRange):
             t_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
             pt.print(f'{ticker}: {name} from {f_date_str} thru {t_date_str}')
 
-            return compose_search_and_query(date_range=date_range, name=name, ticker=ticker, tweet_raw_output_path=tweet_raw_output_path)
+            return compose_search_and_query(date_range=date_range, name=name, ticker=ticker,
+                                            tweet_raw_output_path=tweet_raw_output_path)
 
         results = 0
         with ThreadPoolExecutor(4) as executor:
@@ -305,7 +320,9 @@ def search_with_multi_thread_double(date_range: DateRange):
     double_tuples = zip(ticker_iter, ticker_iter)
 
     parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop')
-    tweet_raw_output_path = file_services.create_unique_filename(str(parent), prefix="multithreaded_drop", extension='txt')
+    tweet_raw_output_path = file_services.create_unique_filename(str(parent),
+                                                                 prefix="multithreaded_drop",
+                                                                 extension='txt')
     print(f'Output path: {str(tweet_raw_output_path)}')
 
     pt = PrinterThread()
@@ -322,9 +339,13 @@ def search_with_multi_thread_double(date_range: DateRange):
 
             f_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
             t_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
-            pt.print(f'{ticker_1}: {name_1} OR {ticker_2}: {name_2} from {f_date_str} thru {t_date_str}')
+            pt.print(
+                f'{ticker_1}: {name_1} OR {ticker_2}: {name_2} from {f_date_str} thru {t_date_str}')
 
-            return compose_search_and_query_double(date_range=date_range, name_1=name_1, ticker_1=ticker_1, name_2=name_2, ticker_2=ticker_2, tweet_raw_output_path=tweet_raw_output_path)
+            return compose_search_and_query_double(date_range=date_range, name_1=name_1,
+                                                   ticker_1=ticker_1, name_2=name_2,
+                                                   ticker_2=ticker_2,
+                                                   tweet_raw_output_path=tweet_raw_output_path)
 
         results = 0
         with ThreadPoolExecutor(4) as executor:
@@ -335,20 +356,46 @@ def search_with_multi_thread_double(date_range: DateRange):
         pt.end()
 
 
-def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame):
+def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_days_in_future: int = 1):
     ttd = ticker_service.extract_ticker_tweet_dates(df_tweets)
-    return ticker_service.get_ticker_on_dates(ttd)
+    return ticker_service.get_ticker_on_dates(ttd, num_days_in_future=num_days_in_future)
 
 
 def get_rec_quarter_for_twitter():
     df_rec_quart = equity_fundy_service.get_most_recent_quarter_data()
-    return df_rec_quart.drop(columns=["lastupdated", "dimension", "calendardate", "datekey", "reportperiod"])
+    return df_rec_quart.drop(
+        columns=["lastupdated", "dimension", "calendardate", "datekey", "reportperiod"])
+
+
+def get_all_quarterly_data_for_twitter():
+    df_rec_quart = equity_fundy_service.get_all_quarterly_data()
+    return df_rec_quart.drop(columns=["lastupdated", "dimension", "datekey", "reportperiod"])
+
+
+def exagerrate_stock_val_change(value):
+    is_neg = -1 if value < 0 else 1
+    exag_val = (abs(value + 1)) ** 2
+
+    return is_neg * exag_val
+
+
+def std_col(df: pd.DataFrame, col_name: str):
+    standard_scaler = StandardScaler()
+
+    df = fillna_column(df=df, col=col_name)
+
+    with pd.option_context('mode.chained_assignment', None):
+        df.loc[:, col_name] = standard_scaler.fit_transform(df[[col_name]])
 
 
 def add_buy_sell(df: pd.DataFrame):
     roi_threshold_pct = 0  # 1.6
-    df['stock_val_change'] = ((df['future_close'] - df['close']) / df['close']) * 100.0
+    df['stock_val_change'] = ((df['future_close'] - df['close']) / df['close']) - df["roi"]
+
     df['buy_sell'] = df['stock_val_change'].apply(lambda x: 1 if x >= roi_threshold_pct else -1)
+    df['stock_val_change_ex'] = df["stock_val_change"].apply(exagerrate_stock_val_change)
+
+    std_col(df=df, col_name="stock_val_change_ex")
 
     return df
 
@@ -396,13 +443,15 @@ def is_after_nasdaq_closed(created_at_timestamp: int):
 
 
 def add_is_tweet_after_hours(df: pd.DataFrame):
-    df[COL_AFTER_HOURS] = df.apply(lambda x: is_after_nasdaq_closed(x['created_at_timestamp']), axis=1)
+    df[COL_AFTER_HOURS] = df.apply(lambda x: is_after_nasdaq_closed(x['created_at_timestamp']),
+                                   axis=1)
     return df
 
 
 def add_purchase_date(df: pd.DataFrame):
     df[COL_PURCH_DATE] = df["date"]
-    df.loc[df[COL_AFTER_HOURS] == True, COL_PURCH_DATE] = df.loc[df[COL_AFTER_HOURS] == True, "future_date"]
+    df.loc[df[COL_AFTER_HOURS] == True, COL_PURCH_DATE] = df.loc[
+        df[COL_AFTER_HOURS] == True, "future_date"]
 
     return df
 
@@ -427,8 +476,10 @@ def convert_col_to_bool(df: pd.DataFrame, cols: List[str]):
 
 
 def convert_to_bool(df: pd.DataFrame):
-    return convert_col_to_bool(df, ['possibly_sensitive', 'f22_ticker_in_text', 'user_verified', 'f22_has_cashtag',
-                                    'user_has_extended_profile', 'user_is_translation_enabled', 'f22_ticker_in_text',
+    return convert_col_to_bool(df, ['possibly_sensitive', 'f22_ticker_in_text', 'user_verified',
+                                    'f22_has_cashtag',
+                                    'user_has_extended_profile', 'user_is_translation_enabled',
+                                    'f22_ticker_in_text',
                                     'user_protected', 'user_geo_enabled'])
 
 
@@ -452,8 +503,14 @@ def convert_to_bool(df: pd.DataFrame):
 #     return df
 
 
-def refine_pool(df: pd.DataFrame, min_volume: int, min_price: float):
-    return df[(df["volume"] > min_volume) & (df["open"] > min_price)]
+def refine_pool(df: pd.DataFrame, min_volume: int = None, min_price: float = None, max_price: float = None):
+    if min_volume is not None:
+        df = df[df["volume"] > min_volume]
+    if min_price is not None:
+        df = df[df["open"] >= min_price]
+    if max_price is not None:
+        df = df[df["open"] <= max_price]
+    return df
 
 
 def join_with_stock_splits(df: pd.DataFrame):
@@ -461,8 +518,10 @@ def join_with_stock_splits(df: pd.DataFrame):
 
     df_holdouts_clean = df.drop(columns=["date"])
 
-    df_split_aware = pd.merge(df_holdouts_clean, df_stock_splits, how='left', left_on=["f22_ticker", "purchase_date"], right_on=["ticker", "date"])
-    df_splitted = df_split_aware.rename(columns={"value": "split_share_multiplier"}).drop(columns=["ticker", "date"])
+    df_split_aware = pd.merge(df_holdouts_clean, df_stock_splits, how='left',
+                              left_on=["f22_ticker", "purchase_date"], right_on=["ticker", "date"])
+    df_splitted = df_split_aware.rename(columns={"value": "split_share_multiplier"}).drop(
+        columns=["ticker", "date"])
     df_splitted["split_share_multiplier"] = df_splitted["split_share_multiplier"].fillna(1.0)
 
     return df_splitted
@@ -480,7 +539,20 @@ def dec_tree(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np.
     return model
 
 
-def rnd_forest_clf(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np.array, max_depth: int):
+def dec_tree_regressor(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np.array, max_depth: int):
+    regressor = DecisionTreeRegressor(random_state=0, max_depth=max_depth)
+    model = regressor.fit(X_train, y_train)
+    y_test_pred = model.predict(X_test)
+
+    from sklearn.metrics import r2_score
+
+    print(r2_score(y_test, y_test_pred))
+
+    return model
+
+
+def rnd_forest_clf(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np.array,
+                   max_depth: int):
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.metrics import accuracy_score
 
@@ -501,7 +573,8 @@ def rnd_forest_clf(X_train: np.array, y_train: np.array, X_test: np.array, y_tes
 
 def train_mlp(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np.array):
     start = time.time()
-    clf = MLPClassifier(hidden_layer_sizes=(29, 50, 29), max_iter=800, tol=1e-19, activation='relu', solver='adam')
+    clf = MLPClassifier(hidden_layer_sizes=(29, 50, 29), max_iter=800, tol=1e-19, activation='relu',
+                        solver='adam')
     clf.fit(X_train, y_train)  # Fit data
     y_pred = clf.predict(X_test)  # Predict results for x_test
     accs = accuracy_score(y_test, y_pred)  # Accuracy Score
@@ -521,7 +594,8 @@ def train_mlp(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np
 
 
 def omit_columns(df: pd.DataFrame):
-    omit_cols = ['created_at_timestamp', 'in_reply_to_status_id', 'place_country', 'user_time_zone', 'place_name',
+    omit_cols = ['created_at_timestamp', 'in_reply_to_status_id', 'place_country', 'user_time_zone',
+                 'place_name',
                  'user_location', 'metadata_result_type', 'place_name', 'place_country',
                  'lang', 'in_reply_to_screen_name', 'lastupdated', 'created_at']
 
@@ -546,14 +620,15 @@ def balance_df(df: pd.DataFrame):
     return pd.concat([df_samp_buy, df_samp_sell]).sample(frac=1.0)
 
 
-def split_train_test(train_set: pd.DataFrame, test_set: pd.DataFrame, narrow_cols: List[str]):
+def split_train_test(train_set: pd.DataFrame, test_set: pd.DataFrame, narrow_cols: List[str], label_col: str = "buy_sell"):
     col_ticker = "f22_ticker"
 
     train_set_bal = balance_df(train_set)
     test_set_bal = balance_df(test_set)
 
-    omit_cols = {'buy_sell', 'date', 'purchase_date', "future_open", 'future_low', "future_high", "future_close",
-                 "stock_val_change_scaled", "stock_val_change", "user_screen_name",
+    omit_cols = {'buy_sell', 'date', 'purchase_date', "future_open", 'future_low', "future_high",
+                 "future_close", "stock_val_change_ex",
+                 "stock_val_change_scaled", "stock_val_change", "roi", "user_screen_name",
                  "future_date", "user_follow_request_sent", col_ticker}
 
     train_cols = list(set(narrow_cols) - omit_cols)
@@ -561,8 +636,8 @@ def split_train_test(train_set: pd.DataFrame, test_set: pd.DataFrame, narrow_col
     X_train = np.array(train_set_bal[train_cols])
     X_test = np.array(test_set_bal[train_cols])
 
-    y_train = np.array(train_set_bal['buy_sell'])
-    y_test = np.array(test_set_bal['buy_sell'])
+    y_train = np.array(train_set_bal[label_col])
+    y_test = np.array(test_set_bal[label_col])
 
     return X_train, y_train, X_test, y_test, train_cols
 
@@ -677,9 +752,11 @@ def ho_split_by_date(df, num_holdouts=40000):
     return df_samp, df_holdouts
 
 
-def ho_split_by_days(df, small_data_days_to_pull: int = None, small_data_frac: float = None, use_only_recent_for_holdout: bool = False):
+def ho_split_by_days(df, small_data_days_to_pull: int = None, small_data_frac: float = None,
+                     use_only_recent_for_holdout: bool = False):
     if small_data_days_to_pull is not None and small_data_frac is not None:
-        raise Exception("Cannot pass data in both 'small_data_days_to_pull' and 'small_data_frac' function arguments.")
+        raise Exception(
+            "Cannot pass data in both 'small_data_days_to_pull' and 'small_data_frac' function arguments.")
 
     date_max = df["purchase_date"].max()
     date_min = df["purchase_date"].min()
@@ -715,16 +792,6 @@ def ho_split_by_days(df, small_data_days_to_pull: int = None, small_data_frac: f
     df_samp = df[~df["purchase_date"].isin(days_to_pull)]
     df_holdouts = df[df["purchase_date"].isin(days_to_pull)]
 
-    # if df_samp.shape[0] > 100:
-    #     if df_holdouts.shape[0] < 100:
-    #         if small_data_frac:
-    #             small_data_frac += .1
-    #             if small_data_frac > .3:
-    #                 raise Exception("Can't find enough data.")
-    #         else:
-    #             small_data_days_to_pull += 1
-    #         df_samp, df_holdouts = ho_split_by_days(df, small_data_days_to_pull, small_data_frac, use_only_recent_for_holdout)
-
     return df_samp, df_holdouts
 
 
@@ -754,74 +821,7 @@ def remove_last_days(df: pd.DataFrame, num_days: int):
     return result, has_remaining_days
 
 
-def group_and_mean_preds(df: pd.DataFrame, model, is_model_torch=False):
-    df_g_holdout = df.groupby(['f22_ticker', 'purchase_date'])
-
-    group_count = 0
-    acc_acc = []
-    group_preds = {}
-    for group_name, df_group in df_g_holdout:
-        X_holdout = np.array(df_group[train_cols])
-        y_holdout = np.array(df_group['buy_sell'])
-
-        if is_model_torch:
-            X_holdout_con = X_holdout.astype(desired_dtype)
-            X_torch = torch.FloatTensor(X_holdout_con)
-
-            y_holdout = np.where(y_holdout == -1, 0, y_holdout)
-            pre_y_ho = sum(y_holdout) / len(y_holdout)
-            print(f"pre_y_ho: {pre_y_ho}")
-            pre_y_ho = 0 if pre_y_ho < 0 else 1
-
-            model.eval()
-            raw_out = model(X_torch)
-
-            raise Exception("output is not between -1 and 1")
-
-            cpu_pred = raw_out.cpu()
-            prediction = cpu_pred.data.numpy()
-
-            pred_mean = sum(prediction) / len(prediction)
-            pred_mean = 0 if pred_mean < 0 else 1
-        else:
-            prediction = model.predict(X_holdout)
-
-            pred_mean = sum(prediction) / len(prediction)
-            pred_mean = -1 if pred_mean < 0 else 1
-
-            pre_y_ho = sum(y_holdout) / len(y_holdout)
-            pre_y_ho = -1 if pre_y_ho < 0 else 1
-
-        # NOTE: This means that we are predicting only when buys are successfull. And we only buy.
-        pred_buy_success = 0
-        if pred_mean == 1:
-            if pre_y_ho == pred_mean:
-                pred_buy_success = 1
-
-            acc_acc.append(pred_buy_success)
-
-        ticker = group_name[0]
-        date_str = group_name[1]
-        if ticker in group_preds.keys():
-            info = group_preds[ticker]
-        else:
-            info = {}
-            group_preds[ticker] = info
-        info[date_str] = pred_buy_success
-
-    if len(acc_acc) > 0:
-        print(f"Mean: {mean(acc_acc)}")
-    else:
-        print("No mean on grouped mean - no rows?")
-
-    g_tickers = []
-    for group_name, df_group in df_g_holdout:
-        g_tickers.append(group_name[0])
-
-    return g_tickers, group_preds
-
-
 if __name__ == '__main__':
-    date_range = DateRange.from_date_strings(from_date_str="2020-11-21", to_date_str="2020-11-23")
+    date_range = DateRange.from_date_strings(from_date_str="2020-12-18", to_date_str="2020-12-23")
     search_one_day_at_a_time(date_range=date_range)
     # create_colloquial_twitter_stock_search_tokens()

@@ -1,17 +1,31 @@
 import os
+import shutil
 from pathlib import Path
 from typing import List
 
 import numpy as np
 import pandas as pd
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.notebooks.twitter.pipes import batchy_bae
 from ams.services import file_services
 
+logger = logger_factory.create(__name__)
+
+
+def copy_nested(parent: Path, target_path: Path):
+    files = file_services.list_files(parent_path=parent, ends_with=".parquet", use_dir_recursion=True)
+
+    for f in files:
+        file_dest = str(Path(target_path, f.name))
+        shutil.copy(str(f), dst=file_dest)
+
 
 def start():
-    source_dir_path = Path(constants.TWITTER_OUTPUT, "flattened_drop", "main")
+    parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "pre-main")
+    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "main")
+    copy_nested(parent=parent, target_path=source_dir_path)
+
     output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "id_fixed", "main")
     os.makedirs(output_dir_path, exist_ok=True)
 
@@ -22,13 +36,18 @@ def start():
 
 
 def process(source_dir_path: Path, output_dir_path: Path):
-    files = file_services.list_files(source_dir_path, ends_with=".csv", use_dir_recursion=True)
+    files = file_services.list_files(source_dir_path, ends_with=".parquet.in_transition", use_dir_recursion=True)
+
+    num_to_proc = len(files)
+    logger.info(f"{num_to_proc} files found to process.")
+
+
 
     df_all = []
     rows = 0
     count_limit = 400000
     for f in files:
-        df = pd.read_csv(f)
+        df = pd.read_parquet(f)
 
         cols_str = ['entities_user_mentions_2', 'user_profile_background_image_url_https', 'text', 'user_created_at', 'user_default_profile_image', 'user_name',
                     'user_profile_background_tile', 'metadata_result_type', 'entities_urls_0', 'user_location', 'user_notifications', 'user_lang',

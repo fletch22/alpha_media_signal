@@ -15,9 +15,9 @@ from ams.utils.Stopwatch import Stopwatch
 logger = logger_factory.create(__name__)
 
 
-def zipdir(path, ziph, omit_folders: list = None):
-    root_len = len(path)
-    for root, dirs, files in os.walk(path):
+def zipdir(dir_path: Path, ziph, omit_folders: list = None):
+    root_len = len(str(dir_path))
+    for root, dirs, files in os.walk(str(dir_path)):
         for f in files:
             source_path = os.path.join(root, f)
             arcname = f"{root[root_len:]}/{f}"
@@ -31,12 +31,9 @@ def zipdir(path, ziph, omit_folders: list = None):
                 ziph.write(source_path, arcname)
 
 
-def backup_folder(backup_source_dir, output_path: Path):
-    zipf = zipfile.ZipFile(str(output_path), 'w', zipfile.ZIP_DEFLATED)
-
-    zipdir(backup_source_dir, zipf, omit_folders=["\\venv"])
-
-    zipf.close()
+def backup_folder(backup_source_path: Path, output_path: Path):
+    with zipfile.ZipFile(str(output_path), 'w', zipfile.ZIP_DEFLATED) as zipf:
+        zipdir(backup_source_path, zipf, omit_folders=["\\venv", "\\.git"])
 
 
 def backup_file(backup_source_file: Path, output_path: Path):
@@ -59,16 +56,16 @@ def backup_project():
 
     stopWatch = Stopwatch(start_now=True)
 
-    source_dir_project = os.path.join(constants.PROJECT_ROOT)
+    source_dir_project = constants.PROJECT_ROOT
 
     output_path = Path(backup_dest_dirname, f"stock-predictor.zip")
     backup_folder(source_dir_project, output_path=output_path)
 
-    source_dir_project = str(config.constants.ALPHA_MEDIA_SIGNAL_PROJ)
+    source_dir_project = config.constants.ALPHA_MEDIA_SIGNAL_PROJ
     output_path = Path(backup_dest_dirname, f"alpha_media_signal.zip")
     backup_folder(source_dir_project, output_path=output_path)
 
-    source_dir_project = str(config.constants.NEWS_GESTALT_PROJ)
+    source_dir_project = config.constants.NEWS_GESTALT_PROJ
     output_path = Path(backup_dest_dirname, f"news_gestalt.zip")
     backup_folder(source_dir_project, output_path=output_path)
 
@@ -82,12 +79,12 @@ def backup_project_to_gcs(include_data: bool = True):
         # t = config.constants.TWITTER_OUTPUT
         print(t)
 
-        source_dir_project = str(config.constants.ALPHA_MEDIA_SIGNAL_PROJ)
+        source_dir_project = config.constants.ALPHA_MEDIA_SIGNAL_PROJ
         output_path = Path(t, f"project.zip")
         backup_folder(source_dir_project, output_path=output_path)
 
         if include_data:
-            source_dir_project = str(constants.SHAR_SPLIT_EQUITY_EOD_DIR)
+            source_dir_project = constants.SHAR_SPLIT_EQUITY_EOD_DIR
             output_path = Path(t, f"eods.zip")
             backup_folder(source_dir_project, output_path=output_path)
 
@@ -121,6 +118,10 @@ def backup_project_to_gcs(include_data: bool = True):
 
             backup_file(constants.TWITTER_TEXT_LABEL_TRAIN_PATH, output_path=Path(t, "twitter_text_with_proper_labels.zip"))
 
+            source_data_dir = Path(constants.DATA_PATH, "twitter", "learning_prep_drop", "lpd_2020-12-06_14-00-19-584.44")
+            output_path = Path(t, f"lpd.zip")
+            backup_folder(source_data_dir, output_path=output_path)
+
         shell_script = Path(constants.PROJECT_ROOT, "scripts", "gc_install.sh")
         output_path = Path(t, shell_script.name)
         shutil.copy(shell_script, output_path)
@@ -128,8 +129,6 @@ def backup_project_to_gcs(include_data: bool = True):
         shell_script = Path(constants.PROJECT_ROOT, "scripts", "gc_init.sh")
         output_path = Path(t, shell_script.name)
         shutil.copy(shell_script, output_path)
-
-        backup_file(constants.TWITTER_TEXT_LABEL_TRAIN_PATH, output_path=Path(t, "twitter_text_with_proper_labels.zip"))
 
         command = ["gsutil", "rsync", str(t), "gs://api_uploads/twitter"]
         completed_process = subprocess.run(command, shell=True, check=True)

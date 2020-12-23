@@ -3,8 +3,10 @@ import shutil
 from pathlib import Path
 from typing import List, Callable, TypeVar
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.services import file_services
+
+logger = logger_factory.create(__name__)
 
 STAGING_FOLDER_NAME = "stage"
 IN_TRANSITION_ENDING = ".in_transition"
@@ -128,13 +130,16 @@ def process(source_path: Path, output_dir_path: Path, process_callback: Callable
     if not source_path.exists():
         raise Exception(f"Source folder does not exist: '{source_path}'.")
 
+    logger.info("Will move to staging.")
     staging_dir_path = move_to_staging(source_path)
 
     process_callback(staging_dir_path, output_dir_path)
 
     if should_archive:
+        logger.info("Will archive.")
         archive(source_path=source_path, staging_dir_path=staging_dir_path)
     else:
+        logger.info("Will unstage.")
         unstage(source_path=staging_dir_path, output_dir_path=source_path)
 
 

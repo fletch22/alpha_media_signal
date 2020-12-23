@@ -8,12 +8,16 @@ from sklearn.preprocessing import StandardScaler
 
 from ams.DateRange import DateRange
 from ams.config import constants
-from ams.services import file_services
+from ams.services import file_services, pickle_service
 from ams.services.EquityFields import EquityFields
 from ams.utils import date_utils
 
 ticker_cache = {}
 ticker_date_row_cache = {}
+
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 
 def get_ticker_cache():
@@ -33,7 +37,8 @@ def get_ticker_eod_data(ticker: str) -> DataFrame:
     return df
 
 
-def get_ticker_attribute_on_date(ticker: str, dt: datetime, equity_fields: List[EquityFields] = [EquityFields.high]):
+def get_ticker_attribute_on_date(ticker: str, dt: datetime,
+                                 equity_fields: List[EquityFields] = [EquityFields.high]):
     date_str = date_utils.get_standard_ymd_format(dt)
     cache_key = f"{ticker}_{date_str}"
 
@@ -68,7 +73,9 @@ def get_ticker_attribute_on_date(ticker: str, dt: datetime, equity_fields: List[
     return tuple(values)
 
 
-def get_ticker_attr_from_date(ticker: str, date_str: str, equity_fields: List[EquityFields] = [EquityFields.high], days_ahead: int = 5):
+def get_ticker_attr_from_date(ticker: str, date_str: str,
+                              equity_fields: List[EquityFields] = [EquityFields.high],
+                              days_ahead: int = 5):
     dt = date_utils.parse_std_datestring(date_str)
     dt_new = dt + timedelta(days=days_ahead)
 
@@ -87,18 +94,22 @@ def get_start_end_dates(date_strs: List[str]):
     return start_date, end_date_adj
 
 
-def get_ticker_on_dates(tick_dates: Dict[str, List[str]]) -> pd.DataFrame:
+def get_ticker_on_dates(tick_dates: Dict[str, List[str]],
+                        num_days_in_future: int = 1) -> pd.DataFrame:
     df_list = []
     for ticker, date_strs in tick_dates.items():
-        df_equity = get_equity_on_dates(ticker=ticker, date_strs=date_strs)
+        df_equity = get_equity_on_dates(ticker=ticker, date_strs=date_strs,
+                                        num_days_in_future=num_days_in_future)
         if df_equity is not None:
             df_list.append(df_equity)
-    df_ticker = pd.concat(df_list).dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
+    df_ticker = pd.concat(df_list).dropna(
+        subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
 
     return df_ticker
 
 
-def get_equity_on_dates(ticker: str, date_strs: List[str]) -> pd.DataFrame:
+def get_equity_on_dates(ticker: str, date_strs: List[str],
+                        num_days_in_future: int = 1) -> pd.DataFrame:
     df = get_ticker_eod_data(ticker)
     df_in_dates = None
     if df is not None:
@@ -110,7 +121,7 @@ def get_equity_on_dates(ticker: str, date_strs: List[str]) -> pd.DataFrame:
         df_in_range["future_close"] = df_in_range["close"]
         df_in_range["future_date"] = df_in_range["date"]
         cols = ["future_open", "future_low", "future_high", "future_close", "future_date"]
-        df_in_range[cols] = df_in_range[cols].shift(-1)
+        df_in_range[cols] = df_in_range[cols].shift(-num_days_in_future)
 
         df_in_dates = df_in_range[df_in_range["date"].isin(date_strs)]
     return df_in_dates
@@ -123,7 +134,8 @@ def get_next_date(df_stocks: pd.DataFrame, ticker: str, date_str: str):
     if df_found.shape[0] > 0:
         df_found.sort_values(["ticker", "date"], inplace=True)
         row = dict(df_found.iloc[0])
-        result = row[EquityFields.open.value], row[EquityFields.low.value], row[EquityFields.high.value], row[EquityFields.close.value]
+        result = row[EquityFields.open.value], row[EquityFields.low.value], row[
+            EquityFields.high.value], row[EquityFields.close.value]
 
     return result
 
@@ -135,7 +147,9 @@ def pull_in_next_trading_day_info(df_tweets: pd.DataFrame):
     for ticker, date_strs in ttd.items():
         df = get_next_trading_day(ticker=ticker, trading_days=date_strs)
         if df is not None:
-            df_thin = df[[EquityFields.close.value, EquityFields.open.value, EquityFields.low.value, EquityFields.high.value, EquityFields.ticker.value, EquityFields.date.value]]
+            df_thin = df[[EquityFields.close.value, EquityFields.open.value, EquityFields.low.value,
+                          EquityFields.high.value, EquityFields.ticker.value,
+                          EquityFields.date.value]]
             df_list.append(df_thin)
     df_stocks = pd.concat(df_list)
     end = time.time()
@@ -143,7 +157,9 @@ def pull_in_next_trading_day_info(df_tweets: pd.DataFrame):
     print(f"Got all stock data: {elapsed}")
 
     col_tmp = "tmp_future_values"
-    df_tweets[col_tmp] = df_tweets.apply(lambda x: get_next_date(df_stocks=df_stocks, ticker=x["f22_ticker"], date_str=x["date"]), axis=1)
+    df_tweets[col_tmp] = df_tweets.apply(
+        lambda x: get_next_date(df_stocks=df_stocks, ticker=x["f22_ticker"], date_str=x["date"]),
+        axis=1)
 
     new_cols = ["future_open", "future_low", "future_high", "future_close"]
     df_tweets[new_cols] = pd.DataFrame(df_tweets[col_tmp].tolist(), index=df_tweets.index)
@@ -170,10 +186,13 @@ def get_next_trading_day(ticker: str, trading_days: List[str]):
     return df_dated
 
 
-def get_next_trading_day_attr(ticker: str, date_str: str, equity_fields: List[EquityFields] = [EquityFields.high], max_days_head: int = 5):
+def get_next_trading_day_attr(ticker: str, date_str: str,
+                              equity_fields: List[EquityFields] = [EquityFields.high],
+                              max_days_head: int = 5):
     result = None,
     for i in range(1, max_days_head):
-        result = get_ticker_attr_from_date(ticker=ticker, date_str=date_str, equity_fields=equity_fields, days_ahead=i)
+        result = get_ticker_attr_from_date(ticker=ticker, date_str=date_str,
+                                           equity_fields=equity_fields, days_ahead=i)
         if result[0] is not None:
             break
 
@@ -275,10 +294,12 @@ def make_one_hotted_for_one_column(df: pd.DataFrame, unique_values: List[str], c
 def get_nasdaq_tickers():
     df_nasdaq = get_nasdaq_info()
 
-    df_dropped = df_nasdaq.drop(columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
-                                         "secfilings", "companysite", "lastupdated", "cusips",
-                                         "isdelisted", "name", "exchange", "firstadded", "permaticker", "sicindustry", "relatedtickers"
-                                         ])
+    df_dropped = df_nasdaq.drop(
+        columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
+                 "secfilings", "companysite", "lastupdated", "cusips",
+                 "isdelisted", "name", "exchange", "firstadded", "permaticker", "sicindustry",
+                 "relatedtickers"
+                 ])
 
     df_all_tickers = get_ticker_info()
     df_rem = df_all_tickers[df_dropped.columns]
@@ -297,7 +318,8 @@ def std_dataframe(df_train: pd.DataFrame, df_test: pd.DataFrame, df_val: pd.Data
     df_train = df_train.copy()
     df_test = df_test.copy()
     df_val = df_val.copy()
-    num_cols = [c for c in df_train.columns if str(df_train[c].dtype) == "float64"]  # need logic to get numeric
+    num_cols = [c for c in df_train.columns if
+                str(df_train[c].dtype) == "float64"]  # need logic to get numeric
 
     for c in num_cols:
         standard_scaler = StandardScaler()
@@ -365,7 +387,11 @@ def get_stock_info(df: pd.DataFrame, ticker: str, date_str: str):
     if future_open is None:
         raise Exception("future_open is None.")
 
-    return close, future_close, future_high, future_open, split_share_multiplier
+    future_date = get_single_attr(df_ticker_on_date, "future_date")
+    if future_open is None:
+        raise Exception("future_date is None.")
+
+    return close, future_close, future_high, future_open, future_date, split_share_multiplier
 
 
 def get_roi(close_price: float, target_roi_frac: float, future_high: float, future_close: float):
@@ -379,13 +405,15 @@ def get_roi(close_price: float, target_roi_frac: float, future_high: float, futu
     return roi
 
 
-def calculate_roi(target_roi: float, close_price: float, future_high: float, future_close: float, calc_dict: Dict[str, List[float]], zero_in: bool = False):
+def calculate_roi(target_roi: float, close_price: float, future_high: float, future_close: float,
+                  calc_dict: Dict[str, List[float]], zero_in: bool = False):
     last_roi = None
     num_repeats = 0
     max_repeats = 3
     if zero_in:
         calc_tar_roi = target_roi
-        calc_roi = get_roi(close_price=close_price, target_roi_frac=calc_tar_roi, future_high=future_high, future_close=future_close)
+        calc_roi = get_roi(close_price=close_price, target_roi_frac=calc_tar_roi,
+                           future_high=future_high, future_close=future_close)
         calc_key = str(round(calc_tar_roi, 6))
 
         if calc_key not in calc_dict.keys():
@@ -396,7 +424,8 @@ def calculate_roi(target_roi: float, close_price: float, future_high: float, fut
     else:
         for i in range(800):
             calc_tar_roi = target_roi + (i * .001)
-            calc_roi = get_roi(close_price=close_price, target_roi_frac=calc_tar_roi, future_high=future_high, future_close=future_close)
+            calc_roi = get_roi(close_price=close_price, target_roi_frac=calc_tar_roi,
+                               future_high=future_high, future_close=future_close)
             calc_key = str(round(calc_tar_roi, 6))
 
             if calc_key not in calc_dict.keys():
@@ -429,3 +458,105 @@ def add_days_until_sale(df: pd.DataFrame):
     df["days_util_sale"] = df.apply(days_between, axis=1)
 
     return df
+
+
+def get_nasdaq_perf(date_from: datetime,
+                    tickers: List[str],
+                    date_to: datetime = None,
+                    min_price: float = None,
+                    max_price: float = None,
+                    days_hold_stock: int = 1) -> pd.DataFrame:
+    date_from_str = date_utils.get_standard_ymd_format(date_from)
+    date_to_str = date_utils.get_standard_ymd_format(date_to)
+
+    all_df = list()
+    cols = ["future_open", "future_close", "future_high", "future_low"]
+
+    ticks_gathered = set()
+    for ndx, t in enumerate(tickers):
+        df = get_ticker_eod_data(ticker=t)
+
+        if df is not None:
+            df = df[df["date"] >= date_from_str]
+            if date_to is not None:
+                df = df[df["date"] <= date_to_str]
+            if min_price is not None:
+                df = df[df["open"] > min_price]
+            if max_price is not None:
+                df = df[df["open"] < max_price]
+            if df is not None and df.shape[0] > 0:
+                df.sort_values(by=["date"], inplace=True)
+                df["future_open"] = df["open"]
+                df["future_low"] = df["low"]
+                df["future_high"] = df["high"]
+                df["future_close"] = df["close"]
+                df[cols] = df[cols].shift(-days_hold_stock)
+                ticks_gathered.add(t)
+                all_df.append(df)
+
+    num_tickers = len(all_df)
+    df_nas = pd.concat(all_df, axis=0).dropna(
+        subset=cols)
+
+    min_date = df_nas["date"].min()
+    max_date = df_nas["date"].max()
+
+    dt_min = date_utils.parse_std_datestring(min_date)
+    dt_max = date_utils.parse_std_datestring(max_date)
+
+    dt_current = dt_min + timedelta(days=1)
+    dt_max = dt_max + timedelta(days=1)
+
+    df_nas.sort_values(by=["ticker", "date"], inplace=True)
+
+    df_nas["roi"] = (df_nas["future_close"] - df_nas["close"]) / df_nas["close"]
+
+    results = []
+    while dt_current < dt_max:
+        dt_curr_str = date_utils.get_standard_ymd_format(dt_current)
+        df_day = df_nas[df_nas["date"] == dt_curr_str]
+        if df_day is not None and df_day.shape[0] > 0:
+            roi_mean = df_day["roi"].mean()
+            results.append({"date": dt_curr_str, "roi": roi_mean})
+        dt_current = dt_current + timedelta(days=1)
+
+    df = pd.DataFrame(results)
+    df.to_parquet(constants.DAILY_ROI_NASDAQ_PATH)
+
+    return df, ticks_gathered
+
+
+def create_tickers_available_on_day():
+    df = get_nasdaq_info()
+    all_tickers = df["ticker"].to_list()
+
+    sorted(all_tickers)
+
+    t_on_d = dict()
+    for t_ndx, t in enumerate(all_tickers):
+        print(f"Processing {t}.")
+        df = get_ticker_eod_data(ticker=t)
+        if df is None or df.shape[0] == 0:
+            print(f"\tNo values for {t}.")
+            continue
+        dates = df["date"].to_list()
+        close_prices = df["close"].to_list()
+        for ndx, d in enumerate(dates):
+            if d not in t_on_d.keys():
+                t_on_d[d] = {t: close_prices[ndx]}
+            else:
+                t_on_d[d][t] = close_prices[ndx]
+        # if t_ndx > 10:
+        #     break
+
+    print("About to pickle t_on_d.")
+    pickle_service.save(t_on_d, file_path=constants.TOD_PICKLE_PATH)
+
+    return t_on_d
+
+
+def load_tickers_on_day() -> Dict:
+    return pickle_service.load(file_path=constants.TOD_PICKLE_PATH)
+
+
+

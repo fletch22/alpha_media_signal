@@ -88,4 +88,29 @@ def test_get_prev_nasdaq_dt():
     dt_prev = date_utils.get_nasdaq_trading_days_from(dt=dt_sept, num_days=-7)
 
     # Assert
-    assert(abs((dt_prev - dt_sept).days) > 7)
+    assert (abs((dt_prev - dt_sept).days) > 7)
+
+
+def test_foo():
+    import pandas as pd
+
+    df = pd.DataFrame([{"foo": "2019-04-12"}, {"foo": "2019-04-16"}])
+
+    def day_of_week(date_str):
+        return pd.Timestamp(date_str).dayofweek
+
+    df["fd_day_of_week"] = df.apply(lambda x: day_of_week(x["foo"]), axis=1)
+
+    def day_of_year(date_str):
+        return pd.Timestamp(date_str).dayofyear
+
+    df["fd_day_of_year"] = df.apply(lambda x: day_of_year(x["foo"]), axis=1)
+
+    def day_of_month(date_str):
+        return int(date_str.split("-")[2])
+
+    df["fd_day_of_month"] = df.apply(lambda x: day_of_month(x["foo"]), axis=1)
+
+    print(df.head())
+
+    # pd.Timestamp("2019-04-12").dayofweek

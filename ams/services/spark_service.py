@@ -7,6 +7,7 @@ def _get_or_create(app_name):
         .master("local[*]") \
         .appName(app_name) \
         .config("spark.executor.memory", "2g") \
+        .config('spark.driver.memory', '15g') \
         .getOrCreate()
     spark_session.sparkContext.setCheckpointDir("c://tmp")
 
