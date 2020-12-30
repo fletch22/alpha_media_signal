@@ -7,46 +7,43 @@ from ams.services import file_services
 
 
 def process(source_path: Path, output_dir_path: Path):
-  parent_path = source_path
-  files = file_services.walk(parent_path, use_dir_recursion=False)
+    parent_path = source_path
+    files = file_services.walk(parent_path, use_dir_recursion=False)
 
-  print(f"Num files: {len(files)}")
+    print(f"Num files: {len(files)}")
 
-  for f in files:
-    count = 0
-    f_fixed_path = Path(output_dir_path, f"{f.stem}_fixed.txt")
-    with open(str(f_fixed_path), 'a+') as aw:
-      print(f"Loading {str(f)}")
-      with open(str(f), 'r+') as r:
-        while True:
-          count += 1
-          line = r.readline()
-          if len(line) == 0:
-            break
-          try:
-            obj = json.loads(line)
-            line_alt = json.dumps(obj)
-            aw.write(line_alt + "\n")
-          except Exception as e:
-            pass
+    for f in files:
+        count = 0
+        f_fixed_path = Path(output_dir_path, f"{f.stem}_fixed.txt")
+        with open(str(f_fixed_path), 'a+') as aw:
+            print(f"Loading {str(f)}")
+            with open(str(f), 'r+') as r:
+                while True:
+                    count += 1
+                    line = r.readline()
+                    if len(line) == 0:
+                        break
+                    try:
+                        obj = json.loads(line)
+                        line_alt = json.dumps(obj)
+                        aw.write(line_alt + "\n")
+                    except Exception as e:
+                        pass
 
-          if count % 1000 == 0:
-            print(count)
-        print("Closing file.")
+                    if count % 1000 == 0:
+                        print(count)
+                print("Closing file.")
 
 
 def start():
-  # source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop", "main")
-  source_dir_path = Path(constants.TWITTER_OUTPUT, "raw_drop", "archive", "main")
-  output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "fixed_drop", "main")
+    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "smallified_raw_drop", "main")
+    output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "fixed_drop", "main")
 
-  for i in range(2, 8):
-    source_dir_path = Path(constants.TWITTER_OUTPUT, "raw_drop", "archive", f"stage_{i}")
     batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path,
-                     process_callback=process, should_archive=False)
+                     process_callback=process, should_archive=True)
 
-  return output_dir_path
+    return output_dir_path
 
 
 if __name__ == '__main__':
-  start()
+    start()

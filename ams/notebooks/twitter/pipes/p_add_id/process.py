@@ -21,27 +21,11 @@ def copy_nested(parent: Path, target_path: Path):
         shutil.copy(str(f), dst=file_dest)
 
 
-def start():
-    parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "pre-main")
-    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "main")
-    copy_nested(parent=parent, target_path=source_dir_path)
-
-    output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "id_fixed", "main")
-    os.makedirs(output_dir_path, exist_ok=True)
-
-    if not file_services.is_empty(output_dir_path):
-        raise Exception(f"Output folder '{output_dir_path}' is not empty.")
-
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process)
-
-
 def process(source_dir_path: Path, output_dir_path: Path):
     files = file_services.list_files(source_dir_path, ends_with=".parquet.in_transition", use_dir_recursion=True)
 
     num_to_proc = len(files)
     logger.info(f"{num_to_proc} files found to process.")
-
-
 
     df_all = []
     rows = 0
@@ -54,8 +38,10 @@ def process(source_dir_path: Path, output_dir_path: Path):
                     'entities_urls_3', 'place_country', 'user_description', 'lang',
                     'source', 'user_url', 'id', 'user_profile_banner_url', 'entities_user_mentions_0', 'user_id',
                     'in_reply_to_screen_name', 'entities_urls_1', 'user_geo_enabled', 'user_profile_link_color', 'place_name', 'user_translator_type', 'is_quote_status',
-                    'user_statuses_count', 'user_profile_background_image_url', 'entities_user_mentions_1', 'in_reply_to_user_id', 'contributors', 'user_profile_use_background_image',
-                    'user_profile_image_url_https', 'user_profile_sidebar_border_color', 'user_following', 'user_profile_sidebar_fill_color', 'user_screen_name', 'in_reply_to_status_id',
+                    'user_statuses_count', 'user_profile_background_image_url', 'entities_user_mentions_1', 'in_reply_to_user_id', 'contributors',
+                    'user_profile_use_background_image',
+                    'user_profile_image_url_https', 'user_profile_sidebar_border_color', 'user_following', 'user_profile_sidebar_fill_color', 'user_screen_name',
+                    'in_reply_to_status_id',
                     'user_profile_text_color', 'user_profile_background_color', 'entities_user_mentions_3', 'created_at', 'entities_urls_2', 'metadata_iso_language_code',
                     'user_profile_image_url', 'user_default_profile', 'f22_ticker']
 
@@ -127,6 +113,20 @@ def convert_to_numeric(value):
 
 def replace_chars(text):
     return text.replace("\\\"", "").replace("\"", "").replace("\"", "")
+
+
+def start():
+    parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "pre-main")
+    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "main")
+    copy_nested(parent=parent, target_path=source_dir_path)
+
+    output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "id_fixed", "main")
+    os.makedirs(output_dir_path, exist_ok=True)
+
+    if not file_services.is_empty(output_dir_path):
+        raise Exception(f"Output folder '{output_dir_path}' is not empty.")
+
+    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False)
 
 
 if __name__ == '__main__':

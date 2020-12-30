@@ -41,6 +41,9 @@ cp ./out_of_domain_dev.tsv /home/jupyter/overflow_workspace/data/cola/cola_publi
 mkdir -p /home/jupyter/data/twitter/learning_prep_drop/lpd/
 unzip -o lpd.zip -d /home/jupyter/data/twitter/learning_prep_drop/lpd/
 
+mkdir -p /home/jupyter/overflow_workspace/data/financial/quandl/
+unzip -o daily_roi_nasdaq.parquet.zip -d /home/jupyter/overflow_workspace/data/financial/quandl/
+
 cd /home/jupyter/alpha_media_signal || exit
 conda install --file ./requirements.txt
 pip install -r ./requirements.txt

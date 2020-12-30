@@ -125,9 +125,7 @@ def group_and_mean_preds_regress(df: pd.DataFrame, model: object, train_cols: Li
             prediction = model.predict(X_holdout)
             pred_mean = sum(prediction) / len(prediction)
 
-            print(pred_mean)
-            threshold = 0
-
+            threshold = 1
             pred_mean = -1 if pred_mean < threshold else 1
 
             pre_y_ho = sum(y_holdout) / len(y_holdout)
@@ -181,8 +179,9 @@ def split_off_data(df: pd.DataFrame, narrow_cols: List[str], tickers: List[str] 
     df_test_std = None
     df_val_std = None
     train_cols = None
+    min_rows_enough = 200
 
-    has_enough_data = df_samp is not None and df_val_raw is not None and df_val_raw.shape[0] > 500
+    has_enough_data = df_samp is not None and df_val_raw is not None and df_val_raw.shape[0] > min_rows_enough
     if has_enough_data:
 
         df_shuff = df_samp.sample(frac=1.0)
@@ -190,7 +189,7 @@ def split_off_data(df: pd.DataFrame, narrow_cols: List[str], tickers: List[str] 
         df_train_raw, df_test_raw = twitter_service.ho_split_by_days(df_shuff, small_data_days_to_pull=None, small_data_frac=.2,
                                                                      use_only_recent_for_holdout=use_recent_for_holdout)  #
 
-        has_enough_data = df_train_raw is not None and df_test_raw is not None and df_test_raw.shape[0] > 500
+        has_enough_data = df_train_raw is not None and df_test_raw is not None and df_test_raw.shape[0] > min_rows_enough
         if has_enough_data:
             print(f"Original: {df.shape[0]}; train_set: {df_train_raw.shape[0]}; test_set: {df_test_raw.shape[0]}")
 
@@ -247,13 +246,6 @@ def calc_profit(target_roi: float, df_helper: pd.DataFrame, group_preds: object,
 
             shares_price = num_trades_at_once * close
 
-            trade_history.append(TwitterTrade(ticker=ticker,
-                                              purchase_price=close,
-                                              purchase_dt=date_utils.parse_std_datestring(date_str),
-                                              sell_dt=date_utils.parse_std_datestring(future_date),
-                                              sell_price=future_close
-                                              ))
-
             if should_buy:
                 ticker_service.calculate_roi(target_roi=target_roi, close_price=close, future_high=future_high,
                                              future_close=future_close, calc_dict=calc_dict, zero_in=zero_in)
@@ -275,6 +267,13 @@ def calc_profit(target_roi: float, df_helper: pd.DataFrame, group_preds: object,
                     total = cashed_out + cash
                     cash = total
                     num_shares = 0
+
+                    trade_history.append(TwitterTrade(ticker=ticker,
+                                                      purchase_price=close,
+                                                      purchase_dt=date_utils.parse_std_datestring(date_str),
+                                                      sell_dt=date_utils.parse_std_datestring(future_date),
+                                                      sell_price=future_close
+                                                      ))
                 else:
                     print("Not enough cash for purchase.")
 

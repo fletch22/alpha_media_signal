@@ -1,13 +1,18 @@
 import findspark
+from pyspark import SparkConf
 from pyspark.sql import SparkSession
 
 
 def _get_or_create(app_name):
+    conf = SparkConf()
+    conf.setAppName(app_name)
+    conf.setMaster("local[*]")
+    conf.set("spark.driver.cores", "20")
+    conf.set("spark.driver.memory", "5g")
+    conf.set("spark.cores.max", 20)
+
     spark_session = SparkSession.builder \
-        .master("local[*]") \
-        .appName(app_name) \
-        .config("spark.executor.memory", "2g") \
-        .config('spark.driver.memory', '15g') \
+        .config(conf=conf) \
         .getOrCreate()
     spark_session.sparkContext.setCheckpointDir("c://tmp")
 

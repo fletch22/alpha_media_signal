@@ -877,208 +877,64 @@ def test_ticker_service():
 
 def test_get_nas_perf():
     # Arrange
-    from_str = f"2019-01-01"
-    to_str = f"2019-12-31"
-    days_hold_stock = 4
+    from_str = f"2020-07-05"
+    to_str = f"2020-12-24"
+    days_hold_stock = 1
 
     date_from = date_utils.parse_std_datestring(from_str)
     date_to = date_utils.parse_std_datestring(to_str)
 
-    sample_roi(date_from=date_from, date_to=date_to, days_hold_stock=days_hold_stock)
+    df, _ = sample_roi(date_from=date_from, date_to=date_to, days_hold_stock=days_hold_stock)
+
+    print(df.head())
+
+    df.sort_values(by=["date"], inplace=True)
+    roi_list = df["roi"].to_list()
+    print(roi_list)
 
 
-def sample_roi(date_from: datetime, date_to: datetime, days_hold_stock: int):
+def sample_roi(date_from: datetime, date_to: datetime, days_hold_stock: int) -> (pd.DataFrame, List[str]):
     df_tickers = get_nasdaq_info()
     tickers = df_tickers["ticker"].to_list()
-    shuffle(tickers)
+    sorted(tickers)
 
-    tickers = tickers[:math.ceil(len(tickers) / 2)]
+    # tickers = tickers[:100]
+
+    # tickers = tickers[:math.ceil(len(tickers) / 2)]
     # tickers = [t for t in tickers if t.startswith("A") or t.startswith("B")]
     # tickers = ['AAPL', 'NVDA', 'GOOG', "MSFT", "FB", "GOOGL"]
 
     # Act
-    results, num_tickers = ticker_service.get_nasdaq_perf(date_from=date_from,
+    df, tickers_gathered = ticker_service.get_nasdaq_perf(date_from=date_from,
                                                           date_to=date_to,
                                                           min_price=None,
-                                                          max_price=3.0,
+                                                          max_price=None,
                                                           tickers=tickers,
                                                           days_hold_stock=days_hold_stock)
+
+    return df, tickers_gathered
 
 
 def test_roi():
     # Arrange
-    # Act
-    test = ['ARTW', 'SHOS', 'FWP', 'SRRA', 'UPLCQ', 'HBIO', 'AMRQQ', 'CCNC', 'CXDC', 'CDTX', 'ICLK', 'WINMQ', 'RBBN', 'HGEN', 'CTRCQ', 'IDSA', 'BTBT', 'MRKR', 'OTIC',
-            'HJLI',
-            'QUIK', 'SNES', 'MOSY', 'IMI', 'POLA', 'DFFN', 'NBEV', 'HDSN', 'FLL', 'NK', 'SHIP', 'VLTC', 'FCEL', 'CBLI', 'SURF', 'ARQL', 'COCP', 'SONGW', 'MDGS', 'VRAY',
-            'LINDW',
-            'SLS', 'ANIX', 'LCAHW', 'ALYA', 'SND', 'IDEX', 'OIIM', 'VTSI', 'CTST', 'AHCOW', 'NIHD', 'LPTH', 'FPAY', 'PZRXQ', 'CETX', 'CLIR', 'RWLK', 'GXXM', 'APTO',
-            'TRIB',
-            'MFH', 'SBPH', 'NUROW', 'CREG', 'RSSS', 'TWNKW', 'NEON', 'CWBR', 'POAI', 'AGBAR', 'EDAP', 'PME', 'SREV', 'AEY', 'GLBS', 'AGFS', 'III', 'ASTC', 'KOSS',
-            'SHIPW',
-            'NEPT', 'BLRX', 'VBLT', 'LJPC', 'GRNVR', 'XNET', 'OBLN', 'SNSS', 'YGTY', 'ONCY', 'OCC', 'IPAS', 'SGBX', 'PECKW', 'MYSZ', 'PHUN', 'AACG', 'CTST', 'GCVRZ',
-            'IMMP',
-            'OPK', 'CRVS', 'AYTU', 'BNSO', 'SXTC', 'ENTX', 'ATISW', 'AVGR', 'APXTW', 'GASS', 'PSHG', 'BLNKW', 'INAPQ', 'IFRX', 'XBIOW', 'SSKN', 'NAOV', 'TNXP', 'SFET',
-            'PECK',
-            'SCYX', 'OPESW', 'JAN', 'CYCN', 'ONTX', 'TUSK', 'HOFVW', 'MBII', 'GRPN', 'MTP', 'ODP', 'NVFY', 'ACRX', 'FTD', 'SINO', 'EVK', 'ATHX', 'DSKEW', 'IDXG', 'WINT',
-            'SCON',
-            'CLNE', 'SMSI', 'AMRS', 'YTEN', 'NHLD', 'CLDX', 'APTX', 'SMSI', 'MOTS', 'KZIA', 'CASM', 'SAVA', 'ALTM', 'AIRTP', 'TYME', 'ECOR', 'BNGO', 'VERB', 'PRPLW',
-            'AQMS',
-            'FFHL', 'FSNN', 'GSM', 'VEON', 'NFINW', 'CERC', 'LJPC', 'LINK', 'ALNA', 'VRAY', 'SGOC', 'NLTX', 'DYNT', 'WPRT', 'OCC', 'ALRN', 'TYHT', 'THMO', 'CMRX', 'RIOT',
-            'GALT', 'LFACW', 'SINT', 'SCOR', 'ACHN', 'EYEN', 'CLSK', 'DFFN', 'USWSW', 'NEOS', 'YGTY', 'AGFS', 'AESE', 'BOXL', 'EYESW', 'ARPO', 'OHAI', 'GURE', 'MCEP',
-            'SGBX',
-            'CLPS', 'KXIN', 'TNXP', 'BIOC', 'AEMD', 'TRVN', 'PAVMZ', 'ELTK', 'CPST', 'DSKE', 'SUMR', 'APWC', 'AMCIW', 'PHIIQ', 'IMBI', 'BVSN', 'PPSI', 'JAN', 'MGEN',
-            'CETV',
-            'RNWK', 'HJLIW', 'TACOW', 'AGRX', 'AVCO', 'III', 'ONSM', 'CPAH', 'LIFE', 'PRVB', 'HEBT', 'SORL', 'MCEP', 'DHXM', 'BKYI', 'ROSEW', 'YRCW', 'AVXL', 'APEN',
-            'GTIM',
-            'HHHHR', 'CIDM', 'AKAOQ', 'CYRN', 'BVXVW', 'COCP', 'TMDI', 'TRCH', 'FORK', 'LEDS', 'GSUM', 'QUMU', 'VERO', 'ARTX', 'RETO', 'KBLMR', 'WTRH', 'WPRT', 'IPAS',
-            'BGFV',
-            'ARTL', 'AQB', 'HYACW1', 'ANY', 'GSUM', 'ZKIN', 'CALA', 'ONTX', 'SAVA', 'NMRD', 'RGLS', 'NXTDW', 'AWH', 'OESX', 'DARE', 'AUTO', 'IMRN', 'SYNC', 'NXTD',
-            'EMMAW',
-            'HEPA', 'ADIL', 'CDEV', 'ATIS', 'HBIO', 'LATNW', 'BBOX', 'AFMD', 'SNCA', 'VERI', 'CTHR', 'WKHS', 'QUMU', 'CGIX', 'VIVE', 'WRLSR', 'VRME', 'SFET', 'EXFO',
-            'NWGI',
-            'CORV', 'MOGO', 'AQB', 'NVUS', 'SMIT', 'NXEOW', 'STKS', 'RCMT', 'WWR', 'KBSF', 'JAKK', 'CARV', 'VBLT', 'WSTL', 'CRSAW', 'VUZI', 'ASV', 'SLGG', 'ATEC', 'CERC',
-            'CLSN', 'PTI', 'NDRA', 'ONCS', 'GNUS', 'LIFE', 'DGLY', 'ACRX', 'ARAY', 'INFI', 'IPDN', 'MKGI', 'IDEX', 'NPAWW', 'ADMA', 'ALJJ', 'IMACW', 'JASNQ', 'IPWR',
-            'SINO',
-            'CPSH', 'SBBP', 'TC', 'SHIPZ', 'BCDA', 'PIXY', 'BLCM', 'AKRXQ', 'ANTE', 'ZIOP', 'IMAC', 'FTEK', 'LPCN', 'VISL', 'HTGM', 'HIMX', 'ZIOP', 'CETV', 'GNMX',
-            'AHPI',
-            'STCN', 'OCUL', 'UDFI', 'AGEN', 'GNPX', 'GRNQ', 'PSTV', 'AMTCQ', 'ALNA', 'VIVE', 'MARA', 'HNRG', 'RPLA.WS', 'PTE', 'AKER', 'XTLB', 'CLBS', 'THWWW', 'PPSI',
-            'MDJH',
-            'AKAOQ', 'STKL', 'CHOPF', 'CHFS', 'MEIP', 'MREO', 'ZVO', 'CAPR', 'CLSD', 'APEX', 'REXN', 'ADXS', 'HSACW', 'TCON', 'MTSL', 'JG', 'PRPH', 'GIGM', 'CTRM',
-            'ATCXW',
-            'SNDE', 'ABUS', 'BKEP', 'AXLA', 'CTIC', 'HTBX', 'PAVM', 'CTXR', 'TAOP', 'JRJC', 'FUV', 'BTBT', 'INO', 'PBTS', 'MARK', 'PFIE', 'TZACW', 'TLSA', 'CAPR', 'EYEG',
-            'PAVMW', 'ZKIN', 'ANIX', 'FAMI', 'SNNA', 'INO', 'INWK', 'CPAAW', 'RCON', 'SUMR', 'AMTCQ', 'WINT', 'XSPA', 'SRAX', 'WINMQ', 'MGEN', 'TRVI', 'USEG', 'ADMA',
-            'WINRW',
-            'AWRE', 'GRWG', 'AIKI', 'NFH.WS', 'JG', 'IMBI', 'IMAC', 'JASNW', 'BNTCW', 'GVP', 'BLNK', 'BRPAR', 'BYFC', 'ARDX', 'RESN', 'VERBW', 'MDJH', 'ZYXI', 'XBIO',
-            'AMRWW',
-            'MDGS', 'GLBS', 'CIH', 'NCSM', 'PFMT', 'KERNW', 'CYAN', 'SJOYW', 'IMGN', 'OPGN', 'TRIL', 'CNET', 'ASLN', 'DLPN', 'OVID', 'IDRA', 'ENTX', 'IMDZ', 'CLDX',
-            'CRIS',
-            'LLEN', 'MTFB', 'ROSEQ', 'WTER', 'ARDMQ', 'MBRX', 'ATHE', 'POAI', 'IFMK', 'APTX', 'LIVX', 'HUSN', 'ANDAW', 'SMMCW', 'ACET', 'UDFI', 'USAU', 'ASV', 'DTEA',
-            'PDSB',
-            'AACG', 'ISSC', 'ASLN', 'ICON', 'ELGXQ', 'OSMT', 'CRNT', 'IMDZ', 'SESN', 'ICLK', 'BROGW', 'HBP', 'RCMT', 'BCRX', 'CHOPF', 'BRQS', 'ISSC', 'LGHLW', 'CHEKW',
-            'QRHC',
-            'DKNGW', 'THTX', 'PTMN', 'EDNT', 'KTRA', 'SND', 'UEPS', 'SNDL', 'USWS', 'BROGR', 'AGEN', 'SONM', 'SLS', 'HPKEW', 'MBOT', 'TOPS', 'WAFU', 'MMDMR', 'FPAY',
-            'CLRB',
-            'KTOV', 'VERO', 'AEHR', 'FLDM', 'SAMAW', 'WSTL', 'RLM', 'AGTC', 'SESN', 'APEX', 'ALT', 'EFOI', 'BWEN', 'MNDO', 'CDXC', 'TXMD', 'AXTI', 'HIHO', 'RBZ', 'ACRS',
-            'PHIIK', 'XELB', 'OGI', 'TRVG', 'SGYP', 'AEYE', 'METXW', 'TBLT', 'SIFY', 'NTRP', 'BASI', 'AAME', 'DRRX', 'LPCN', 'LOACW', 'GLG', 'NAKD', 'REFR', 'SNDE',
-            'FNJN',
-            'SKBI', 'FLLCR', 'ONCS', 'TOUR', 'ALIM', 'THTX', 'CPST', 'FREDQ', 'CIDM', 'DMAC', 'SGRP', 'GALT', 'RLM', 'THCBW', 'GSMGW', 'TTPH', 'FTFT', 'MARK', 'OSN',
-            'MRIN',
-            'LEDS', 'GNCA', 'TANH', 'NCTY', 'BIMI', 'DEST', 'GERN', 'CNET', 'MGI', 'DTEA', 'SLGG', 'GDYNW', 'ANCN', 'MDCA', 'AAME', 'BPTH', 'MPVD', 'ALPN', 'MYT', 'HPJ',
-            'BNTC',
-            'THCAW', 'DPHCW', 'JFKKR', 'NVCN', 'CLRBW', 'CASM', 'SLNO', 'AXSM', 'IDRA', 'MBIO', 'STKL', 'KOSS', 'AIRTW', 'SPI', 'MICT', 'ENTXW', 'AMTX', 'ARQL', 'VTVT',
-            'GIGM',
-            'TRIL', 'GTYHW', 'XELA', 'FLDM', 'GEVO', 'SELB', 'CODX', 'LTBR', 'SCOR', 'SRAX', 'VVPR', 'OBSV', 'NVUS', 'BNTC', 'INOD', 'RAVE', 'NMTR', 'DVAX', 'NAKD',
-            'MTECW',
-            'SNGX', 'SGRP', 'DHXM', 'PHUN', 'GRNQ', 'MICT', 'OHAI', 'MPVD', 'RKDA', 'CPRX', 'PHCF', 'EVOL', 'DMTKW', 'OPTT', 'GROW', 'DOGZ', 'TBLT', 'TANH', 'DXYN',
-            'RNWK',
-            'CXDO', 'MTC', 'JAGX', 'LLIT', 'PRTS', 'AVEO', 'HTBX', 'CETXP', 'SNGX', 'APDNW', 'BBCPW', 'DRIOW', 'OTIC', 'UTSI', 'RBBN', 'EYPT', 'CHEKZ', 'BWEN', 'RIGL',
-            'LXRX',
-            'BIMI', 'HCACW', 'STAF', 'CPRX', 'LPTH', 'MTC', 'ONSM', 'KPFS', 'CARV', 'SQBG', 'FCEL', 'BCRX', 'RKDA', 'LYTS', 'PTI', 'NTGN', 'CHFS', 'YVR', 'LIWA', 'DRAD',
-            'LMFA',
-            'EPIX', 'SMMT', 'AREX', 'CGIX', 'CCLP', 'WHLRW', 'PHIOW', 'ASRT', 'ATHX', 'DLPNW', 'RLMD', 'AQMS', 'NWGI', 'INPX', 'DRRX', 'RIBT', 'CLWT', 'APDN', 'OASM',
-            'OBCI',
-            'OCUL', 'XELB', 'CELGZ', 'BNGOW', 'JRJC', 'SCPH', 'AMRH', 'HGEN', 'MCRB', 'FVE', 'FSRVW', 'JSYNR', 'VTVT', 'ACOR', 'ZSAN', 'BRACR', 'FUV', 'PULM', 'BHAT',
-            'PHIO',
-            'NEON', 'CTRCQ', 'PHAS', 'STRM', 'CYAN', 'KTOVW', 'ONTXW', 'FLLCW', 'PSTV', 'SONM', 'CCNC', 'TC', 'TCCO', 'USIO', 'GROW', 'GNMX', 'DSWL', 'CMSSR', 'WTRH',
-            'SLNO',
-            'PSTVZ', 'PIRS', 'AXLA', 'KZR', 'SMIT', 'VRME', 'FTACW', 'INSY', 'UEPS', 'NBRV', 'ITRM', 'ALPN', 'AZRX', 'EYES', 'TXCCQ', 'NEOS', 'FLMNW', 'CYCC', 'OXBRW',
-            'SRNE',
-            'GHSI', 'OSS', 'NMCI', 'YVR', 'ASRT', 'OPGN', 'LMFA', 'DSKE', 'RGSE', 'BHTG', 'FOMX', 'OCGN', 'ORSNW', 'AYRO', 'TRIB', 'ARCW', 'SOLO', 'OSN', 'MEIP', 'MDWD',
-            'SINT',
-            'REKR', 'BOXL', 'EMKR', 'SNSS', 'CRRSQ', 'IMRN', 'RETO', 'IEAWW', 'MXWL', 'CDEV', 'LLEN', 'TENX', 'RMBL', 'SOLO', 'BLPH', 'DOGZ', 'ALACW', 'SSNT', 'SRRA',
-            'ACST',
-            'AMRH', 'HYRE', 'SNGXW', 'VERU', 'AGFSW', 'RAND', 'SCYX', 'PRTK', 'ALJJ', 'ORGS', 'ABEOW', 'BSQR', 'AIHS', 'FAMI', 'ALIM', 'OBCI', 'GNLN', 'ELGXQ', 'CTIB',
-            'SVRA',
-            'EARS', 'ABEO', 'VTGN', 'PFIE', 'NEPT', 'THST', 'CLSN', 'CJJD', 'TOPS', 'FNJN', 'ORMP', 'PGLC', 'EAST', 'SPCB', 'SPI', 'WHLR', 'ITRM', 'ACER', 'SMTX', 'LXRX',
-            'KPFS', 'CLRO', 'CTHR', 'MTFBW', 'OESX', 'ESCC', 'LGCYQ', 'BOSC', 'LPTX', 'ATOM', 'FORK', 'INOD', 'HTGM', 'CETX', 'ACHN', 'THMO', 'MBRX', 'EYPT', 'NEBUW',
-            'AFMD',
-            'TTOO', 'CASI', 'OPHC', 'CLRO', 'PEIX', 'HMNY', 'ICON', 'FSNN', 'TAIT', 'EVOL', 'TEDU', 'PIRS', 'BBI', 'AGTC', 'TRVG', 'TTPH', 'SREV', 'PRTH', 'PLXP', 'FTEK',
-            'EARS', 'MOTS', 'FLNT', 'NTRP', 'MBIO', 'HBP', 'AEZS', 'HNRG', 'NOVN', 'CASI', 'GOVX', 'GOGO', 'BYFC', 'HSDT', 'ADILW', 'CRNT', 'ATRS', 'SRGA', 'ADAP',
-            'BLIN',
-            'DARE', 'DISHR', 'ARDX', 'MNKD', 'XCUR', 'WATT', 'BCACR', 'DXLG', 'SCKT', 'BIOL', 'TTNP', 'SSNT', 'ANCN', 'SNCA', 'MRSN', 'SOLOW', 'MCMJW', 'ONCY', 'GERN',
-            'TCCO',
-            'ALTM', 'STXS', 'OSS', 'AEMD', 'MCHX', 'RMG.WS', 'JCS', 'HPJ', 'EQ', 'NCSM', 'TBLTW', 'AMRHW', 'AGRX', 'APOPW', 'WORX', 'ALRN', 'TURN', 'ASTC', 'GLG', 'BHAT',
-            'MDCA', 'NDRA', 'ISIG', 'BKYI', 'TRVN', 'ZYNE', 'ZYXI', 'JASNQ', 'CLWT', 'EGLTQ', 'VISL', 'FWP', 'STKS', 'ARDMQ', 'HOVNP', 'VLRX', 'VBIV', 'DRIO', 'TMDI',
-            'HSDT',
-            'NK', 'KIRK', 'TLGT', 'SYPR', 'CCLP', 'FBIO', 'PRTK', 'LIVX', 'ACAMW', 'CLMT', 'XYNPW', 'TCON', 'GLYC', 'SKYS', 'MYT', 'CNACR', 'LINC', 'SAUC', 'RESN',
-            'MOXC',
-            'CLPS', 'REKR', 'MARPS', 'DTSS', 'PRVB', 'AREX', 'TISA', 'SRGA', 'XBIO', 'MIND', 'CBAY', 'SGYP', 'ENDP', 'TXMD', 'THBRW', 'VBIV', 'SNDL', 'VUZI', 'MNCLW',
-            'CRDF',
-            'BBOX', 'IDSA', 'TLSA', 'QTT', 'FRAN', 'BLNK', 'PRPO', 'LMB', 'GLEO.WS', 'SYBX', 'TISA', 'ANY', 'WWR', 'RAND', 'SEAC', 'BCDA', 'CALA', 'EXFO', 'BRQS', 'SALM',
-            'TUSK', 'ISEE', 'CJJD', 'SRNE', 'EPIX', 'OTLK', 'ATHE', 'TRCH', 'VTSI', 'BBGI', 'DSWL', 'IGICW', 'ISEE', 'LACQW', 'SNES', 'GRPN', 'TURN', 'BCDAW', 'HX',
-            'ACET',
-            'BGFV', 'GPOR', 'SCACW', 'GPOR', 'PRTH', 'RAIL', 'ASCMA', 'FSACW', 'MVIS', 'JAKK', 'GTECW', 'MIND', 'PSHG', 'NKLAW', 'RVLT', 'BIOL', 'YI', 'GRWG', 'EKSO',
-            'CDXC',
-            'GNPX', 'BRPAW', 'CMRX', 'MYOS', 'VXRT', 'GEC', 'WSG', 'ORGS', 'AREC', 'LLNW', 'NTGN', 'SEEL', 'SHOS', 'IPDN', 'HEBT', 'OBLN', 'HCCHW', 'CMRO', 'WIRX',
-            'AKTX',
-            'MGI', 'ZVO', 'ANDAR', 'SNOAW', 'AUTO', 'TDACW', 'CHEK', 'MKGI', 'RMBL', 'FLL', 'PAEWW', 'CHNR', 'MRNS', 'MARA', 'CHCI', 'ZYNE', 'EFOI', 'ESEA', 'SORL',
-            'MFH',
-            'CBAT', 'SYNC', 'CTIB', 'TXCCQ', 'MRSN', 'BNGO', 'VTNR', 'REXN', 'TEDU', 'BBI', 'XNET', 'CRDF', 'ATEC', 'SEEL', 'CRRSQ', 'BIOC', 'APOP', 'IZEA', 'KTOV',
-            'MBII',
-            'ATOS', 'NURO', 'EVGN', 'SSKN', 'EMKR', 'TOTAR', 'IFRX', 'TEUM', 'ACER', 'ISON', 'DXYN', 'PGLC', 'LOACR', 'ALSK', 'KXIN', 'LTBR', 'AEY', 'SPRT', 'AIKI',
-            'RCPIQ',
-            'ALGRW', 'RBZ', 'FBIO', 'AVDL', 'PT', 'FORD', 'RAVE', 'CTXR', 'AESE', 'PANL', 'RIOT', 'CXDO', 'AKER', 'OXBR', 'VSTM', 'KONA', 'OCGN', 'CLNE', 'BNSO', 'WORX',
-            'VSTM',
-            'DMAC', 'VLTC', 'APPS', 'CRIS', 'ADMP', 'APOP', 'NLTX', 'GEC', 'AKRXQ', 'IRIX', 'MTFB', 'RGLS', 'DGLY', 'TYME', 'APDN', 'CORV', 'TAIT', 'OMED', 'GHSI',
-            'LINC',
-            'INFI', 'AMRS', 'SBBP', 'KIRK', 'FLNT', 'SALM', 'NOVN', 'MOXC', 'RIGL', 'PERI', 'CGEN', 'CHNR', 'LLNW', 'DWSN', 'ACTG', 'KOPN', 'NYMX', 'IEA', 'BPTH', 'SUNW',
-            'AEYE', 'EDNT', 'PT', 'SKYS', 'ODP', 'IMV', 'NTEC', 'OVID', 'CREX', 'ACST', 'WKHS', 'NSYS', 'GNCA', 'TLGT', 'SGMA', 'WATT', 'IPWR', 'STNLW', 'PXLW', 'TOUR',
-            'ACHV',
-            'PDLI', 'CHCI', 'IMMP', 'NBEV', 'RIBT', 'LTRX', 'ZAAP', 'BBGI', 'EKSO', 'NIHD', 'AHPI', 'PLUG', 'VERI', 'CLRB', 'SCON', 'BMRA', 'IFMK', 'KTRA', 'HUSN',
-            'OPTT',
-            'SGMA', 'MYSZ', 'AMTX', 'AYRO', 'WISA', 'CREXW', 'TSRI', 'ATRM', 'ATOM', 'GURE', 'DXLG', 'GRNVW', 'VEON', 'FCSC', 'MBOT', 'SGLB', 'ABUS', 'PXLW', 'SLDB',
-            'BMRA',
-            'RSSS', 'GENE', 'CYRN', 'NVCN', 'ALACR', 'MREO', 'HYACW', 'RCON', 'INPX', 'KXINW', 'NCTY', 'OPK', 'DWSN', 'ACTTW', 'MNDO', 'GNLN', 'FCSC', 'AEZS', 'NBRV',
-            'AVDL',
-            'RPAYW', 'NNDM', 'AVXL', 'PME', 'MDGSW', 'MYOS', 'CLIRW', 'KOPN', 'NMCI', 'VVPR', 'AVEO', 'AKTX', 'EVGN', 'ZAAP', 'SKBI', 'PRTHW', 'BKEP', 'FTFT', 'UXIN',
-            'PESI',
-            'ADIL', 'USAU', 'VXRT', 'CKPT', 'EYEN', 'PRPO', 'CKPT', 'LPTX', 'PESI', 'UONE', 'SURF', 'BRANF', 'MCHX', 'LGCYQ', 'CREX', 'MTSL', 'KZR', 'VTNR', 'LMB',
-            'HGSH',
-            'CTXRW', 'STAF', 'YI', 'IDXG', 'SQBG', 'EGLTQ', 'OPGNW', 'SEAC', 'JCS', 'KZIA', 'CAAS', 'OXBR', 'PXS', 'RMTI', 'AVCO', 'MDWD', 'UTSI', 'VERU', 'UONE', 'TEAR',
-            'PBTS', 'SBPH', 'SANW', 'ECOR', 'IMVTW', 'NYMX', 'NVTR', 'ASCMA', 'ATIF', 'NVTR', 'EQ', 'PEIX', 'IMI', 'WMGIZ', 'BLPH', 'ACRS', 'BVSN', 'INWK', 'MXWL',
-            'CAAS',
-            'ESES', 'ADXS', 'MHLD', 'SRTSW', 'DRIO', 'USEG', 'GLACR', 'ALT', 'CWBR', 'AVCTW', 'VTGN', 'CRVS', 'AGBAW', 'PXS', 'CDTX', 'HIHO', 'ACHV', 'HUNTW', 'PDLI',
-            'BLIN',
-            'OASM', 'CFRX', 'AIHS', 'WSG', 'CLMT', 'STRM', 'ENG', 'NVIV', 'WAFU', 'OEG', 'TENX', 'SMMT', 'YTEN', 'GOVX', 'KONA', 'OGI', 'SPCB', 'BRMK.WS', 'AXAS', 'FRAN',
-            'NDRAW', 'BASI', 'NAOV', 'SSPKW', 'PRPH', 'XELA', 'ESCC', 'SVRA', 'CMRO', 'AXSM', 'AXTI', 'DVAX', 'SHIP', 'MRKR', 'WISA', 'GASS', 'UXIN', 'CTIC', 'BLRX',
-            'PZRXQ',
-            'OPHC', 'PAVM', 'AWRE', 'AZRX', 'ARCW', 'BSQR', 'ELTK', 'EAST', 'PTMN', 'TSRI', 'TGA', 'OTLK', 'ALSK', 'ARAY', 'NVFY', 'AVGR', 'NXTD', 'OBSV', 'GVP', 'FRSX',
-            'ACTG',
-            'HJLI', 'LYL', 'IMRNW', 'NTEC', 'PLUG', 'INSY', 'PFSW', 'ROSEQ', 'KBSF', 'HDSN', 'IZEA', 'PETZ', 'CLBS', 'PIXY', 'OTLKW', 'MVIS', 'CHEK', 'MTP', 'MARPS',
-            'SANW',
-            'LKCO', 'PLXP', 'QRHC', 'ALYA', 'PHIIQ', 'GOGO', 'PETZ', 'NURO', 'CBAT', 'FTD', 'LYTS', 'KBLMW', 'GEVO', 'ACOR', 'ZSAN', 'IMGN', 'CYCN', 'LWAY', 'FFHL',
-            'ADAP',
-            'SGLBW', 'SYPR', 'LINK', 'TTOO', 'MOGO', 'GENE', 'PULM', 'EYEG', 'BLDP', 'SIFY', 'QTT', 'CLIR', 'CFMS', 'CYCC', 'ISIG', 'HMNY', 'CBLI', 'BLCM', 'LIWA',
-            'ENDP',
-            'SGLB', 'TTNP', 'INFN', 'QUIK', 'MMDMW', 'ABEO', 'STCN', 'CFMS', 'RMTI', 'RADA', 'ATRM', 'TGA', 'PTE', 'SLNOW', 'EVOK', 'ATIF', 'EVK', 'APWC', 'CODX', 'WTER',
-            'APVO', 'GMHIW', 'PFSW', 'IRIX', 'ESTRW', 'OSMT', 'ESEA', 'AWH', 'CFRX', 'IEA', 'NNDM', 'PERI', 'APVO', 'NH', 'ENG', 'HX', 'STXS', 'ARTW', 'LTRX', 'CPAH',
-            'APEN',
-            'ORMP', 'RLMD', 'TRVI', 'APPS', 'REFR', 'SNNA', 'ANTE', 'NBSE', 'NMTR', 'GTIM', 'NHLD', 'RCPIQ', 'NHLDW', 'CGEN', 'DYNT', 'CTRM', 'GSM', 'LMFAW', 'EYEGW',
-            'SGOC',
-            'CBAY', 'SUNW', 'POLA', 'EVOK', 'LLIT', 'NSYS', 'JNCE', 'ATOS', 'AEHR', 'BLDP', 'TAOP', 'OMED', 'SLDB', 'WHLR', 'RVLT', 'RGSE', 'NH', 'ADMP', 'VLRX', 'SYBX',
-            'CREG',
-            'KOR', 'AXAS', 'HYMCW', 'TYHT', 'MRNS', 'NMRD', 'THST', 'FREDQ', 'ONVO', 'LYL', 'ATIS', 'ORSNR', 'AESEW', 'AYTU', 'OIIM', 'MHLD', 'SCPH', 'OEG', 'BHTG',
-            'HIMX',
-            'XCUR', 'VERB', 'CXDC', 'FORD', 'PAACR', 'FVE', 'MOSY', 'AMRQQ', 'USWS', 'HYRE', 'ESES', 'UPLCQ', 'YRCW', 'CIH', 'GNUS', 'SPRT', 'ARTL', 'SAUC', 'FOMX',
-            'CLSD',
-            'LKCO', 'ARTX', 'RADA', 'APTO', 'SMTX', 'INAPQ', 'DLPN', 'ISON', 'ALTG.WS', 'UONEK', 'RBZAW', 'TEUM', 'VEACW', 'CETXW', 'NVIV', 'SCKT', 'SXTC', 'PRTS',
-            'BOSC',
-            'CLRBZ', 'GXXM', 'DRAD', 'PHIO', 'TKKSR', 'IMTXW', 'KOR', 'HGSH', 'PDSB', 'USIO', 'BRANF', 'INFN', 'DDMXW', 'LWAY', 'PECK', 'TOTAW', 'PFMT', 'GXGXW', 'CFFAW',
-            'EDAP', 'FRSX', 'HEPA', 'EYES', 'MRIN', 'HCCHR', 'NBSE', 'XSPA', 'XTLB', 'CLSK', 'IMV', 'ALGRR', 'ATRS', 'PHUNW', 'MNKD', 'GLYC', 'NESRW', 'JAGX', 'RAIL',
-            'RWLK',
-            'AREC', 'ONVO', 'PANL', 'SELB', 'CPSH', 'JNCE', 'MCRB', 'ARPO', 'DTSS', 'WIRX', 'ARTLW', 'TEAR', 'FPAYW', 'DEST']
-    num_years = 1
-    roi_all = []
-    start_year = 19
-    for year in range(start_year, start_year + num_years):
-        from_str = f"20{year:02d}-01-01"
-        to_str = f"20{year:02d}-12-31"
-        days_hold_stock = 4
-        roi = find_roi(from_str, to_str, days_hold_stock)
-        roi_all.append(round(roi, 3))
+    df = pd.read_parquet(constants.DAILY_ROI_NASDAQ_PATH)
 
-    print(roi_all)
+    print(df.shape[0])
+
+    print(f"Max date: {df['date'].max()}")
+
+    # Act
+    # num_years = 1
+    # roi_all = []
+    # start_year = 9
+    # for year in range(start_year, start_year + num_years):
+    #     from_str = f"20{year:02d}-01-01"
+    #     to_str = f"20{year:02d}-12-31"
+    #     days_hold_stock = 4
+    #     roi = find_roi(from_str, to_str, days_hold_stock)
+    #     roi_all.append(round(roi, 3))
+    #
+    # print(roi_all)
 
 
 def find_roi(from_str, to_str, days_hold_stock):
@@ -1201,11 +1057,45 @@ def test_raw_invest():
     sns.displot(penguins, x="flipper_length_mm")
 
 
+def test_nas_perf_2():
+    year = 9
+    from_dt_str = f"20{year:02d}-01-01"
+    to_dt_str = f"20{year + 1:02d}-01-01"
+
+    df = ticker_service.get_nasdaq_info()
+    tickers = df["ticker"].to_list()
+    shuffle(tickers)
+
+    max_count = 500
+    count = 0
+    roi_list = []
+    for t in tickers:
+        df = get_ticker_eod_data(ticker=t)
+        if df is not None and df.shape[0] > 0:
+            df.sort_values(by=["date"], inplace=True)
+            df = df[(df["date"] > from_dt_str) & (df["date"] < to_dt_str)]
+            if df is not None and df.shape[0] > 0:
+                start_price = df.iloc[0]["open"]
+                end_price = df.iloc[-1]["close"]
+
+                roi = (end_price - start_price) / start_price
+                roi_list.append(roi)
+
+                # print(f"{t} start {start_price} end {end_price}")
+                count += 1
+                if count > max_count:
+                    break
+
+    mean_roi = mean(roi_list)
+    print(f"Mean roi: {mean_roi}")
+
+
+
 def test_create_ticker_on_day():
     # Arrange
     # Act
     t_on_d = ticker_service.create_tickers_available_on_day()
-    
+
     # Assert
     t_on_d_2 = ticker_service.load_tickers_on_day()
 

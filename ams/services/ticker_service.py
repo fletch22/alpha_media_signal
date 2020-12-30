@@ -465,7 +465,7 @@ def get_nasdaq_perf(date_from: datetime,
                     date_to: datetime = None,
                     min_price: float = None,
                     max_price: float = None,
-                    days_hold_stock: int = 1) -> pd.DataFrame:
+                    days_hold_stock: int = 1) -> (pd.DataFrame, List[str]):
     date_from_str = date_utils.get_standard_ymd_format(date_from)
     date_to_str = date_utils.get_standard_ymd_format(date_to)
 
@@ -475,8 +475,8 @@ def get_nasdaq_perf(date_from: datetime,
     ticks_gathered = set()
     for ndx, t in enumerate(tickers):
         df = get_ticker_eod_data(ticker=t)
-
         if df is not None:
+            print(f"Processing ticker: {t}")
             df = df[df["date"] >= date_from_str]
             if date_to is not None:
                 df = df[df["date"] <= date_to_str]
@@ -495,8 +495,7 @@ def get_nasdaq_perf(date_from: datetime,
                 all_df.append(df)
 
     num_tickers = len(all_df)
-    df_nas = pd.concat(all_df, axis=0).dropna(
-        subset=cols)
+    df_nas = pd.concat(all_df, axis=0).dropna(subset=cols)
 
     min_date = df_nas["date"].min()
     max_date = df_nas["date"].max()
@@ -520,7 +519,8 @@ def get_nasdaq_perf(date_from: datetime,
             results.append({"date": dt_curr_str, "roi": roi_mean})
         dt_current = dt_current + timedelta(days=1)
 
-    df = pd.DataFrame(results)
+    df = pd.DataFrame(results, columns=["date", "roi"])
+    print(f"DF cols: {df.columns}")
     df.to_parquet(constants.DAILY_ROI_NASDAQ_PATH)
 
     return df, ticks_gathered

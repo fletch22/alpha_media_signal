@@ -390,7 +390,7 @@ def std_col(df: pd.DataFrame, col_name: str):
 
 def add_buy_sell(df: pd.DataFrame):
     roi_threshold_pct = 0  # 1.6
-    df['stock_val_change'] = ((df['future_close'] - df['close']) / df['close']) - df["roi"]
+    df['stock_val_change'] = ((df['future_close'] - df['close']) / df['close']) - df["nasdaq_day_roi"]
 
     df['buy_sell'] = df['stock_val_change'].apply(lambda x: 1 if x >= roi_threshold_pct else -1)
     df['stock_val_change_ex'] = df["stock_val_change"].apply(exagerrate_stock_val_change)
@@ -443,8 +443,7 @@ def is_after_nasdaq_closed(created_at_timestamp: int):
 
 
 def add_is_tweet_after_hours(df: pd.DataFrame):
-    df[COL_AFTER_HOURS] = df.apply(lambda x: is_after_nasdaq_closed(x['created_at_timestamp']),
-                                   axis=1)
+    df[COL_AFTER_HOURS] = df.apply(lambda x: is_after_nasdaq_closed(x['created_at_timestamp']), axis=1)
     return df
 
 
@@ -573,7 +572,10 @@ def rnd_forest_clf(X_train: np.array, y_train: np.array, X_test: np.array, y_tes
 
 def train_mlp(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np.array):
     start = time.time()
-    clf = MLPClassifier(hidden_layer_sizes=(29, 50, 29), max_iter=800, tol=1e-19, activation='relu',
+    num_input_features = X_train.shape[1]
+    classes = 2 # Buy/Sell
+    num_hidden_neurons = int(num_input_features / classes)
+    clf = MLPClassifier(hidden_layer_sizes=(num_hidden_neurons), max_iter=800, tol=1e-19, activation='relu',
                         solver='adam')
     clf.fit(X_train, y_train)  # Fit data
     y_pred = clf.predict(X_test)  # Predict results for x_test
@@ -822,6 +824,5 @@ def remove_last_days(df: pd.DataFrame, num_days: int):
 
 
 if __name__ == '__main__':
-    date_range = DateRange.from_date_strings(from_date_str="2020-12-18", to_date_str="2020-12-23")
+    date_range = DateRange.from_date_strings(from_date_str="2020-12-26", to_date_str="2020-12-31")
     search_one_day_at_a_time(date_range=date_range)
-    # create_colloquial_twitter_stock_search_tokens()

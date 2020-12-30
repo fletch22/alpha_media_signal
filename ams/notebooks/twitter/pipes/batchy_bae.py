@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Callable, TypeVar
 
 from ams.config import constants, logger_factory
+from ams.config.constants import ensure_dir
 from ams.services import file_services
 
 logger = logger_factory.create(__name__)
@@ -16,17 +17,17 @@ pipe_process_callback = TypeVar('pipe_process_callback', bound=Callable[[Path, P
 
 
 def get_files_in_transition(dir_path: Path) -> List[Path]:
-    return file_services.list_files(dir_path, IN_TRANSITION_ENDING, use_dir_recursion=False)
+    return file_services.list_files(dir_path, IN_TRANSITION_ENDING, use_dir_recursion=True)
 
 
 def get_folders_in_transition(dir_path: Path) -> List[Path]:
     return file_services.list_child_folders(dir_path, ends_with=IN_TRANSITION_ENDING)
 
 
-def revert_files_to_original_location(source_dir_path: Path, files_in_transition: List[Path]):
+def revert_files_to_original_location(dest_dir_path: Path, files_in_transition: List[Path]):
     for f in files_in_transition:
         filename = f.name
-        dest_path = Path(source_dir_path, filename[:-len(IN_TRANSITION_ENDING)])
+        dest_path = Path(dest_dir_path, filename[:-len(IN_TRANSITION_ENDING)])
         shutil.move(str(f), str(dest_path))
 
 
@@ -42,16 +43,13 @@ def remove_remaining_files(staging_path: Path):
 def revert_in_transition_files(source_dir_path: Path):
     staging_path = Path(source_dir_path.parent, STAGING_FOLDER_NAME)
     files_in_transition = get_files_in_transition(staging_path)
-    folders_in_transition = get_folders_in_transition(staging_path)
 
-    entities_in_trans = files_in_transition + folders_in_transition
-
-    revert_files_to_original_location(source_dir_path, entities_in_trans)
+    revert_files_to_original_location(dest_dir_path=source_dir_path, files_in_transition=files_in_transition)
 
     remove_remaining_files(staging_path)
 
 
-def start(source_path: Path, output_dir_path: Path, process_callback: pipe_process_callback, should_archive: bool=True):
+def start(source_path: Path, output_dir_path: Path, process_callback: pipe_process_callback, should_archive: bool = True):
     revert_in_transition_files(source_dir_path=source_path)
 
     process(source_path, output_dir_path=output_dir_path, process_callback=process_callback, should_archive=should_archive)
@@ -62,17 +60,12 @@ def move_to_staging(source_path: Path):
     print(staging_dir_path)
     os.makedirs(staging_dir_path, exist_ok=True)
 
-    files = file_services.list_files(source_path, use_dir_recursion=False)
+    files = file_services.list_files(source_path, use_dir_recursion=True)
     for f in files:
         filename = f.name
         dest_path = Path(staging_dir_path, f"{filename}{IN_TRANSITION_ENDING}")
+        ensure_dir(dest_path.parent)
         shutil.move(str(f), str(dest_path))
-
-    child_path_list = file_services.list_child_folders(source_path)
-    for c_path in child_path_list:
-        folder_name = c_path.name
-        dest_path = Path(staging_dir_path, f"{folder_name}{IN_TRANSITION_ENDING}")
-        shutil.move(str(c_path), str(dest_path))
 
     return staging_dir_path
 
@@ -91,16 +84,7 @@ def archive(source_path: Path, staging_dir_path: Path):
             dest_path = Path(archive_output_dir_path, filename[:-len(IN_TRANSITION_ENDING)])
             shutil.move(str(f), str(dest_path))
 
-    folders_in_transition = get_folders_in_transition(staging_dir_path)
-    total_folders = len(folders_in_transition)
-    if total_folders > 0:
-        os.makedirs(archive_output_dir_path, exist_ok=True)
-        for f in folders_in_transition:
-            folder_name = f.name
-            dest_path = Path(archive_output_dir_path, folder_name[:-len(IN_TRANSITION_ENDING)])
-            shutil.move(str(f), str(dest_path))
-
-    if total_files + total_folders == 0:
+    if total_files == 0:
         print("WARNING: No files found to archive.")
 
 
@@ -114,15 +98,7 @@ def unstage(source_path: Path, output_dir_path: Path):
             dest_path = Path(output_dir_path, filename[:-len(IN_TRANSITION_ENDING)])
             shutil.move(str(f), str(dest_path))
 
-    folders_in_transition = get_folders_in_transition(source_path)
-    total_folders = len(folders_in_transition)
-    if total_folders > 0:
-        for f in folders_in_transition:
-            folder_name = f.name
-            dest_path = Path(output_dir_path, folder_name[:-len(IN_TRANSITION_ENDING)])
-            shutil.move(str(f), str(dest_path))
-
-    if total_files + total_folders == 0:
+    if total_files == 0:
         print("WARNING: No files found to archive.")
 
 
@@ -130,8 +106,8 @@ def process(source_path: Path, output_dir_path: Path, process_callback: Callable
     if not source_path.exists():
         raise Exception(f"Source folder does not exist: '{source_path}'.")
 
-    logger.info("Will move to staging.")
     staging_dir_path = move_to_staging(source_path)
+    logger.info(f"Moved to staging folder '{staging_dir_path}'.")
 
     process_callback(staging_dir_path, output_dir_path)
 
@@ -152,4 +128,4 @@ if __name__ == '__main__':
         pass
 
 
-    start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=foo, should_archive=True)
+    start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=foo, should_archive=False)

@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -93,6 +94,7 @@ BACKUP_ROOT_PATH = Path("I:/sp_backups")
 BACKUP_VOLUME_LABEL = "Flesche"
 ALPHA_MEDIA_SIGNAL_PROJ = Path(WORKSPACE_PATH, "alpha_media_signal")
 NEWS_GESTALT_PROJ = Path(WORKSPACE_PATH, "news_gestalt")
+BLOGGER_HIGH_SCORE_PROJ = Path(WORKSPACE_PATH, "blogger_high_score")
 
 BERT_PATH = Path(TWITTER_OUTPUT, "bert")
 BERT_APPS_DATA_PATH = Path(BERT_PATH, "apps.csv")
@@ -103,7 +105,8 @@ COLA_IN_DOMAIN_DEV_PATH = Path(COLA_DIR_PATH, "in_domain_dev.tsv")
 COLA_IN_DOMAIN_TRAIN_PATH = Path(COLA_DIR_PATH, "in_domain_train.tsv")
 COLA_OUT_OF_DOMAIN_DEV_PATH = Path(COLA_DIR_PATH, "out_of_domain_dev.tsv")
 
-TWITTER_TEXT_LABEL_TRAIN_PATH = Path(TWITTER_INFERENCE_MODEL_PATH, "twitter_text_with_proper_labels.parquet")
+TWITTER_TEXT_LABEL_TRAIN_PATH = Path(TWITTER_INFERENCE_MODEL_PATH,
+                                     "twitter_text_with_proper_labels.parquet")
 
 TWITTER_MODEL_PATH = Path(TWITTER_INFERENCE_MODEL_PATH, "models")
 ensure_dir(TWITTER_MODEL_PATH)
@@ -112,7 +115,7 @@ TIP_RANKS_DATA_DIR = Path(FIN_DATA, 'tip_ranks')
 ensure_dir(TIP_RANKS_DATA_DIR)
 TIP_RANKS_STOCK_DATA_PATH = os.path.join(TIP_RANKS_DATA_DIR, "tip_ranks_stock.parquet")
 
-DAILY_ROI_NASDAQ_PATH = os.path.join(QUANDL_DIR, "daily_roi_nasdaq.parquet")
+DAILY_ROI_NASDAQ_PATH = Path(QUANDL_DIR, "daily_roi_nasdaq.parquet")
 
 TICK_ON_DAY_PATH = Path(FIN_DATA, "tickers_on_day")
 ensure_dir(TICK_ON_DAY_PATH)
@@ -126,3 +129,10 @@ ensure_dir(TWITTER_TRADE_HISTORY_PATH)
 
 TWITTER_TRADE_HISTORY_FILE_PATH = Path(TWITTER_TRADE_HISTORY_PATH, "twitter_trade_history.csv")
 
+CREDENTIALS_ROOT = Path(DATA_PATH, "credentials")
+if not CREDENTIALS_ROOT.exists():
+    raise Exception("The credentials root was not found.")
+
+slack_cred_path = os.path.join(CREDENTIALS_ROOT, 'slack.json')
+with open(slack_cred_path, "r") as f:
+    SLACK_CREDENTIALS = json.loads(f.read())

@@ -27,3 +27,5 @@ vaderSentiment
 pandas_datareader
 pyarrow==2.0
 dask[complete]==2.30.0
+slackclient==2.2.0
+yfinance==0.1.54

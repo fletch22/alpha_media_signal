@@ -1,4 +1,7 @@
+import math
 import re
+from statistics import mean
+from typing import List
 
 
 def convert_equity_name_to_common(name: str):
@@ -58,3 +61,13 @@ def convert_equity_name_to_common(name: str):
         name = re.sub(pattern, '', name)
 
     return name
+
+
+def calc_variance(lst: List[float]):
+    mean_diff = mean(lst)
+    sum_sq_diff = 0
+    for d in lst:
+        sq_diff = (d - mean_diff) ** 2
+        sum_sq_diff += sq_diff
+    variance = math.sqrt(sum_sq_diff / (len(lst)))
+    return variance

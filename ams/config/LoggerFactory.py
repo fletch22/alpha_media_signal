@@ -19,7 +19,7 @@ class LoggerFactory():
 
         print(f'Will use logging path: {constants.LOGGING_PATH}')
 
-        log_path = Path(constants.LOGGING_PATH, 'alpha_media_signal.log')
+        log_path = Path(constants.LOGGING_PATH, 'alpha_media_signal-new.log')
 
         self.rot_handler = RotatingFileHandler(str(log_path), maxBytes=200000000, backupCount=10)
         self.rot_handler.setFormatter(self.formatter)

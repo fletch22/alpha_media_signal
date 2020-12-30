@@ -3,73 +3,14 @@ import shutil
 import subprocess
 import tempfile
 import zipfile
-from datetime import datetime
 from pathlib import Path
 
 from ams import config
 from ams.config import constants, logger_factory
-from ams.services import file_services
-from ams.utils import date_utils
+from ams.services.backup_service import backup_folder, backup_file
 from ams.utils.Stopwatch import Stopwatch
 
 logger = logger_factory.create(__name__)
-
-
-def zipdir(dir_path: Path, ziph, omit_folders: list = None):
-    root_len = len(str(dir_path))
-    for root, dirs, files in os.walk(str(dir_path)):
-        for f in files:
-            source_path = os.path.join(root, f)
-            arcname = f"{root[root_len:]}/{f}"
-            skip_file = False
-            for o in omit_folders:
-                if arcname.startswith(o):
-                    skip_file = True
-
-            if not skip_file:
-                print(f"{arcname}")
-                ziph.write(source_path, arcname)
-
-
-def backup_folder(backup_source_path: Path, output_path: Path):
-    with zipfile.ZipFile(str(output_path), 'w', zipfile.ZIP_DEFLATED) as zipf:
-        zipdir(backup_source_path, zipf, omit_folders=["\\venv", "\\.git"])
-
-
-def backup_file(backup_source_file: Path, output_path: Path):
-    with zipfile.ZipFile(str(output_path), 'w') as zipf:
-        zipf.write(str(backup_source_file), arcname=backup_source_file.name, compress_type=zipfile.ZIP_DEFLATED)
-
-
-def backup_project():
-    backup_root = str(config.constants.BACKUP_ROOT_PATH)
-    backup_dest_dirname = os.path.join(backup_root, date_utils.format_file_system_friendly_date(datetime.now()))
-    os.makedirs(backup_dest_dirname, exist_ok=True)
-
-    print(f"Will back up to: {backup_dest_dirname}")
-
-    volume = file_services.get_windows_drive_volume_label(backup_root[0])
-    logger.info(f"Volume Name: '{volume}'.")
-
-    if volume != config.constants.BACKUP_VOLUME_LABEL:
-        raise Exception("Error. Backup failed! Volume label does not match expected label.")
-
-    stopWatch = Stopwatch(start_now=True)
-
-    source_dir_project = constants.PROJECT_ROOT
-
-    output_path = Path(backup_dest_dirname, f"stock-predictor.zip")
-    backup_folder(source_dir_project, output_path=output_path)
-
-    source_dir_project = config.constants.ALPHA_MEDIA_SIGNAL_PROJ
-    output_path = Path(backup_dest_dirname, f"alpha_media_signal.zip")
-    backup_folder(source_dir_project, output_path=output_path)
-
-    source_dir_project = config.constants.NEWS_GESTALT_PROJ
-    output_path = Path(backup_dest_dirname, f"news_gestalt.zip")
-    backup_folder(source_dir_project, output_path=output_path)
-
-    stopWatch.end(msg="Backup")
 
 
 def backup_project_to_gcs(include_data: bool = True):
@@ -118,9 +59,11 @@ def backup_project_to_gcs(include_data: bool = True):
 
             backup_file(constants.TWITTER_TEXT_LABEL_TRAIN_PATH, output_path=Path(t, "twitter_text_with_proper_labels.zip"))
 
-            source_data_dir = Path(constants.DATA_PATH, "twitter", "learning_prep_drop", "lpd_2020-12-06_14-00-19-584.44")
+            source_data_dir = Path(constants.DATA_PATH, "twitter", "learning_prep_drop", "main")
             output_path = Path(t, f"lpd.zip")
             backup_folder(source_data_dir, output_path=output_path)
+
+            backup_file(constants.DAILY_ROI_NASDAQ_PATH, output_path=Path(t, "daily_roi_nasdaq.parquet.zip"))
 
         shell_script = Path(constants.PROJECT_ROOT, "scripts", "gc_install.sh")
         output_path = Path(t, shell_script.name)

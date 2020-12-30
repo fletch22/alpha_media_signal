@@ -25,7 +25,7 @@ def test_tweets():
 
     query = "$VOD"
     # Act
-    tweets = twitter.search(query=query, callback=callback)
+    tweets = twitter_service.search(query=query)
 
     json_thing = json.dumps(tweets)
     print(json_thing)
@@ -125,6 +125,210 @@ def test_json():
     json_str_alt = json.dumps(obj)
 
     print(json_str_alt)
+    # Assert
+
+
+def test_foo():
+    # Arrange
+    cols = ['sector_Energy', 'category_Domestic Common Stock Secondary Class', 'retweet_count', 'industry_Specialty Chemicals', 'bvps', 'famaindustry_Machinery',
+            'industry_Conglomerates', 'table_SF3B', 'close_SMA_50_days_since_under', 'taxexp', 'location_New Hampshire; U.S.A', 'industry_Banks - Diversified',
+            'famaindustry_Tobacco Products', 'location_Mississippi; U.S.A', 'user_protected', 'location_British Columbia; Canada', 'inventory', 'intangibles',
+            'location_Puerto Rico', 'industry_Discount Stores', 'famaindustry_Retail', 'shareswadil', 'dps', 'tangibles', 'famaindustry_Communication', 'low',
+            'industry_<unknown>', 'location_Wyoming; U.S.A', 'industry_Software - Infrastructure', 'industry_Insurance - Reinsurance', 'location_Spain',
+            'industry_Tools & Accessories', 'dividends', 'investmentsc', 'f22_sentiment_neg', 'industry_Electronics & Computer Distribution', 'scalemarketcap_2 - Micro',
+            'scalerevenue_6 - Mega', 'industry_Specialty Retail', 'currency_GBP', 'location_California; U.S.A', 'stock_val_change', 'ebitdamargin', 'original_close_price',
+            'scalemarketcap_6 - Mega', 'location_India', 'depamor', 'industry_Real Estate - Diversified', 'close_SMA_200_days_since_under', 'opinc',
+            'famaindustry_Transportation', 'location_Poland', 'famaindustry_Medical Equipment', 'famaindustry_Aircraft', 'currency_BRL', 'industry_Food Distribution',
+            'industry_Restaurants', 'user_has_extended_profile', 'table_<unknown>', 'location_New Zealand', 'sharefactor', 'industry_Coking Coal', 'famaindustry_Utilities',
+            'scalerevenue_<unknown>', 'industry_Marine Shipping', 'industry_Specialty Business Services', 'location_Venezuela', 'industry_Diagnostics & Research',
+            'location_Ghana', 'location_Quebec; Canada', 'famaindustry_Agriculture', 'industry_Information Technology Services', 'currency_HKD', 'scalemarketcap_3 - Small',
+            'currency_PLN', 'currency_CLP', 'ncfcommon', 'famaindustry_Entertainment', 'tbvps', 'location_Netherlands Antilles', 'industry_Waste Management',
+            'industry_Auto Manufacturers', 'industry_Medical Distribution', 'user_follow_request_sent', 'location_Ireland', 'location_Mauritius', 'fcf', 'close_SMA_15',
+            'location_Oregon; U.S.A', 'assetsavg', 'scalerevenue_2 - Micro', 'industry_Insurance - Specialty', 'industry_Footwear & Accessories',
+            'famaindustry_Pharmaceutical Products', 'industry_Drug Manufacturers - General', 'industry_Apparel Retail', 'sector_Technology', 'currency_ARS',
+            'industry_Beverages - Brewers', 'retearn', 'industry_Medical Instruments & Supplies', 'location_Russian Federation', 'location_Marshall Islands',
+            'location_Tennessee; U.S.A', 'location_Monaco', 'category_Domestic Common Stock Primary Class', 'sicsector_Nonclassifiable', 'industry_Thermal Coal', 'divyield',
+            'location_Guernsey', 'sicsector_Transportation Communications Electric Gas And Sanitary Service', 'future_close', 'location_Hungary', 'category_<unknown>',
+            'debtc', 'location_Peru', 'location_Massachusetts; U.S.A', 'industry_Agricultural Inputs', 'location_Israel-Syria', 'industry_Silver', 'famaindustry_Candy & Soda',
+            'currency_TRY', 'intexp', 'industry_Farm & Heavy Construction Machinery', 'ebit', 'open', 'location_Vermont; U.S.A', 'location_Uruguay',
+            'industry_Oil & Gas Midstream', 'debt', 'location_Saudi Arabia', 'capex', 'location_Malaysia', 'location_Guam', 'industry_Real Estate - General', 'deferredrev',
+            'industry_Home Improvement Retail', 'famaindustry_Defense', 'possibly_sensitive', 'f22_compound_score', 'industry_REIT - Residential', 'famaindustry_Construction',
+            'ncfinv', 'table_SFP', 'location_Colorado; U.S.A', 'ev', 'currency_PHP', 'sharesbas', 'location_Israel', 'industry_Farm & Construction Equipment',
+            'location_New Brunswick; Canada', 'industry_Travel Services', 'industry_Confectioners', 'famaindustry_Construction Materials', 'category_ETD',
+            'famaindustry_Shipping Containers', 'sicsector_Agriculture Forestry And Fishing', 'f22_ticker', 'days_since', 'industry_Utilities - Regulated Water',
+            'currency_SEK', 'industry_Advertising Agencies', 'investmentsnc', 'industry_Aerospace & Defense', 'location_Connecticut; U.S.A',
+            'famaindustry_Restaraunts Hotels Motels', 'rnd', 'industry_Electrical Equipment & Parts', 'industry_Uranium', 'industry_Asset Management',
+            'famaindustry_Recreation', 'famaindustry_Coal', 'category_ETN', 'netincnci', 'fxusd', 'currency_DKK', 'location_South Carolina; U.S.A',
+            'location_District Of Columbia; U.S.A', 'close_SMA_50', 'industry_Solar', 'category_ADR Common Stock Primary Class', 'location_China',
+            'industry_Security & Protection Services', 'industry_Auto & Truck Dealerships', 'industry_Business Equipment & Supplies',
+            'industry_Integrated Freight & Logistics', 'location_Taiwan', 'category_Canadian Preferred Stock', 'location_Panama', 'closeunadj', 'industry_Steel',
+            'industry_REIT - Specialty', 'famaindustry_Wholesale', 'location_Georgia; U.S.A', 'industry_Lodging', 'scalerevenue_1 - Nano', 'gp', 'eps',
+            'location_Wisconsin; U.S.A', 'industry_Oil & Gas Drilling', 'industry_Broadcasting - Radio', 'netincdis', 'location_Hawaii; U.S.A',
+            'industry_Semiconductor Memory', 'industry_Medical Care', 'location_South Dakota; U.S.A', 'currency_CAD', 'industry_REIT - Retail',
+            'famaindustry_Business Supplies', 'sector_Communication Services', 'ros', 'location_Canada (Federal Level)', 'marketcap', 'industry_Residential Construction',
+            'industry_Oil & Gas Equipment & Services', 'famaindustry_Automobiles and Trucks', 'buy_sell', 'location_Newfoundland; Canada', 'industry_Oil & Gas E&P',
+            'location_Washington; U.S.A', 'equity', 'location_Costa Rica', 'f22_id', 'location_Ontario; Canada', 'category_ADR Stock Warrant', 'currentratio',
+            'industry_Long-Term Care Facilities', 'equityusd', 'revenue', 'sector_Real Estate', 'industry_Trucking', 'scalemarketcap_<unknown>', 'location_Switzerland', 'ps',
+            'location_Pennsylvania; U.S.A', 'industry_Real Estate - Development', 'industry_Computer Systems', 'user_is_translation_enabled', 'industry_Medical Devices',
+            'industry_Electronic Gaming & Multimedia', 'high', 'industry_Rental & Leasing Services', 'netinccmn', 'industry_Drug Manufacturers - Major',
+            'location_Alberta; Canada', 'payables', 'currency_PEN', 'location_Virgin Islands; U.S.', 'sicsector_Services', 'location_Arkansas; U.S.A',
+            'close_SMA_15_days_since_under', 'industry_Furnishings', 'location_New York; U.S.A', 'location_Israel-Jordan', 'industry_Pollution & Treatment Controls',
+            'sector_Financial Services', 'industry_Shell Companies', 'location_Oman', 'location_Thailand', 'ncff', 'location_Nebraska; U.S.A', 'location_Brazil',
+            'location_Belgium', 'payoutratio', 'future_open', 'industry_Utilities - Renewable', 'industry_Internet Content & Information', 'industry_Tobacco',
+            'location_Isle Of Man', 'ncfdebt', 'industry_REIT - Office', 'industry_Specialty Industrial Machinery', 'industry_Lumber & Wood Production', 'ncfdiv', 'assetsc',
+            'liabilitiesnc', 'fcfps', 'industry_Oil & Gas Refining & Marketing', 'industry_Shipping & Ports', 'ncfo', 'location_Cayman Islands', 'invcapavg',
+            'location_Austria', 'industry_Health Care Plans', 'industry_Engineering & Construction', 'famaindustry_Rubber and Plastic Products', 'location_Indonesia',
+            'sbcomp', 'location_Delaware; U.S.A', 'industry_Savings & Cooperative Banks', 'table_SF1', 'location_Macau', 'assetsnc', 'industry_Coal',
+            'famaindustry_Printing and Publishing', 'ps1', 'famaindustry_Apparel', 'industry_Insurance - Life', 'location_Chile', 'currency_IDR', 'industry_Biotechnology',
+            'f22_has_cashtag', 'epsusd', 'industry_Consumer Electronics', 'location_Denmark', 'sector_Healthcare', 'famaindustry_Steel Works Etc', 'currency_MXN',
+            'famaindustry_Textiles', 'sicsector_Retail Trade', 'location_Montana; U.S.A', 'stock_val_change_ex', 'f22_sentiment_compound', 'close_SMA_20',
+            'location_Louisiana; U.S.A', 'location_Sweden', 'scalerevenue_3 - Small', 'roe', 'industry_Data Storage', 'industry_Insurance - Diversified',
+            'industry_Apparel Manufacturing', 'industry_Diversified Industrials', 'industry_Packaging & Containers', 'famaindustry_Electronic Equipment', 'assetturnover',
+            'location_United Arab Emirates', 'location_Alaska; U.S.A', 'industry_Grocery Stores', 'location_Indiana; U.S.A', 'location_Jersey', 'sgna', 'currency_INR',
+            'industry_Other Precious Metals & Mining', 'netinccmnusd', 'location_Germany', 'currency_NZD', 'category_IDX', 'currency_EUR', 'table_SEP',
+            'sector_Basic Materials', 'sicsector_<unknown>', 'ncfbus', 'cor', 'industry_Railroads', 'industry_Metal Fabrication', 'location_Utah; U.S.A',
+            'category_Domestic Common Stock', 'industry_Airports & Air Services', 'location_Gibraltar', 'scalemarketcap_5 - Large', 'category_Canadian Stock Warrant', 'close',
+            'industry_Beverages - Wineries & Distilleries', 'close_SMA_200', 'equityavg', 'revenueusd', 'location_Turkey', 'industry_Department Stores', 'pe1',
+            'location_Iowa; U.S.A', 'industry_Utilities - Independent Power Producers', 'location_Japan', 'days_util_sale', 'currency_RUB', 'shareswa', 'sicsector_Mining',
+            'location_Unknown', 'user_friends_count', 'assets', 'famaindustry_Petroleum and Natural Gas', 'industry_Insurance - Property & Casualty', 'grossmargin',
+            'location_Alabama; U.S.A', 'location_Rhode Island; U.S.A', 'location_Florida; U.S.A', 'location_Luxembourg', 'location_Jordan', 'industry_Building Materials',
+            'industry_Software - Application', 'location_Colombia', 'location_Bermuda', 'fd_day_of_year', 'cashnequsd', 'sector_<unknown>', 'fd_day_of_week',
+            'famaindustry_Insurance', 'famaindustry_Banking', 'scalemarketcap_4 - Mid', 'location_South Africa', 'currency_CNY', 'sicsector_Finance Insurance And Real Estate',
+            'sicsector_Construction', 'famaindustry_Computers', 'location_Saskatchewan; Canada', 'user_statuses_count', 'user_geo_enabled', 'f22_num_other_tickers_in_tweet',
+            'currency_TWD', 'industry_REIT - Industrial', 'f22_is_tweet_after_hours', 'user_screen_name', 'industry_Auto Parts', 'accoci', 'user_verified', 'roa',
+            'location_Bahamas', 'location_Virginia; U.S.A', 'location_Kansas; U.S.A', 'industry_Semiconductor Equipment & Materials', 'industry_Recreational Vehicles',
+            'industry_REIT - Mortgage', 'category_Domestic Stock Warrant', 'category_ETF', 'industry_Publishing', 'famaindustry_Business Services', 'industry_Copper',
+            'location_British Virgin Islands', 'currency_CHF', 'currency_AUD', 'location_Maldives', 'location_Greece', 'location_United States; U.S.A', 'ebitda', 'pb',
+            'location_Czech Republic', 'future_high', 'currency_KRW', 'industry_Staffing & Employment Services', 'pe', 'industry_Financial Conglomerates',
+            'industry_Home Improvement Stores', 'industry_Drug Manufacturers - Specialty & Generic', 'industry_REIT - Diversified', 'famaindustry_Real Estate',
+            'industry_Education & Training Services', 'industry_Computer Hardware', 'industry_Health Information Services', 'location_Mexico', 'sicsector_Manufacturing',
+            'industry_Real Estate Services', 'debtnc', 'currency_JPY', 'currency_COP', 'siccode', 'ncfx', 'category_ADR Common Stock Secondary Class',
+            'industry_Beverages - Soft Drinks', 'location_West Virginia; U.S.A', 'location_Illinois; U.S.A', 'location_Canada', 'industry_Scientific & Technical Instruments',
+            'famaindustry_Fabricated Products', 'f22_sentiment_pos', 'location_Michigan; U.S.A', 'netmargin', 'industry_Industrial Metals & Minerals', 'location_Italy',
+            'industry_Specialty Finance', 'location_Georgia U.S.A.', 'currency_MYR', 'future_date', 'location_Cyprus', 'industry_Household & Personal Products',
+            'close_SMA_20_days_since_under', 'location_Finland', 'deposits', 'ebitdausd', 'industry_Textile Manufacturing', 'f22_ticker_in_text', 'currency_ILS', 'ebitusd',
+            'location_<unknown>', 'famaindustry_Trading', 'location_Kentucky; U.S.A', 'close_SMA_100_days_since_under', 'location_North Carolina; U.S.A',
+            'industry_REIT - Hotel & Motel', 'industry_Banks - Regional', 'industry_Beverages - Non-Alcoholic', 'industry_Apparel Stores', 'f22_sentiment_neu',
+            'industry_Broadcasting', 'location_Maryland; U.S.A', 'industry_Gambling', 'famaindustry_Consumer Goods', 'sector_Consumer Cyclical',
+            'location_Nova Scotia; Canada', 'evebit', 'industry_Media - Diversified', 'investments', 'industry_Financial Exchanges', 'industry_Electronic Components',
+            'category_ADR Preferred Stock', 'industry_Farm Products', 'location_United Kingdom', 'user_listed_count', 'sector_Utilities', 'industry_Communication Equipment',
+            'industry_Utilities - Regulated Electric', 'industry_Telecom Services', 'industry_Capital Markets', 'industry_Banks - Regional - US', 'purchase_date',
+            'location_France', 'taxliabilities', 'industry_Airlines', 'sector_Industrials', 'famaindustry_Non-Metallic and Industrial Metal Mining', 'favorite_count', 'roic',
+            'industry_Broadcasting - TV', 'epsdil', 'industry_Gold', 'location_Argentina', 'sicsector_Public Administration', 'receivables',
+            'industry_Industrial Distribution', 'location_Oklahoma; U.S.A', 'location_Missouri; U.S.A', 'famasector', 'currency_NOK', 'debtusd',
+            'industry_Home Furnishings & Fixtures', 'industry_Resorts & Casinos', 'price', "location_Democratic People'S Republic Of Korea",
+            'industry_Other Industrial Metals & Mining', 'industry_Utilities - Regulated Gas', 'location_Idaho; U.S.A', 'location_Australia', 'ncfi',
+            'location_Republic Of Korea', 'industry_Packaged Foods', 'workingcapital', 'industry_Insurance Brokers', 'industry_Business Services', 'invcap', 'cashneq', 'de',
+            'location_United Republic Of Tanzania', 'ppnenet', 'industry_Personal Services', 'industry_Staffing & Outsourcing Services', 'future_low', 'prefdivis',
+            'category_Canadian Common Stock', 'roi', 'sicsector_Wholesale Trade', 'industry_Aluminum', 'location_Philippines', 'category_CEF', 'famaindustry_Chemicals',
+            'location_Saint Vincent And The Grenadines', 'famaindustry_Measuring and Control Equipment', 'date', 'industry_Mortgage Finance', 'famaindustry_Beer & Liquor',
+            'currency_<unknown>', 'industry_Credit Services', 'category_Canadian Common Stock Primary Class', 'famaindustry_Almost Nothing', 'scalerevenue_4 - Mid',
+            'category_Domestic Preferred Stock', 'currency_VEF', 'taxassets', 'industry_Semiconductors', 'location_Maine; U.S.A', 'location_Norway', 'location_Singapore',
+            'fd_day_of_month', 'famaindustry_Food Products', 'industry_Pharmaceutical Retailers', 'location_Ohio; U.S.A', 'industry_Utilities - Diversified',
+            'sector_Consumer Defensive', 'industry_Entertainment', 'scalerevenue_5 - Large', 'location_Texas; U.S.A', 'location_New Jersey; U.S.A',
+            'industry_Building Products & Equipment', 'ebt', 'location_Iceland', 'location_North Dakota; U.S.A', 'location_Hong Kong', 'famaindustry_Electrical Equipment',
+            'famaindustry_Healthcare', 'scalemarketcap_1 - Nano', 'industry_REIT - Healthcare Facilities', 'ncf', 'liabilitiesc', 'currency_ZAR', 'sps', 'liabilities',
+            'famaindustry_<unknown>', 'currency_USD', 'netinc', 'industry_Financial Data & Stock Exchanges', 'industry_Internet Retail', 'close_SMA_100',
+            'industry_Infrastructure Operations', 'industry_Healthcare Plans', 'location_Netherlands', 'industry_Leisure', 'opex',
+            'industry_Furnishings Fixtures & Appliances', 'location_New Mexico; U.S.A', 'industry_Consulting Services', 'location_Malta', 'user_followers_count', 'volume',
+            'industry_Oil & Gas Integrated', 'industry_Banks - Global', 'industry_Business Equipment', 'location_Minnesota; U.S.A', 'industry_Luxury Goods', 'evebitda',
+            'famaindustry_Shipbuilding Railroad Equipment', 'category_ADR Common Stock', 'location_Arizona; U.S.A', 'location_Nevada; U.S.A',
+            'industry_Medical Care Facilities', 'industry_Paper & Paper Products', 'location_Manitoba; Canada', 'consolinc', 'famaindustry_Precious Metals',
+            'industry_Chemicals', 'famaindustry_Personal Services', 'f22_day_tweet_count']
+
+    cols = [c for c in cols if not c.startswith("location_")]
+    cols = [c for c in cols if not c.startswith("currency_")]
+    cols = [c for c in cols if not c.startswith("industry_")]
+    cols = [c for c in cols if not c.startswith("famaindustry_")]
+    cols = [c for c in cols if not c.startswith("category_")]
+    cols = [c for c in cols if not c.startswith("sector_")]
+    cols = [c for c in cols if not c.startswith("scalerevenue_")]
+    cols = [c for c in cols if not c.startswith("table_")]
+    cols = [c for c in cols if not c.startswith("sicsector_")]
+    cols = [c for c in cols if not c.startswith("scalemarketcap_")]
+
+    cols = list(set(cols) - {'sharesbas', 'sps', 'ps', 'receivables', 'debtnc', 'invcap', 'sbcomp', 'workingcapital',
+                             'taxliabilities', 'ebt', 'retearn', 'accoci', 'invcapavg', 'liabilitiesnc', 'pb', 'taxassets',
+                             'revenueusd', 'price', 'netincdis', 'sharefactor', 'netmargin', 'ncfcommon', 'investmentsc', 'opinc',
+                             'inventory', 'eps', 'de', 'sgna', 'siccode', 'fxusd', 'revenue', 'opex', 'cashnequsd', 'tbvps', 'shareswa',
+                             'ros', 'evebitda', 'ncfdebt', 'consolinc', 'ncfinv', 'deposits', 'marketcap', 'ev', 'roe', 'payoutratio',
+                             'investmentsnc', 'equity', 'roa', 'divyield', 'investmentsnc', 'equity', 'roa', 'divyield', 'ps1',
+                             'shareswadil', 'liabilitiesc', 'gp', 'tangibles', 'epsusd', 'assetsnc', 'ppnenet', 'epsdil', 'ncfdiv',
+                             'ncfi', 'payables', 'fcfps', 'investments', 'cashneq', 'roic', 'currentratio', 'ebit', 'ebitda',
+                             'volume', 'ncfo', 'netinc', 'netinccmn', 'debt', 'pe', 'debtc', 'rnd', 'evebit', 'ebitusd', 'netincnci',
+                             'assetsc', 'assetsavg', 'assetturnover', 'taxexp', 'ebitdausd', 'liabilities', 'capex', 'prefdivis',
+                             'netinccmnusd', 'depamor', 'famasector', 'dps', 'assets', 'fcf', 'ebitdamargin', 'equityusd', 'ncfx',
+                             'ncfbus', 'equityavg', 'dividends', 'cor', 'grossmargin', 'ncff', 'intangibles', 'debtusd', 'bvps', 'pe1',
+                             'intexp', 'ncf'
+                             })
+    print(f"Cols: {cols}")
+
+    # 'buy_sell', 'date', 'purchase_date', "future_open", 'future_low', "future_high",
+    # "future_close", "stock_val_change_ex",
+    # "stock_val_change_scaled", "stock_val_change", "roi", "user_screen_name",
+    # "future_date", "user_follow_request_sent", "f22_ticker"
+
+    # 'favorite_count', -
+    # 'close_SMA_20', -
+    # 'future_low', X
+    # 'close_SMA_15_days_since_under', -
+    # 'user_has_extended_profile', -
+    # 'high', -
+    # 'close_SMA_20_days_since_under', -
+    # 'f22_id', -
+    # 'close_SMA_15', -
+    # 'f22_sentiment_neg',
+    # 'f22_compound_score',
+    # 'buy_sell', X
+    # 'roi',
+    # 'possibly_sensitive', -
+    # 'f22_day_tweet_count', -
+    # 'f22_is_tweet_after_hours', -
+    # 'stock_val_change', X
+    # 'user_statuses_count', -
+    # 'close_SMA_100_days_since_under', -
+    # 'future_high', X
+    # 'close_SMA_50_days_since_under', -
+    # 'user_screen_name', -
+    # 'user_listed_count', -
+    # 'f22_sentiment_pos', -
+    # 'close_SMA_200', -
+    # 'deferredrev', -
+    # 'user_followers_count', -
+    # 'user_friends_count', -
+    # 'future_close', X
+    # 'close', -
+    # 'f22_sentiment_neu', X
+    # 'future_date', -
+    # 'close_SMA_50', -
+    # 'low', -
+    # 'fd_day_of_week', -
+    # 'days_util_sale', -
+    # 'f22_sentiment_compound', -
+    # 'closeunadj', -
+    # 'open', -
+    # 'future_open', X
+    # 'stock_val_change_ex', X
+    # 'user_verified', -
+    # 'retweet_count', -
+    # 'f22_ticker', X
+    # 'fd_day_of_year', -
+    # 'f22_ticker_in_text', -
+    # 'date', X
+    # 'user_protected', -
+    # 'purchase_date', X
+    # 'user_follow_request_sent', -
+    # 'user_geo_enabled', -
+    # 'close_SMA_200_days_since_under', -
+    # 'original_close_price', -
+    # 'f22_has_cashtag', -
+    # 'days_since', -
+    # 'f22_num_other_tickers_in_tweet', -
+    # 'close_SMA_100', -
+    # 'fd_day_of_month', -
+    # 'user_is_translation_enabled' -x
+    # Act
+
     # Assert
 
 
