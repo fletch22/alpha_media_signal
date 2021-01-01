@@ -918,7 +918,7 @@ def num_days_from(from_date: str, to_date: str):
     return (to_dt - from_dt).days
 
 
-def add_days_since_quarter_results(df: pd.DataFrame):
+def add_days_since_quarter_results(df: pd.DataFrame, should_drop_missing_future_date: bool=True):
     df = df.dropna(axis="rows", subset=["datekey", "future_date"])
 
     df["days_since"] = df.apply(lambda x: num_days_from(x["datekey"], x["future_date"]), axis=1)

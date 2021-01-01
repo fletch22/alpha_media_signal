@@ -356,9 +356,9 @@ def search_with_multi_thread_double(date_range: DateRange):
         pt.end()
 
 
-def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_days_in_future: int = 1):
+def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_days_in_future: int = 1, should_drop_missing_future_dates: bool=True):
     ttd = ticker_service.extract_ticker_tweet_dates(df_tweets)
-    return ticker_service.get_ticker_on_dates(ttd, num_days_in_future=num_days_in_future)
+    return ticker_service.get_ticker_on_dates(ttd, num_days_in_future=num_days_in_future, should_drop_missing_future_dates=should_drop_missing_future_dates)
 
 
 def get_rec_quarter_for_twitter():
