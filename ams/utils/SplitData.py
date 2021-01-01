@@ -1,6 +1,8 @@
+from typing import List
+
 import numpy as np
 import pandas as pd
-from typing import List
+
 
 class SplitData():
     X_train = None
@@ -39,13 +41,3 @@ class SplitData():
         self.df_val_std = df_val_std
         self.train_cols = train_cols
         self.has_enough_data = has_enough_data
-
-# SplitData(X_train=None,
-#           y_train=None,
-#           X_test=None,
-#           y_test=None,
-#           df_test_raw=None,
-#           df_test_std=None,
-#           train_cols=[],
-#           has_enough_data=False
-# )

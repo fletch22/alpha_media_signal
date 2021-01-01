@@ -1,11 +1,9 @@
 import json
 import statistics
 
-import findspark
-
 from ams.DateRange import DateRange
 from ams.config import constants
-from ams.services import twitter_service, spark_service
+from ams.services import twitter_service, ticker_service
 
 
 def test_tuples():
@@ -124,25 +122,59 @@ def test_twitter_trade_history():
 
     df = df.sample(frac=1.0)
 
-    # df = df[df["purchase_price"] > 5.]
+    df = df[df["purchase_price"] > 5.]
 
     df["roi"] = (df["sell_price"] - df["purchase_price"]) / df["purchase_price"]
 
     df_g = df.groupby(by=["purchase_dt"])
 
     all_days = []
-    max_stock_buy = 4
+    max_stock_buy = 8
     for ndx, (group_name, df_group) in enumerate(df_g):
-        df_day = df_group
-        num_samples = df_day.shape[0]
+        num_samples = df_group.shape[0]
         num_samples = max_stock_buy if num_samples >= max_stock_buy else num_samples
-        day_mean = df_day.iloc[:num_samples]["roi"].mean()
+        df_g_samp = df_group.iloc[:num_samples]
+        day_mean = df_g_samp["roi"].mean()
+        tickers = df_g_samp["ticker"].to_list()
+        print(tickers)
         all_days.append(day_mean)
 
     print(f'roi with max stock buy {max_stock_buy}: {statistics.mean(all_days)} ')
-
-
-
     print(df['roi'].mean())
-    # print(df["roi"].to_list())
-    # print(df.head())
+    print(f"Total trades: {len(all_days)}: {all_days}")
+
+    initial_inv = 1000
+    total = initial_inv
+    for roi in all_days:
+       ret = total * roi
+       total += ret
+    print(f"Total roi: {(total - initial_inv) / initial_inv}")
+
+    # validate_roi_data(df)
+
+
+
+
+def validate_roi_data(df):
+    df_samp = df.iloc[:1000]
+    num_days_to_wait = 5
+    cols = ["future_close", "future_date"]
+    for index, row in df_samp.iterrows():
+        ticker = row["ticker"]
+        purchase_date = row["purchase_dt"]
+        purchase_price = row["purchase_price"]
+        sell_price = row["sell_price"]
+
+        df_tick = ticker_service.get_ticker_eod_data(ticker=ticker)
+        df_tick["future_close"] = df_tick["close"]
+        df_tick["future_date"] = df_tick["date"]
+        df_tick[cols] = df_tick[cols].shift(-num_days_to_wait)
+        df_tick = df_tick[df_tick["date"] == purchase_date]
+        tick_row = df_tick.iloc[0]
+        close = tick_row["close"]
+        future_close = tick_row["future_close"]
+
+        print(f"PP: {purchase_price}; SP: {sell_price}")
+        print(f"close: {close}; fp: {future_close}")
+        assert (round(purchase_price, 3) == round(close, 3))
+        assert (round(sell_price, 3) == round(future_close, 3))

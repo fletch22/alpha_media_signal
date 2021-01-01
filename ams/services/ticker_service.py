@@ -94,16 +94,19 @@ def get_start_end_dates(date_strs: List[str]):
     return start_date, end_date_adj
 
 
-def get_ticker_on_dates(tick_dates: Dict[str, List[str]],
-                        num_days_in_future: int = 1) -> pd.DataFrame:
-    df_list = []
+def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_days_in_future: int = 1, should_drop_na: bool=True) -> pd.DataFrame:
+
+    all_dfs = []
     for ticker, date_strs in tick_dates.items():
         df_equity = get_equity_on_dates(ticker=ticker, date_strs=date_strs,
                                         num_days_in_future=num_days_in_future)
         if df_equity is not None:
-            df_list.append(df_equity)
-    df_ticker = pd.concat(df_list).dropna(
-        subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
+            all_dfs.append(df_equity)
+
+    df_ticker = pd.concat(all_dfs)
+
+    if should_drop_na:
+        df_ticker = df_ticker.dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
 
     return df_ticker
 
