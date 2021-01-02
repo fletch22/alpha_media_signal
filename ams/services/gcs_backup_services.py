@@ -59,11 +59,16 @@ def backup_project_to_gcs(include_data: bool = True):
 
             backup_file(constants.TWITTER_TEXT_LABEL_TRAIN_PATH, output_path=Path(t, "twitter_text_with_proper_labels.zip"))
 
-            source_data_dir = Path(constants.DATA_PATH, "twitter", "learning_prep_drop", "main")
-            output_path = Path(t, f"lpd.zip")
+            source_data_dir = Path(constants.DATA_PATH, "twitter", "tip_ranked", "main")
+            output_path = Path(t, f"tip_ranked.zip")
+            backup_folder(source_data_dir, output_path=output_path)
+
+            source_data_dir = Path(constants.DATA_PATH, "twitter", "great_reduction", "main")
+            output_path = Path(t, f"great_reduction.zip")
             backup_folder(source_data_dir, output_path=output_path)
 
             backup_file(constants.DAILY_ROI_NASDAQ_PATH, output_path=Path(t, "daily_roi_nasdaq.parquet.zip"))
+            backup_file(constants.US_MARKET_HOLIDAYS_PATH, output_path=Path(t, "us_market_holidays.csv.zip"))
 
         shell_script = Path(constants.PROJECT_ROOT, "scripts", "gc_install.sh")
         output_path = Path(t, shell_script.name)
@@ -82,4 +87,4 @@ def backup_project_to_gcs(include_data: bool = True):
 
 
 if __name__ == '__main__':
-    backup_project_to_gcs(include_data=False)
+    backup_project_to_gcs(include_data=True)

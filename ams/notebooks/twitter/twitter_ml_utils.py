@@ -29,6 +29,7 @@ from ams.utils.Stopwatch import Stopwatch
 num_iterations = 1
 
 EquityHolding = collections.namedtuple('EquityHolding', 'ticker purchase_price num_shares purchase_dt, expiry_dt')
+TwitterModelPackage = collections.namedtuple("TwitterModelPackage", "model cat_uniques")
 
 BATCH_SIZE = 1
 LEARNING_RATE = .0001
@@ -215,8 +216,9 @@ def split_off_data(df: pd.DataFrame, narrow_cols: List[str], tickers: List[str] 
 
             df_train_std, df_test_std, df_val_std = ticker_service.std_dataframe(df_train=df_train_raw, df_test=df_test_raw, df_val=df_val_raw)
 
+            train_cols = twitter_service.get_feature_columns(narrow_cols)
             X_train, y_train, X_test, y_test, train_cols = twitter_service.split_train_test(train_set=df_train_std, test_set=df_test_std,
-                                                                                            narrow_cols=narrow_cols)
+                                                                                            train_cols=train_cols)
 
         return SplitData(X_train=X_train,
                          y_train=y_train,
@@ -742,26 +744,6 @@ def add_tip_ranks(df: pd.DataFrame, tr_file_path: Path):
 
     return df_ranked
 
-
-def make_f22_ticker_one_hotted(df_ranked: pd.DataFrame):
-    cols = ["f22_ticker"]
-    df = df_ranked[cols].copy()
-    df_one_hots = []
-    for c in cols:
-        df[c] = df[c].fillna("<unknown>")
-        uniques = df[c].unique().tolist()
-        uniques.append("<unknown>")
-        uniques = list(set(uniques))
-
-        df[c] = df[c].astype(CategoricalDtype(uniques))
-        df_new_cols = pd.get_dummies(df[c], prefix=c)
-        df_one_hots.append(df_new_cols)
-
-    df_hot_cols = pd.concat(df_one_hots, axis=1)
-
-    return pd.concat([df_ranked, df_hot_cols], axis=1)
-
-
 def show_distribution(df: pd.DataFrame, group_column_name: str = "date"):
     df.sort_values(by=[group_column_name], inplace=True)
 
@@ -918,7 +900,7 @@ def num_days_from(from_date: str, to_date: str):
     return (to_dt - from_dt).days
 
 
-def add_days_since_quarter_results(df: pd.DataFrame, should_drop_missing_future_date: bool=True):
+def add_days_since_quarter_results(df: pd.DataFrame, should_drop_missing_future_date: bool = True):
     df = df.dropna(axis="rows", subset=["datekey", "future_date"])
 
     df["days_since"] = df.apply(lambda x: num_days_from(x["datekey"], x["future_date"]), axis=1)
@@ -965,8 +947,8 @@ def add_sma_stuff(df: pd.DataFrame):
     return ticker_utils.add_days_since_under_sma_many_tickers(df=df, col_sma="close_SMA_100", close_col="close")
 
 
-def xgb_learning(df: pd.DataFrame, narrow_cols: List[str]):
-    min_train_rows = 50
+def xgb_learning(df: pd.DataFrame, narrow_cols: List[str], cat_uniques: Dict[str, List[str]]):
+    min_train_rows = 10
     num_iterations = 500
 
     zero_in = True
@@ -994,19 +976,24 @@ def xgb_learning(df: pd.DataFrame, narrow_cols: List[str]):
                 model.fit(X_train, y_train)
 
                 if i == 0:
-                    pickle_service.save(model, str(constants.TWITTER_XGB_MODEL_PATH))
+                    print(len(cat_uniques["f22_ticker"]))
+                    twit_model_package = TwitterModelPackage(model=model, cat_uniques=cat_uniques)
+                    pickle_service.save(twit_model_package, str(constants.TWITTER_XGB_MODEL_PATH))
+
+                    model_xgb = pickle_service.load(constants.TWITTER_XGB_MODEL_PATH)
+                    print(len(model_xgb.cat_uniques["f22_ticker"]))
 
                 best_model = model
 
                 sac_mean = twitter_ml_utils.calc_nn_roi(df_val_raw=df_val_raw,
-                                                             df_val_std=df_val_std,
-                                                             model=best_model,
-                                                             train_cols=train_cols,
-                                                             target_roi_frac=target_roi_frac,
-                                                             zero_in=zero_in,
-                                                             is_model_torch=False,
-                                                             is_batch_first_run=(i == 0)
-                                                             )
+                                                        df_val_std=df_val_std,
+                                                        model=best_model,
+                                                        train_cols=train_cols,
+                                                        target_roi_frac=target_roi_frac,
+                                                        zero_in=zero_in,
+                                                        is_model_torch=False,
+                                                        is_batch_first_run=(i == 0)
+                                                        )
 
                 sac_list.append(sac_mean)
 
@@ -1016,9 +1003,23 @@ def xgb_learning(df: pd.DataFrame, narrow_cols: List[str]):
             else:
                 print("No data from split_off_data.")
 
-                df, has_remaining_days = twitter_service.remove_last_days(df=df, num_days=1)
+        df, has_remaining_days = twitter_service.remove_last_days(df=df, num_days=1)
 
-                if not has_remaining_days:
-                    print("No more remaining days to test.")
+        if not has_remaining_days:
+            print("No more remaining days to test.")
+
+        # FIXME: 2021-01-01: chris.flesche: Temporary
+        break
 
     return sac_list
+
+
+def add_future_date_for_nan(df: pd.DataFrame, num_days_in_future: int):
+    def get_next_market_date(future_date: str, num_days: int):
+        dt = date_utils.parse_std_datestring(future_date)
+        return date_utils.get_standard_ymd_format(date_utils.find_next_market_open_day(dt, num_days))
+
+    col_future_date = "future_date"
+    df.loc[df[col_future_date].isnull(), col_future_date] = df.loc[df[col_future_date].isnull(), "date"].apply(lambda fd: get_next_market_date(fd, num_days_in_future))
+
+    return df

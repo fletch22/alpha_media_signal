@@ -94,8 +94,7 @@ def get_start_end_dates(date_strs: List[str]):
     return start_date, end_date_adj
 
 
-def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_days_in_future: int = 1, should_drop_missing_future_dates: bool=True) -> pd.DataFrame:
-
+def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_days_in_future: int = 1) -> pd.DataFrame:
     all_dfs = []
     for ticker, date_strs in tick_dates.items():
         df_equity = get_equity_on_dates(ticker=ticker, date_strs=date_strs,
@@ -105,8 +104,8 @@ def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_days_in_future: in
 
     df_ticker = pd.concat(all_dfs)
 
-    if should_drop_missing_future_dates:
-        df_ticker = df_ticker.dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
+    # FIXME: 2021-01-01: chris.flesche: Decide if we really need to remove this.
+    # return df_ticker.dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
 
     return df_ticker
 
@@ -265,13 +264,22 @@ def get_nasdaq_info():
     return df[df["exchange"] == "NASDAQ"]
 
 
-def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[str]):
+def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[str], cat_uniques: Dict[str, List[str]] = None) -> (pd.DataFrame, Dict[str, List[str]]):
     df_one_hots = []
+
+    cat_uniques_new = dict()
     for c in cols:
         df_all_tickers[c] = df_all_tickers[c].fillna("<unknown>")
-        uniques = df_all_tickers[c].unique().tolist()
-        uniques.append("<unknown>")
-        uniques = list(set(uniques))
+
+        if cat_uniques is not None and c in cat_uniques.keys():
+            uniques = cat_uniques[c]
+            df.loc[~df[c].isin(uniques), c] = "<unknown>"
+        else:
+            uniques = df_all_tickers[c].unique().tolist()
+            uniques.append("<unknown>")
+            uniques = list(set(uniques))
+
+        cat_uniques_new[c] = uniques
 
         df[c] = df[c].fillna("<unknown>")
         df[c] = df[c].astype(CategoricalDtype(uniques))
@@ -281,20 +289,32 @@ def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[s
     df_one_dropped = df.drop(columns=cols)
     df_one_hots.append(df_one_dropped)
 
-    return pd.concat(df_one_hots, axis=1)
+    return pd.concat(df_one_hots, axis=1), cat_uniques_new
 
 
-def make_one_hotted_for_one_column(df: pd.DataFrame, unique_values: List[str], col: str):
+def make_f22_ticker_one_hotted(df_ranked: pd.DataFrame, cat_uniques: Dict[str, List[str]] = None) -> (pd.DataFrame, Dict[str, List[str]]):
+    col = "f22_ticker"
+    df = df_ranked[[col]].copy()
     df[col] = df[col].fillna("<unknown>")
-    df[col] = df[col].astype(CategoricalDtype(unique_values))
-    df_new_cols = pd.get_dummies(df[col], prefix=col)
 
-    df_dropped = df.drop(columns=[col])
+    if cat_uniques is not None and col in cat_uniques.keys():
+        print("Using cat_uniques.")
+        unique_tickers = cat_uniques[col]
+        print(f"Num unique_tickers: {len(unique_tickers)}")
+        df.loc[~df[col].isin(unique_tickers), col] = "<unknown>"
+    else:
+        print("cat_uniques is not used.")
+        unique_tickers = df[col].unique().tolist()
+        unique_tickers.append("<unknown>")
+        unique_tickers = list(set(unique_tickers))
 
-    return pd.concat([df_dropped, df_new_cols], axis=1)
+    df[col] = df[col].astype(CategoricalDtype(unique_tickers))
+    df_new_col = pd.get_dummies(df[col], prefix=col)
+
+    return pd.concat([df_ranked, df_new_col], axis=1), unique_tickers
 
 
-def get_nasdaq_tickers():
+def get_nasdaq_tickers(cat_uniques: Dict[str, List[str]]):
     df_nasdaq = get_nasdaq_info()
 
     df_dropped = df_nasdaq.drop(
@@ -310,11 +330,11 @@ def get_nasdaq_tickers():
     columns = [c for c in df_rem.columns if str(df_rem[c].dtype) == "object"]
     columns.remove("ticker")
 
-    df_one_hotted = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns)
+    df_one_hotted, cat_uniques = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns, cat_uniques=cat_uniques)
 
     df_ren = df_one_hotted.rename(columns={"ticker": "ticker_drop"})
 
-    return df_ren
+    return df_ren, cat_uniques
 
 
 def std_dataframe(df_train: pd.DataFrame, df_test: pd.DataFrame, df_val: pd.DataFrame):
@@ -349,7 +369,6 @@ def fillna_column(df: pd.DataFrame, col: str):
     median = 0 if str(median) == 'nan' else median
     with pd.option_context('mode.chained_assignment', None):
         df.loc[df[col].isnull(), col] = median
-        # df[col] = df[col].fillna(median)
 
     return df
 
@@ -560,6 +579,3 @@ def create_tickers_available_on_day():
 
 def load_tickers_on_day() -> Dict:
     return pickle_service.load(file_path=constants.TOD_PICKLE_PATH)
-
-
-

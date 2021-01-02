@@ -1,8 +1,11 @@
 from datetime import datetime, timedelta
 
+import pandas as pd
 import pytz
 from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType
+
+from ams.config import constants
 
 TZ_AMERICA_NEW_YORK = 'America/New_York'
 
@@ -14,11 +17,9 @@ TWITTER_FORMAT = '%Y%m%D%H%M'
 
 TWITTER_LONG_FORMAT = "%a %b %d %H:%M:%S %z %Y"
 
-stock_market_holidays = ["2020-01-01", "2020-01-20", "2020-01-17", "2020-04-10", "2020-05-25",
-                         "2020-07-03", "2020-09-07", "2020-11-26", "2020-12-25"]
-
 NASDAQ_CLOSE_AT_ONE_PM_DATES = ["2020-11-27", "2020-12-24"]
 
+stock_market_holidays = None
 
 def parse_twitter_date_string(date_string: str):
     return datetime.strptime(date_string, TWITTER_LONG_FORMAT).timestamp()
@@ -92,24 +93,33 @@ def convert_timestamp_to_nyc_date_str(utc_timestamp):
     return get_standard_ymd_format(dt_nyc)
 
 
+def get_market_holidays() -> str:
+    global stock_market_holidays
+    if stock_market_holidays is None:
+        stock_market_holidays = pd.read_csv(constants.US_MARKET_HOLIDAYS_PATH)["date"].to_list()
+
+    return stock_market_holidays
+
+
 def is_stock_market_closed(dt: datetime):
+    date_str = get_standard_ymd_format(dt)
+    max_date = sorted(get_market_holidays())[-1]
+    if date_str > max_date:
+        raise Exception("Encountered error trying to determine if market is closed. Date in question exceeds available data.")
     is_closed = False
     if dt.weekday() > 5:
         is_closed = True
     else:
-        dt_str = get_standard_ymd_format(dt)
-        if dt_str in stock_market_holidays:
+        if date_str in get_market_holidays():
             is_closed = True
     return is_closed
 
 
-def get_nasdaq_trading_days_from(dt: datetime, num_days: int):
-    time_dir = -1
-    if num_days > 0:
-        time_dir = 1
-    for n in range(abs(num_days)):
-        while True:
-            dt = dt + timedelta(days=time_dir)
-            if not is_stock_market_closed(dt):
-                break
+def find_next_market_open_day(dt: datetime, num_days_to_skip: int):
+    while True:
+        dt = dt + timedelta(days=num_days_to_skip)
+        if is_stock_market_closed(dt):
+            num_days_to_skip = 1
+        else:
+            break
     return dt

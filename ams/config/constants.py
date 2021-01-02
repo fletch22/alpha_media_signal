@@ -138,3 +138,5 @@ if not CREDENTIALS_ROOT.exists():
 slack_cred_path = os.path.join(CREDENTIALS_ROOT, 'slack.json')
 with open(slack_cred_path, "r") as f:
     SLACK_CREDENTIALS = json.loads(f.read())
+
+US_MARKET_HOLIDAYS_PATH = Path(FIN_DATA, "us_market_holidays.csv")

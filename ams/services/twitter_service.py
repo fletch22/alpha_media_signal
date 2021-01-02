@@ -356,9 +356,9 @@ def search_with_multi_thread_double(date_range: DateRange):
         pt.end()
 
 
-def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_days_in_future: int = 1, should_drop_missing_future_dates: bool=True):
+def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_days_in_future: int = 1):
     ttd = ticker_service.extract_ticker_tweet_dates(df_tweets)
-    return ticker_service.get_ticker_on_dates(ttd, num_days_in_future=num_days_in_future, should_drop_missing_future_dates=should_drop_missing_future_dates)
+    return ticker_service.get_ticker_on_dates(ttd, num_days_in_future=num_days_in_future)
 
 
 def get_rec_quarter_for_twitter():
@@ -622,18 +622,9 @@ def balance_df(df: pd.DataFrame):
     return pd.concat([df_samp_buy, df_samp_sell]).sample(frac=1.0)
 
 
-def split_train_test(train_set: pd.DataFrame, test_set: pd.DataFrame, narrow_cols: List[str], label_col: str = "buy_sell"):
-    col_ticker = "f22_ticker"
-
+def split_train_test(train_set: pd.DataFrame, test_set: pd.DataFrame, train_cols: List[str], label_col: str = "buy_sell"):
     train_set_bal = balance_df(train_set)
     test_set_bal = balance_df(test_set)
-
-    omit_cols = {'buy_sell', 'date', 'purchase_date', "future_open", 'future_low', "future_high",
-                 "future_close", "stock_val_change_ex",
-                 "stock_val_change_scaled", "stock_val_change", "roi", "user_screen_name",
-                 "future_date", "user_follow_request_sent", col_ticker}
-
-    train_cols = list(set(narrow_cols) - omit_cols)
 
     X_train = np.array(train_set_bal[train_cols])
     X_test = np.array(test_set_bal[train_cols])
@@ -642,6 +633,15 @@ def split_train_test(train_set: pd.DataFrame, test_set: pd.DataFrame, narrow_col
     y_test = np.array(test_set_bal[label_col])
 
     return X_train, y_train, X_test, y_test, train_cols
+
+
+def get_feature_columns(narrow_cols):
+    omit_cols = {'buy_sell', 'date', 'purchase_date', "future_open", 'future_low', "future_high",
+                 "future_close", "stock_val_change_ex",
+                 "stock_val_change_scaled", "stock_val_change", "roi", "user_screen_name",
+                 "future_date", "user_follow_request_sent", "f22_ticker"}
+    train_cols = list(set(narrow_cols) - omit_cols)
+    return train_cols
 
 
 def split_by_ticker(df: pd.DataFrame):

@@ -1,6 +1,7 @@
 import random
 from datetime import timedelta, datetime
 
+import pytest
 import pytz
 
 from ams.utils import date_utils
@@ -85,7 +86,7 @@ def test_get_prev_nasdaq_dt():
     print(list(range(-3)))
 
     # Act
-    dt_prev = date_utils.get_nasdaq_trading_days_from(dt=dt_sept, num_days=-7)
+    dt_prev = date_utils.find_next_market_open_day(dt=dt_sept, num_days_to_skip=-7)
 
     # Assert
     assert (abs((dt_prev - dt_sept).days) > 7)
@@ -114,3 +115,24 @@ def test_foo():
     print(df.head())
 
     # pd.Timestamp("2019-04-12").dayofweek
+
+
+def test_is_stock_market_closed():
+    # Arrange
+    dt = date_utils.parse_std_datestring("2021-07-05")
+
+    # Act
+    is_closed = date_utils.is_stock_market_closed(dt=dt)
+
+    # Assert
+    assert (is_closed)
+
+
+def test_is_stock_market_closed_raises():
+    # Arrange
+    dt = date_utils.parse_std_datestring("9999-07-05")
+
+    # Act
+    with pytest.raises(Exception):
+        # Assert
+        is_closed = date_utils.is_stock_market_closed(dt=dt)

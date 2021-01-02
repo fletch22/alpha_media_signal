@@ -38,8 +38,11 @@ cp ./in_domain_dev.tsv /home/jupyter/overflow_workspace/data/cola/cola_public_1.
 cp ./in_domain_train.tsv /home/jupyter/overflow_workspace/data/cola/cola_public_1.1/cola_public/raw/
 cp ./out_of_domain_dev.tsv /home/jupyter/overflow_workspace/data/cola/cola_public_1.1/cola_public/raw/
 
-mkdir -p /home/jupyter/data/twitter/learning_prep_drop/lpd/
-unzip -o lpd.zip -d /home/jupyter/data/twitter/learning_prep_drop/lpd/
+mkdir -p /home/jupyter/data/twitter/tip_ranked/main/
+unzip -o tip_ranked.zip -d /home/jupyter/data/twitter/tip_ranked/main/
+
+mkdir -p /home/jupyter/data/twitter/great_reduction/main/
+unzip -o great_reduction.zip -d /home/jupyter/data/twitter/great_reduction/main/
 
 mkdir -p /home/jupyter/overflow_workspace/data/financial/quandl/
 unzip -o daily_roi_nasdaq.parquet.zip -d /home/jupyter/overflow_workspace/data/financial/quandl/
