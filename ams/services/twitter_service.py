@@ -573,7 +573,7 @@ def rnd_forest_clf(X_train: np.array, y_train: np.array, X_test: np.array, y_tes
 def train_mlp(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np.array):
     start = time.time()
     num_input_features = X_train.shape[1]
-    classes = 2 # Buy/Sell
+    classes = 2  # Buy/Sell
     num_hidden_neurons = int(num_input_features / classes)
     clf = MLPClassifier(hidden_layer_sizes=(num_hidden_neurons), max_iter=800, tol=1e-19, activation='relu',
                         solver='adam')
@@ -633,6 +633,15 @@ def split_train_test(train_set: pd.DataFrame, test_set: pd.DataFrame, train_cols
     y_test = np.array(test_set_bal[label_col])
 
     return X_train, y_train, X_test, y_test, train_cols
+
+
+def split_df_for_learning(df: pd.DataFrame, train_cols: List[str], label_col: str = "buy_sell"):
+    df_set_bal = balance_df(df)
+
+    X = np.array(df_set_bal[train_cols])
+    y = np.array(df_set_bal[label_col])
+
+    return X, y
 
 
 def get_feature_columns(narrow_cols):

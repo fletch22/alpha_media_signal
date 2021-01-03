@@ -1362,3 +1362,32 @@ def test_compare_columns():
     print(len(from_train))
     print(missing_from_pred)
     # assert(from_train == from_predict)
+
+
+def test_prediction():
+    import pandas as pd
+
+    # Arrange
+    df = pd.read_csv(constants.TWITTER_PREDICTIONS_PATH)
+    date_str = "2020-10-26"
+    df = df[df["purchase_date"] == date_str]
+
+    # Act
+    tickers = df["f22_ticker"].to_list()
+    num_hold_days = 5
+    rois = []
+    for t in tickers:
+        df_tick = ticker_service.get_ticker_eod_data(t)
+        df_tick = df_tick[df_tick["date"] >= date_str]
+        df_tick.sort_values(by=["date"], inplace=True)
+        purchase_price = df_tick.iloc[0]["close"]
+        if df_tick.shape[0] > num_hold_days - 1:
+            sell_price = df_tick.iloc[num_hold_days - 1]["close"]
+            rois.append((sell_price - purchase_price) / purchase_price)
+
+    if len(rois) > 0:
+        print(statistics.mean(rois))
+    else:
+        print("no data found.")
+
+    # Assert

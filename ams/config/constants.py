@@ -140,3 +140,8 @@ with open(slack_cred_path, "r") as f:
     SLACK_CREDENTIALS = json.loads(f.read())
 
 US_MARKET_HOLIDAYS_PATH = Path(FIN_DATA, "us_market_holidays.csv")
+
+TWITTER_GREAT_REDUCTION_DIR = Path(TWITTER_OUTPUT_RAW_PATH, "great_reduction")
+
+TWITTER_PREDICTIONS_PATH = Path(TWITTER_MODEL_PATH, "predictions", "predictions.csv")
+ensure_dir(TWITTER_PREDICTIONS_PATH.parent)

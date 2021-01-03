@@ -1,8 +1,9 @@
 import csv
+from pathlib import Path
 from typing import List, Dict
 
 
-def write_dicts_as_csv(output_file_path, overwrite: bool, rows: List[Dict]):
+def write_dicts_as_csv(output_file_path: Path, overwrite: bool, rows: List[Dict]):
     field_names = rows[0].keys()
 
     if overwrite or not output_file_path.exists():

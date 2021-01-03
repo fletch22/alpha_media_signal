@@ -104,9 +104,6 @@ def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_days_in_future: in
 
     df_ticker = pd.concat(all_dfs)
 
-    # FIXME: 2021-01-01: chris.flesche: Decide if we really need to remove this.
-    # return df_ticker.dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
-
     return df_ticker
 
 
@@ -261,28 +258,28 @@ def get_ticker_info():
 
 def get_nasdaq_info():
     df = get_ticker_info()
-    return df[df["exchange"] == "NASDAQ"]
+    return df.loc[df["exchange"] == "NASDAQ"]
 
 
 def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[str], cat_uniques: Dict[str, List[str]] = None) -> (pd.DataFrame, Dict[str, List[str]]):
     df_one_hots = []
-
+    unknown_val = "<unknown>"
     cat_uniques_new = dict()
     for c in cols:
-        df_all_tickers[c] = df_all_tickers[c].fillna("<unknown>")
+        df_all_tickers.loc[pd.isnull(df_all_tickers[c]), c] = unknown_val
 
         if cat_uniques is not None and c in cat_uniques.keys():
             uniques = cat_uniques[c]
-            df.loc[~df[c].isin(uniques), c] = "<unknown>"
+            df.loc[~df[c].isin(uniques), c] = unknown_val
         else:
             uniques = df_all_tickers[c].unique().tolist()
-            uniques.append("<unknown>")
+            uniques.append(unknown_val)
             uniques = list(set(uniques))
 
         cat_uniques_new[c] = uniques
 
-        df[c] = df[c].fillna("<unknown>")
-        df[c] = df[c].astype(CategoricalDtype(uniques))
+        df.loc[pd.isnull(df[c]), c] = unknown_val
+        df.loc[:, c] = df.loc[:, c].astype(CategoricalDtype(uniques))
         df_new_cols = pd.get_dummies(df[c], prefix=c)
         df_one_hots.append(df_new_cols)
 
@@ -330,26 +327,29 @@ def get_nasdaq_tickers(cat_uniques: Dict[str, List[str]]):
     columns = [c for c in df_rem.columns if str(df_rem[c].dtype) == "object"]
     columns.remove("ticker")
 
+    col_tick = "f22_ticker"
+    tickers = None
+    if cat_uniques is not None and col_tick in cat_uniques.keys():
+        tickers = cat_uniques[col_tick]
+
     df_one_hotted, cat_uniques = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns, cat_uniques=cat_uniques)
 
+    # FIXME: 2021-01-02: chris.flesche: Should be moved to a later step or refactored out.
     df_ren = df_one_hotted.rename(columns={"ticker": "ticker_drop"})
+
+    if tickers is not None:
+        cat_uniques[col_tick] = tickers
 
     return df_ren, cat_uniques
 
 
-def std_dataframe(df_train: pd.DataFrame, df_test: pd.DataFrame, df_val: pd.DataFrame):
-    df_train = df_train.copy()
-    df_test = df_test.copy()
-    df_val = df_val.copy()
-    num_cols = [c for c in df_train.columns if
-                str(df_train[c].dtype) == "float64"]  # need logic to get numeric
+def std_single_dataframe(df: pd.DataFrame, standard_scaler: StandardScaler):
+    df = df.copy()
+    num_cols = [c for c in df.columns if
+                str(df[c].dtype) == "float64"]  # need logic to get numeric
 
     for c in num_cols:
-        standard_scaler = StandardScaler()
-
-        df_train = fillna_column(df=df_train, col=c)
-        df_test = fillna_column(df=df_test, col=c)
-        df_val = fillna_column(df=df_val, col=c)
+        df = fillna_column(df=df, col=c)
 
         # NOTE: 2020-10-11: chris.flesche: Consider adding another column here
         # col_new = f"{c}_na_filled"
@@ -357,11 +357,9 @@ def std_dataframe(df_train: pd.DataFrame, df_test: pd.DataFrame, df_val: pd.Data
         # df_train.loc[df_train[c] == None, col_new] = True
 
         with pd.option_context('mode.chained_assignment', None):
-            df_train.loc[:, c] = standard_scaler.fit_transform(df_train[[c]])
-            df_test.loc[:, c] = standard_scaler.transform(df_test[[c]])
-            df_val.loc[:, c] = standard_scaler.transform(df_val[[c]])
+            df.loc[:, c] = standard_scaler.fit_transform(df[[c]])
 
-    return df_train, df_test, df_val
+    return df
 
 
 def fillna_column(df: pd.DataFrame, col: str):

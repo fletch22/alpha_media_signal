@@ -1,6 +1,7 @@
 import collections
 import copy
 import random
+from enum import Enum
 from pathlib import Path
 from statistics import mean
 from typing import List, Dict
@@ -12,14 +13,14 @@ import torch
 import torch.nn as nn
 import xgboost as xgb
 from matplotlib.legend_handler import HandlerLine2D
-from pandas import CategoricalDtype
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
 from ams.config import constants
 from ams.notebooks.twitter import twitter_ml_utils
-from ams.services import twitter_service, ticker_service, pickle_service
+from ams.services import twitter_service, ticker_service, pickle_service, file_services
 from ams.services.csv_service import write_dicts_as_csv
 from ams.services.equities.EquityFundaDimension import EquityFundaDimension
 from ams.utils import date_utils, ticker_utils
@@ -35,6 +36,11 @@ BATCH_SIZE = 1
 LEARNING_RATE = .0001
 initial_cash = 10000
 num_trades_at_once = 1
+
+
+class WorkflowMode(Enum):
+    Prediction = "Prediction"
+    Training = "Training"
 
 
 def group_and_mean_preds_buy_sell(df: pd.DataFrame, model: object, train_cols: List[str], is_model_torch=False):
@@ -187,7 +193,7 @@ def has_f22_column(df: pd.DataFrame):
     print(cols)
 
 
-def split_off_data(df: pd.DataFrame, narrow_cols: List[str], tickers: List[str] = None, use_recent_for_holdout=True) -> SplitData:
+def split_off_data(df: pd.DataFrame, narrow_cols: List[str], tickers: List[str] = None, use_recent_for_holdout=True, split_off_test: bool=True) -> SplitData:
     df_samp, df_val_raw = twitter_service.ho_split_by_days(df,
                                                            small_data_days_to_pull=None,
                                                            small_data_frac=.025,
@@ -199,26 +205,39 @@ def split_off_data(df: pd.DataFrame, narrow_cols: List[str], tickers: List[str] 
     y_test = None
     df_test_std = None
     df_val_std = None
-    train_cols = None
     min_rows_enough = 200
 
     has_enough_data = df_samp is not None and df_val_raw is not None and df_val_raw.shape[0] > min_rows_enough
     if has_enough_data:
+        train_cols = twitter_service.get_feature_columns(narrow_cols)
 
-        df_shuff = df_samp.sample(frac=1.0)
+        standard_scaler = StandardScaler()
+        if split_off_test:
+            df_train_raw, df_test_raw = twitter_service.ho_split_by_days(df_samp, small_data_days_to_pull=None, small_data_frac=.2,
+                                                                         use_only_recent_for_holdout=use_recent_for_holdout)  #
+            has_enough_data = df_train_raw is not None and df_test_raw is not None and df_test_raw.shape[0] > min_rows_enough
+            if has_enough_data:
+                print(f"Original: {df.shape[0]}; train_set: {df_train_raw.shape[0]}; test_set: {df_test_raw.shape[0]}")
 
-        df_train_raw, df_test_raw = twitter_service.ho_split_by_days(df_shuff, small_data_days_to_pull=None, small_data_frac=.2,
-                                                                     use_only_recent_for_holdout=use_recent_for_holdout)  #
+                df_train_std = ticker_service.std_single_dataframe(df=df_train_raw, standard_scaler=standard_scaler)
+                df_test_std = ticker_service.std_single_dataframe(df=df_test_raw, standard_scaler=standard_scaler)
+                df_val_std = ticker_service.std_single_dataframe(df=df_val_raw, standard_scaler=standard_scaler)
 
-        has_enough_data = df_train_raw is not None and df_test_raw is not None and df_test_raw.shape[0] > min_rows_enough
-        if has_enough_data:
-            print(f"Original: {df.shape[0]}; train_set: {df_train_raw.shape[0]}; test_set: {df_test_raw.shape[0]}")
+                X_train, y_train = twitter_service.split_df_for_learning(df=df_train_std, train_cols=train_cols)
+                X_test, y_test = twitter_service.split_df_for_learning(df=df_test_std, train_cols=train_cols)
+        else:
+            df_test_raw = None
+            df_test_std = None
 
-            df_train_std, df_test_std, df_val_std = ticker_service.std_dataframe(df_train=df_train_raw, df_test=df_test_raw, df_val=df_val_raw)
+            df_train_raw = df_samp
+            has_enough_data = df_train_raw is not None and df_train_raw.shape[0] > min_rows_enough
 
-            train_cols = twitter_service.get_feature_columns(narrow_cols)
-            X_train, y_train, X_test, y_test, train_cols = twitter_service.split_train_test(train_set=df_train_std, test_set=df_test_std,
-                                                                                            train_cols=train_cols)
+            if has_enough_data:
+                print(f"Original: {df.shape[0]}; train_set: {df_train_raw.shape[0]}; val_set: {df_val_raw.shape[0]}")
+                df_train_std = ticker_service.std_single_dataframe(df=df_train_raw, standard_scaler=standard_scaler)
+                df_val_std = ticker_service.std_single_dataframe(df=df_val_raw, standard_scaler=standard_scaler)
+
+                X_train, y_train = twitter_service.split_df_for_learning(df=df_train_std, train_cols=train_cols)
 
         return SplitData(X_train=X_train,
                          y_train=y_train,
@@ -744,6 +763,7 @@ def add_tip_ranks(df: pd.DataFrame, tr_file_path: Path):
 
     return df_ranked
 
+
 def show_distribution(df: pd.DataFrame, group_column_name: str = "date"):
     df.sort_values(by=[group_column_name], inplace=True)
 
@@ -903,6 +923,8 @@ def num_days_from(from_date: str, to_date: str):
 def add_days_since_quarter_results(df: pd.DataFrame, should_drop_missing_future_date: bool = True):
     df = df.dropna(axis="rows", subset=["datekey", "future_date"])
 
+    print(f"Num rows in play: {df.shape[0]}")
+
     df["days_since"] = df.apply(lambda x: num_days_from(x["datekey"], x["future_date"]), axis=1)
 
     return df
@@ -959,13 +981,11 @@ def xgb_learning(df: pd.DataFrame, narrow_cols: List[str], cat_uniques: Dict[str
 
     sac_list = []
     for i in range(num_iterations):
-        sd = twitter_ml_utils.split_off_data(df=df, narrow_cols=narrow_cols)
+        sd = twitter_ml_utils.split_off_data(df=df, narrow_cols=narrow_cols, split_off_test=False)
 
         if sd and sd.has_enough_data:
             X_train = sd.X_train
             y_train = sd.y_train
-            X_test = sd.X_test
-            y_test = sd.y_test
             df_val_raw = sd.df_val_raw
             df_val_std = sd.df_val_std
             train_cols = sd.train_cols
@@ -976,12 +996,8 @@ def xgb_learning(df: pd.DataFrame, narrow_cols: List[str], cat_uniques: Dict[str
                 model.fit(X_train, y_train)
 
                 if i == 0:
-                    print(len(cat_uniques["f22_ticker"]))
                     twit_model_package = TwitterModelPackage(model=model, cat_uniques=cat_uniques)
                     pickle_service.save(twit_model_package, str(constants.TWITTER_XGB_MODEL_PATH))
-
-                    model_xgb = pickle_service.load(constants.TWITTER_XGB_MODEL_PATH)
-                    print(len(model_xgb.cat_uniques["f22_ticker"]))
 
                 best_model = model
 
@@ -1014,12 +1030,44 @@ def xgb_learning(df: pd.DataFrame, narrow_cols: List[str], cat_uniques: Dict[str
     return sac_list
 
 
-def add_future_date_for_nan(df: pd.DataFrame, num_days_in_future: int):
-    def get_next_market_date(future_date: str, num_days: int):
-        dt = date_utils.parse_std_datestring(future_date)
-        return date_utils.get_standard_ymd_format(date_utils.find_next_market_open_day(dt, num_days))
+def get_next_market_date(date_str: str, num_days: int):
+    dt = date_utils.parse_std_datestring(date_str)
+    return date_utils.get_standard_ymd_format(date_utils.find_next_market_open_day(dt, num_days))
 
+
+def add_future_date_for_nan(df: pd.DataFrame, num_days_in_future: int):
     col_future_date = "future_date"
     df.loc[df[col_future_date].isnull(), col_future_date] = df.loc[df[col_future_date].isnull(), "date"].apply(lambda fd: get_next_market_date(fd, num_days_in_future))
 
     return df
+
+
+def load_twitter_raw(learning_prep_dir: Path):
+    file_paths = file_services.list_files(parent_path=learning_prep_dir, ends_with=".parquet", use_dir_recursion=True)
+    all_dfs = []
+    for f in file_paths:
+        df = pd.read_parquet(f)
+        all_dfs.append(df)
+
+    return pd.concat(all_dfs, axis=0)
+
+
+def load_model_for_prediction():
+    model_xgb: twitter_ml_utils.TwitterModelPackage = pickle_service.load(constants.TWITTER_XGB_MODEL_PATH)
+    return model_xgb
+
+
+def get_twitter_stock_data(df_tweets: pd.DataFrame, num_hold_days: int, workflow_mode: WorkflowMode):
+    df_stock_data = twitter_service.get_stock_data_for_twitter_companies(df_tweets=df_tweets,
+                                                                         num_days_in_future=num_hold_days)
+
+    # NOTE: 2021-01-02: chris.flesche: Some bug is refusing to recognize "is" identify comparison for Enum.
+
+    print(workflow_mode.value)
+    if workflow_mode.value == WorkflowMode.Prediction.value:
+        print(f"Adding future date ... {df_stock_data.shape[0]}")
+        df_stock_data = twitter_ml_utils.add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days)
+    else:
+        df_stock_data = df_stock_data.dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
+
+    return df_stock_data
