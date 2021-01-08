@@ -592,12 +592,13 @@ def calc_nn_roi(
 
     _, sac_roi_list, trade_history = get_roi_matrix(df=df_splitted, group_preds=group_preds, target_roi_frac=target_roi_frac, zero_in=zero_in)
 
-    persist_trade_history(twitter_trades=trade_history, overwrite_existing=is_batch_first_run)
-
+    mean_sac = None
     if len(sac_roi_list) > 0:
-        print(f"Mean sac_roi: {mean(sac_roi_list)}")
+        persist_trade_history(twitter_trades=trade_history, overwrite_existing=is_batch_first_run)
+        mean_sac = mean(sac_roi_list)
+        print(f"Mean sac_roi: {mean_sac}")
 
-    return mean(sac_roi_list)
+    return mean_sac
 
 
 def torch_non_linear(df: pd.DataFrame, narrow_cols: List[str]):
@@ -1011,11 +1012,12 @@ def xgb_learning(df: pd.DataFrame, narrow_cols: List[str], cat_uniques: Dict[str
                                                         is_batch_first_run=(i == 0)
                                                         )
 
-                sac_list.append(sac_mean)
+                if sac_mean is not None:
+                    sac_list.append(sac_mean)
 
-                mean_sac_list = mean(sac_list)
-
-                print(f"\nOverall mean s@close: {mean_sac_list}\n")
+                if len(sac_list) > 0:
+                    mean_sac_list = mean(sac_list)
+                    print(f"\nOverall mean s@close: {mean_sac_list}\n")
             else:
                 print("No data from split_off_data.")
 
@@ -1065,7 +1067,7 @@ def get_twitter_stock_data(df_tweets: pd.DataFrame, num_hold_days: int, workflow
 
     print(workflow_mode.value)
     if workflow_mode.value == WorkflowMode.Prediction.value:
-        print(f"Adding future date ... {df_stock_data.shape[0]}")
+        print(f"Adding future date ...")
         df_stock_data = twitter_ml_utils.add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days)
     else:
         df_stock_data = df_stock_data.dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])

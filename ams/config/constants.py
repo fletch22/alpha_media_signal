@@ -117,6 +117,8 @@ TIP_RANKS_DATA_DIR = Path(FIN_DATA, 'tip_ranks')
 ensure_dir(TIP_RANKS_DATA_DIR)
 TIP_RANKS_STOCK_DATA_PATH = os.path.join(TIP_RANKS_DATA_DIR, "tip_ranks_stock.parquet")
 
+TIP_RANKED_DATA_PATH = Path(TWITTER_OUTPUT_RAW_PATH, "tip_ranked", "main", "tip_rank_2020-12-14_22-48-27-354.17.parquet")
+
 DAILY_ROI_NASDAQ_PATH = Path(QUANDL_DIR, "daily_roi_nasdaq.parquet")
 
 TICK_ON_DAY_PATH = Path(FIN_DATA, "tickers_on_day")

@@ -11,17 +11,17 @@ class PersistedDataFrameTypes(Enum):
     ORC = "ORC"
 
 
-def persist_dataframe(df: DataFrame, output_drop_folder_path: Path, prefix: str, num_output_files: int = -1, type: PersistedDataFrameTypes = PersistedDataFrameTypes.PARQUET):
+def persist_dataframe(df: DataFrame, output_drop_folder_path: Path, prefix: str, num_output_files: int = -1, file_type: PersistedDataFrameTypes = PersistedDataFrameTypes.PARQUET):
     output_folder_path = file_services.create_unique_folder_name(str(output_drop_folder_path), prefix=prefix, ensure_exists=False)
 
     if num_output_files > 0:
         df = df.repartition(num_output_files)
 
-    if type == PersistedDataFrameTypes.PARQUET:
+    if file_type == PersistedDataFrameTypes.PARQUET:
         df.write.save(str(output_folder_path), format="parquet")
-    elif type == PersistedDataFrameTypes.ORC:
+    elif file_type == PersistedDataFrameTypes.ORC:
         df.write.save(str(output_folder_path), format="orc")
-    elif type == PersistedDataFrameTypes.CSV:
+    elif file_type == PersistedDataFrameTypes.CSV:
         df.write.save(str(output_folder_path), format="csv")
 
     print(str(output_folder_path))

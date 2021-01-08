@@ -99,9 +99,11 @@ def append_tweets_to_output_file(output_path: Path, tweets: List[Dict]):
             f.writelines(json_lines_nl)
 
 
-def search_standard(query: str, tweet_raw_output_path: Path, date_range: DateRange):
+def search_standard(query: str, tweet_raw_output_path: Path, date_range: DateRange, max_count: int = 5000):
     original_query = query
     pt = PrinterThread()
+    sprint = pt.print
+    count = 0
     try:
         pt.start()
         language = 'lang:en'
@@ -118,7 +120,6 @@ def search_standard(query: str, tweet_raw_output_path: Path, date_range: DateRan
         next_results_token = 'next_results'
         status_key = 'statuses'
 
-        count = 0
         while True:
             try:
                 response = requests.get(url, headers={
@@ -126,27 +127,29 @@ def search_standard(query: str, tweet_raw_output_path: Path, date_range: DateRan
 
                 search_results = response.json()
             except Exception as e:
-                pt.print(e)
+                sprint(e)
                 time.sleep(120)
                 continue
 
             if 'errors' in search_results:
                 # '{'errors': [{'message': 'Rate limit exceeded', 'code': 88}]}
-                pt.print(search_results['errors'])
-                pt.print('Pausing...')
-                time.sleep(120)
+                sprint(search_results['errors'])
+                sprint('Pausing...')
+                time.sleep(240)
                 continue
             if status_key in search_results:
                 tweets = search_results[status_key]
                 num_tweets = len(tweets)
                 count += num_tweets
                 if num_tweets > 0:
-                    pt.print(f'Fetched {len(tweets)} {original_query} tweets')
+                    sprint(f'Fetched {len(tweets)} {original_query} tweets')
                 append_tweets_to_output_file(output_path=tweet_raw_output_path, tweets=tweets)
             else:
                 break
+
             if count > 5000:
                 break
+
             search_metadata = search_results["search_metadata"]
             if next_results_token in search_metadata:
                 query = search_metadata[next_results_token]
@@ -200,7 +203,7 @@ def remove_items(ticker_tuples, ticker_to_flag: str, delete_before: bool):
 
 def get_ticker_searchable_tuples() -> List:
     df = pd.read_csv(constants.TICKER_NAME_SEARCHABLE_PATH)
-    ticker_tuples = list(map(tuple, df[['ticker', 'name']].to_numpy()))
+    ticker_tuples = list(map(tuple, df[['ticker', 'name']].drop_duplicates(subset=["ticker"]).to_numpy()))
     return ticker_tuples
 
 
@@ -278,8 +281,8 @@ def search_with_multi_thread(date_range: DateRange):
     ticker_tuples = get_ticker_searchable_tuples()
 
     from_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
-    if from_date_str == "2020-12-07":
-        ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='NYCB', delete_before=True)
+    if from_date_str == "2020-12-31":
+        ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='WW', delete_before=True)
 
     parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop', "main")
     tweet_raw_output_path = file_services.create_unique_filename(str(parent),
@@ -288,72 +291,33 @@ def search_with_multi_thread(date_range: DateRange):
     print(f'Output path: {str(tweet_raw_output_path)}')
 
     pt = PrinterThread()
+    sprint = pt.print
+    ticker_tweet_count = 0
     try:
         pt.start()
 
-        def custom_request(ticker_name: Tuple[str, str]):
-            ticker = ticker_name[0]
-            name = ticker_name[1]
+        def custom_request(ticker_info: Tuple[str, str]):
+            ticker = ticker_info[0]
+            name = ticker_info[1]
 
             f_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
             t_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
-            pt.print(f'{ticker}: {name} from {f_date_str} thru {t_date_str}')
+            sprint(f'{ticker}: {name} from {f_date_str} thru {t_date_str}')
 
             return compose_search_and_query(date_range=date_range, name=name, ticker=ticker,
                                             tweet_raw_output_path=tweet_raw_output_path)
 
         results = 0
-        with ThreadPoolExecutor(4) as executor:
-            results = executor.map(custom_request, ticker_tuples, timeout=None)
+        with ThreadPoolExecutor(6) as executor:
+            executor.map(custom_request, ticker_tuples, timeout=None)
 
-        pt.print(results)
+        # for tt in ticker_tuples:
+        #     ticker_tweet_count += custom_request(ticker_info=tt)
+
     finally:
         pt.end()
 
-
-def search_with_multi_thread_double(date_range: DateRange):
-    ticker_tuples = get_ticker_searchable_tuples()
-
-    # ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='USLM', delete_before=True)
-
-    ticker_iter = iter(ticker_tuples)
-    double_tuples = zip(ticker_iter, ticker_iter)
-
-    parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop')
-    tweet_raw_output_path = file_services.create_unique_filename(str(parent),
-                                                                 prefix="multithreaded_drop",
-                                                                 extension='txt')
-    print(f'Output path: {str(tweet_raw_output_path)}')
-
-    pt = PrinterThread()
-    try:
-        pt.start()
-
-        def custom_request(double_tuple: Tuple[Tuple[str, str], Tuple[str, str]], ):
-            tuple_1 = double_tuple[0]
-            ticker_1 = tuple_1[0]
-            name_1 = tuple_1[1]
-            tuple_2 = double_tuple[1]
-            ticker_2 = tuple_2[0]
-            name_2 = tuple_2[1]
-
-            f_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
-            t_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
-            pt.print(
-                f'{ticker_1}: {name_1} OR {ticker_2}: {name_2} from {f_date_str} thru {t_date_str}')
-
-            return compose_search_and_query_double(date_range=date_range, name_1=name_1,
-                                                   ticker_1=ticker_1, name_2=name_2,
-                                                   ticker_2=ticker_2,
-                                                   tweet_raw_output_path=tweet_raw_output_path)
-
-        results = 0
-        with ThreadPoolExecutor(4) as executor:
-            results = executor.map(custom_request, double_tuples, timeout=None)
-
-        pt.print(results)
-    finally:
-        pt.end()
+    print(f"Total tweets: {ticker_tweet_count}")
 
 
 def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_days_in_future: int = 1):
@@ -833,5 +797,5 @@ def remove_last_days(df: pd.DataFrame, num_days: int):
 
 
 if __name__ == '__main__':
-    date_range = DateRange.from_date_strings(from_date_str="2020-12-26", to_date_str="2020-12-31")
+    date_range = DateRange.from_date_strings(from_date_str="2021-01-04", to_date_str="2021-01-08")
     search_one_day_at_a_time(date_range=date_range)

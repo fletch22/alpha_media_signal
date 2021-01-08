@@ -13,12 +13,12 @@ from ams.services import file_services
 logger = logger_factory.create(__name__)
 
 
-def copy_nested(parent: Path, target_path: Path):
+def move_nested(parent: Path, target_path: Path):
     files = file_services.list_files(parent_path=parent, ends_with=".parquet", use_dir_recursion=True)
 
     for f in files:
         file_dest = str(Path(target_path, f.name))
-        shutil.copy(str(f), dst=file_dest)
+        shutil.move(str(f), dst=file_dest)
 
 
 def process(source_dir_path: Path, output_dir_path: Path):
@@ -31,6 +31,7 @@ def process(source_dir_path: Path, output_dir_path: Path):
     rows = 0
     count_limit = 400000
     for f in files:
+        logger.info(f"Processing {f}")
         df = pd.read_parquet(f)
 
         cols_str = ['entities_user_mentions_2', 'user_profile_background_image_url_https', 'text', 'user_created_at', 'user_default_profile_image', 'user_name',
@@ -46,7 +47,6 @@ def process(source_dir_path: Path, output_dir_path: Path):
                     'user_profile_image_url', 'user_default_profile', 'f22_ticker']
 
         for c in cols_str:
-            print(f"Converting {c}")
             df[c] = df[c].astype(str).apply(replace_chars)
 
         cols_numeric = ['user_followers_count', 'user_time_zone', 'user_friends_count',
@@ -116,9 +116,9 @@ def replace_chars(text):
 
 
 def start():
-    parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "pre-main")
+    parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "main")
     source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "main")
-    copy_nested(parent=parent, target_path=source_dir_path)
+    move_nested(parent=parent, target_path=source_dir_path)
 
     output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "id_fixed", "main")
     os.makedirs(output_dir_path, exist_ok=True)

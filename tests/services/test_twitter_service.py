@@ -1,9 +1,13 @@
 import json
 import statistics
+from pathlib import Path
 
 from ams.DateRange import DateRange
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.services import twitter_service, ticker_service
+from ams.services.spark_service import get_or_create
+
+logger = logger_factory.create(__name__)
 
 
 def test_tuples():
@@ -1363,31 +1367,27 @@ def test_compare_columns():
     print(missing_from_pred)
     # assert(from_train == from_predict)
 
+tweet_raw_output_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "test", "test_output.json")
 
-def test_prediction():
-    import pandas as pd
-
+def test_multiple_searches():
     # Arrange
-    df = pd.read_csv(constants.TWITTER_PREDICTIONS_PATH)
-    date_str = "2020-10-26"
-    df = df[df["purchase_date"] == date_str]
+    ticker_1 = "AAPL"
+    name_1 = "Apple"
 
+    ticker_2 = "TSLA"
+    name_2 = "Tesla"
+
+    date_range = DateRange.from_date_strings(from_date_str="2021-01-01", to_date_str="2021-01-01")
     # Act
-    tickers = df["f22_ticker"].to_list()
-    num_hold_days = 5
-    rois = []
-    for t in tickers:
-        df_tick = ticker_service.get_ticker_eod_data(t)
-        df_tick = df_tick[df_tick["date"] >= date_str]
-        df_tick.sort_values(by=["date"], inplace=True)
-        purchase_price = df_tick.iloc[0]["close"]
-        if df_tick.shape[0] > num_hold_days - 1:
-            sell_price = df_tick.iloc[num_hold_days - 1]["close"]
-            rois.append((sell_price - purchase_price) / purchase_price)
+    query = f"\"{ticker_1}\" {name_1} OR \"{ticker_2}\" {name_2}"
+    # query = f"\"{ticker_1}\" {name_1}"
 
-    if len(rois) > 0:
-        print(statistics.mean(rois))
-    else:
-        print("no data found.")
-
+    twitter_service.search_standard(query=query, tweet_raw_output_path=tweet_raw_output_path, date_range=date_range, max_count=100)
     # Assert
+
+
+def test_multi_query():
+    spark = get_or_create("test")
+    df = spark.json(tweet_raw_output_path)
+
+    print(df.count())

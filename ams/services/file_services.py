@@ -137,3 +137,11 @@ def get_single_file_from_path(dir_path: Path, filename_ends_with: str):
     assert (len(files) == 1)
 
     return files[0]
+
+
+def unnest_files(parent: Path, target_path: Path, filename_ends_with: str):
+    files = list_files(parent_path=parent, ends_with=filename_ends_with, use_dir_recursion=True)
+
+    for f in files:
+        file_dest = str(Path(target_path, f.name))
+        shutil.move(str(f), dst=file_dest)

@@ -107,7 +107,7 @@ def is_stock_market_closed(dt: datetime):
     if date_str > max_date:
         raise Exception("Encountered error trying to determine if market is closed. Date in question exceeds available data.")
     is_closed = False
-    if dt.weekday() > 5:
+    if dt.weekday() > 4:
         is_closed = True
     else:
         if date_str in get_market_holidays():
