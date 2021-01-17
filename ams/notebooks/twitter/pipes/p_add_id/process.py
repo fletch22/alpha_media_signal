@@ -54,7 +54,6 @@ def process(source_dir_path: Path, output_dir_path: Path):
                         'user_favourites_count', 'retweet_count', 'user_listed_count']
 
         for c in cols_numeric:
-            print(f"Converting {c}")
             df[c] = df[c].apply(convert_to_numeric).astype(np.float64)
 
         cols_bool = ['user_follow_request_sent', 'user_has_extended_profile', 'retweeted', 'user_is_translator',
@@ -116,15 +115,13 @@ def replace_chars(text):
 
 
 def start():
-    parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "main")
     source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "main")
-    move_nested(parent=parent, target_path=source_dir_path)
+    move_nested(parent=source_dir_path, target_path=source_dir_path)
 
     output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "id_fixed", "main")
     os.makedirs(output_dir_path, exist_ok=True)
 
-    if not file_services.is_empty(output_dir_path):
-        raise Exception(f"Output folder '{output_dir_path}' is not empty.")
+    batchy_bae.ensure_clean_output_path(output_dir_path)
 
     batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False)
 

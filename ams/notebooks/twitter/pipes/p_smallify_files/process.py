@@ -1,10 +1,12 @@
 import json
 from pathlib import Path
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.config.constants import ensure_dir
 from ams.notebooks.twitter.pipes import batchy_bae
 from ams.services import file_services
+
+logger = logger_factory.create(__name__)
 
 
 def process(source_path: Path, output_dir_path: Path):
@@ -32,6 +34,8 @@ def process(source_path: Path, output_dir_path: Path):
                     break
                 try:
                     obj = json.loads(line)
+                    if "version" in obj.keys():
+                        obj = obj["tweet"]
                     line_alt = json.dumps(obj)
                     wf.write(line_alt + "\n")
                 except Exception as e:
@@ -50,6 +54,8 @@ def start():
     source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop", "main")
     output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "smallified_raw_drop", "main")
     ensure_dir(output_dir_path)
+
+    batchy_bae.ensure_clean_output_path(output_dir_path)
 
     batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path,
                      process_callback=process, should_archive=False)

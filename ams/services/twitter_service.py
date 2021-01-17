@@ -36,8 +36,6 @@ logger = logger_factory.create(__name__)
 COL_AFTER_HOURS = "f22_is_tweet_after_hours"
 COL_PURCH_DATE = "purchase_date"
 
-scaler = StandardScaler()
-
 
 def _get_credentials():
     yaml_key = 'search_tweets_fullarchive_development'
@@ -91,15 +89,15 @@ def process_tweets_stream(rs):
     return tweet_raw_output_path if count > 0 else None, count
 
 
-def append_tweets_to_output_file(output_path: Path, tweets: List[Dict]):
+def append_tweets_to_output_file(output_path: Path, tweets: List[Dict], ticker: str):
     json_lines = [json.dumps(t) for t in tweets]
     if len(json_lines):
         with open(str(output_path), 'a+') as f:
-            json_lines_nl = [f'{j}\n' for j in json_lines]
+            json_lines_nl = [f'{{"version": "0.9.1", "f22_ticker": ticker, "tweet": {j}}}\n' for j in json_lines]
             f.writelines(json_lines_nl)
 
 
-def search_standard(query: str, tweet_raw_output_path: Path, date_range: DateRange, max_count: int = 5000):
+def search_standard(query: str, tweet_raw_output_path: Path, date_range: DateRange, ticker: str, max_count: int = 5000):
     original_query = query
     pt = PrinterThread()
     sprint = pt.print
@@ -143,7 +141,7 @@ def search_standard(query: str, tweet_raw_output_path: Path, date_range: DateRan
                 count += num_tweets
                 if num_tweets > 0:
                     sprint(f'Fetched {len(tweets)} {original_query} tweets')
-                append_tweets_to_output_file(output_path=tweet_raw_output_path, tweets=tweets)
+                append_tweets_to_output_file(output_path=tweet_raw_output_path, tweets=tweets, ticker=ticker)
             else:
                 break
 
@@ -222,7 +220,7 @@ def compose_search_and_query(date_range: DateRange, name: str, ticker: str,
     query = f'\"{ticker}\" {name}'
 
     return search_standard(query=query, tweet_raw_output_path=tweet_raw_output_path,
-                           date_range=date_range)
+                           date_range=date_range, ticker=ticker)
 
 
 def get_cashtag_info(ticker: str, has_cashtag: bool) -> Dict:
@@ -280,9 +278,9 @@ def search_one_day_at_a_time(date_range: DateRange):
 def search_with_multi_thread(date_range: DateRange):
     ticker_tuples = get_ticker_searchable_tuples()
 
-    from_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
-    if from_date_str == "2020-12-31":
-        ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='WW', delete_before=True)
+    # from_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
+    # if from_date_str == "2020-12-31":
+    #     ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='WW', delete_before=True)
 
     parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop', "main")
     tweet_raw_output_path = file_services.create_unique_filename(str(parent),
@@ -325,6 +323,11 @@ def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_days_in_fu
     return ticker_service.get_ticker_on_dates(ttd, num_days_in_future=num_days_in_future)
 
 
+def get_stock_data_for_twitter_companies_2(df_tweets: pd.DataFrame, num_days_in_future: int = 1):
+    ttd = ticker_service.extract_ticker_tweet_dates(df_tweets)
+    return ticker_service.get_ticker_on_dates_2(ttd, num_days_in_future=num_days_in_future)
+
+
 def get_rec_quarter_for_twitter():
     df_rec_quart = equity_fundy_service.get_most_recent_quarter_data()
     return df_rec_quart.drop(
@@ -353,11 +356,11 @@ def std_col(df: pd.DataFrame, col_name: str):
 
 
 def add_buy_sell(df: pd.DataFrame):
-    roi_threshold_pct = 0  # 1.6
-    df['stock_val_change'] = ((df['future_close'] - df['close']) / df['close']) - df["nasdaq_day_roi"]
+    roi_threshold_pct = 0
+    df.loc[:, 'stock_val_change'] = ((df['future_close'] - df['close']) / df['close']) - df["nasdaq_day_roi"]
 
-    df['buy_sell'] = df['stock_val_change'].apply(lambda x: 1 if x >= roi_threshold_pct else -1)
-    df['stock_val_change_ex'] = df["stock_val_change"].apply(exagerrate_stock_val_change)
+    df.loc[:, 'buy_sell'] = df['stock_val_change'].apply(lambda x: 1 if x >= roi_threshold_pct else -1)
+    df.loc[:, 'stock_val_change_ex'] = df["stock_val_change"].apply(exagerrate_stock_val_change)
 
     std_col(df=df, col_name="stock_val_change_ex")
 
@@ -468,11 +471,11 @@ def convert_to_bool(df: pd.DataFrame):
 
 def refine_pool(df: pd.DataFrame, min_volume: int = None, min_price: float = None, max_price: float = None):
     if min_volume is not None:
-        df = df[df["volume"] > min_volume]
+        df = df[df["prev_volume"] > min_volume]
     if min_price is not None:
-        df = df[df["open"] >= min_price]
+        df = df[df["prev_close"] >= min_price]
     if max_price is not None:
-        df = df[df["open"] <= max_price]
+        df = df[df["prev_close"] <= max_price]
     return df
 
 
@@ -613,6 +616,9 @@ def get_feature_columns(narrow_cols):
                  "future_close", "stock_val_change_ex",
                  "stock_val_change_scaled", "stock_val_change", "roi", "user_screen_name",
                  "future_date", "user_follow_request_sent", "f22_ticker"}
+    # FIXME: 2021-01-16: chris.flesche: Experimental
+    omit_cols |= {"open", "close", "high", "low", "original_close_price", "nasdaq_day_roi"}
+    # End FIXME
     train_cols = list(set(narrow_cols) - omit_cols)
     return train_cols
 
@@ -797,5 +803,5 @@ def remove_last_days(df: pd.DataFrame, num_days: int):
 
 
 if __name__ == '__main__':
-    date_range = DateRange.from_date_strings(from_date_str="2021-01-04", to_date_str="2021-01-08")
+    date_range = DateRange.from_date_strings(from_date_str="2021-01-13", to_date_str="2021-01-15")
     search_one_day_at_a_time(date_range=date_range)

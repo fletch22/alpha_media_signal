@@ -21,54 +21,65 @@ def start(start_dt: datetime, num_hold_days: int, num_days_perf: int, min_price:
 
     all_days_rois = []
 
-    # FIXME: 2021-01-04: chris.flesche: Temp
-    num_hold_days_tmp = num_hold_days
-    # num_hold_days_tmp += 1
-
     for day_ndx in range(num_days_perf):
         dt = start_dt + timedelta(days=day_ndx)
         date_str = date_utils.get_standard_ymd_format(dt)
-        df = df_preds[(df_preds["purchase_date"] == date_str) & (df_preds["num_hold_days"] == num_hold_days)]
-
-        # Act
-        tickers = df["f22_ticker"].to_list()
-        if size_buy_lot is not None and size_buy_lot < len(tickers):
-            shuffle(tickers)
-            tickers = tickers[:size_buy_lot]
-
-        rois = []
-        for t in tickers:
-            df_tick = ticker_service.get_ticker_eod_data(t)
-            df_tick = df_tick[df_tick["date"] >= date_str]
-            df_tick.sort_values(by=["date"], inplace=True)
-            # FIXME: 2021-01-04: chris.flesche: Temp
-            if df_tick.shape[0] < num_hold_days:
-            # if df_tick.shape[0] < num_hold_days_tmp:
-                print(f"Not enough tick {t} data: {df_tick.shape[0]}; Hold days: {num_hold_days}")
-                continue
-            # FIXME: 2021-01-04: chris.flesche: Temp
-            if min_price is None or (df_tick.iloc[0]["close"] > min_price):
-            # if min_price is None or (df_tick.iloc[1]["open"] > min_price):
-                if df_tick.shape[0] == 0:
-                    logger.info(f"No EOD stock data for {date_str}.")
-                    continue
-                # FIXME: 2021-01-04: chris.flesche: Temp
-                purchase_price = df_tick.iloc[0]["close"]
-                # purchase_price = df_tick.iloc[1]["open"]
-                if df_tick.shape[0] > num_hold_days_tmp:
-                    sell_price = df_tick.iloc[num_hold_days_tmp]["close"]
-                    rois.append((sell_price - purchase_price) / purchase_price)
-
-        if len(rois) > 0:
-            day_roi = mean(rois)
-            print(f"{date_str} roi: {day_roi:.4f}")
-            all_days_rois.append(day_roi)
-        else:
-            print(f"No data found on {date_str}.")
+        get_days_roi_from_prediction_table(df_preds, date_str, num_hold_days, min_price, size_buy_lot)
 
     if len(all_days_rois) > 0:
         print(f"Overall roi: {mean(all_days_rois):.4f}")
 
+
+def get_days_roi_from_prediction_table(df_preds: pd.DataFrame, date_str:str, num_hold_days:int, min_price: float = None, size_buy_lot:int = None):
+    df = df_preds[df_preds["purchase_date"] == date_str]
+    # df = df[df["num_hold_days"] == num_hold_days]
+
+    print(f"Num records for roi calc: {df.shape[0]}")
+
+    # Act
+    tickers = df["f22_ticker"].to_list()
+    if size_buy_lot is not None and size_buy_lot < len(tickers):
+        shuffle(tickers)
+        tickers = tickers[:size_buy_lot]
+    rois = []
+
+    print(f"Num tickers: {len(tickers)} for {date_str}")
+    for t in tickers:
+        df_tick = ticker_service.get_ticker_eod_data(t)
+        df_tick = df_tick[df_tick["date"] >= date_str]
+        df_tick.sort_values(by=["date"], ascending=True, inplace=True)
+
+        row_tick = df_tick.iloc[0]
+        purchase_price = row_tick["close"]
+        if min_price is None or purchase_price > min_price:
+            if df_tick.shape[0] == 0:
+                logger.info(f"No EOD stock data for {date_str}.")
+                continue
+
+            num_days = df_tick.shape[0]
+            row = None
+            if num_days > num_hold_days:
+                row = df_tick.iloc[num_hold_days]
+            elif num_days > 1:
+                row = df_tick.iloc[num_days - 1]
+
+            if row is None:
+                roi = 0
+            else:
+                sell_price = row["close"]
+                roi = (sell_price - purchase_price) / purchase_price
+
+            rois.append(roi)
+
+    result = None
+    if len(rois) > 0:
+        day_roi = mean(rois)
+        print(f"{date_str} roi: {day_roi:.4f}")
+        result = day_roi
+    else:
+        print(f"No data found on {date_str}.")
+
+    return result
 
 # Assert
 
@@ -76,4 +87,4 @@ if __name__ == '__main__':
     start_date_str = "2020-08-10"
     start_dt = date_utils.parse_std_datestring(start_date_str)
 
-    start(start_dt=start_dt, num_hold_days=5, num_days_perf=150, min_price=5., size_buy_lot=None)
+    start(start_dt=start_dt, num_hold_days=5, num_days_perf=161, min_price=0, size_buy_lot=None)

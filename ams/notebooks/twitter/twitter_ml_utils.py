@@ -4,7 +4,7 @@ import random
 from enum import Enum
 from pathlib import Path
 from statistics import mean
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -30,7 +30,7 @@ from ams.utils.Stopwatch import Stopwatch
 num_iterations = 1
 
 EquityHolding = collections.namedtuple('EquityHolding', 'ticker purchase_price num_shares purchase_dt, expiry_dt')
-TwitterModelPackage = collections.namedtuple("TwitterModelPackage", "model cat_uniques")
+TwitterModelPackage = collections.namedtuple("TwitterModelPackage", "model cat_uniques scaler")
 
 BATCH_SIZE = 1
 LEARNING_RATE = .0001
@@ -42,15 +42,16 @@ class WorkflowMode(Enum):
     Prediction = "Prediction"
     Training = "Training"
 
-
-def group_and_mean_preds_buy_sell(df: pd.DataFrame, model: object, train_cols: List[str], is_model_torch=False):
+def group_and_mean_preds_buy_sell(df: pd.DataFrame, model: object, train_cols: List[str], standard_scaler: StandardScaler, is_model_torch=False):
     df_g_holdout = df.groupby(['f22_ticker', 'purchase_date'])
 
     group_count = 0
     acc_acc = []
     group_preds = {}
     for group_name, df_group in df_g_holdout:
-        X_holdout = np.array(df_group[train_cols])
+        X_holdout_raw = np.array(df_group[train_cols])
+        X_holdout = standard_scaler.transform(X_holdout_raw)
+
         y_holdout = np.array(df_group['buy_sell'])
 
         if is_model_torch:
@@ -193,7 +194,24 @@ def has_f22_column(df: pd.DataFrame):
     print(cols)
 
 
-def split_off_data(df: pd.DataFrame, narrow_cols: List[str], tickers: List[str] = None, use_recent_for_holdout=True, split_off_test: bool=True) -> SplitData:
+def transform_to_numpy(df: pd.DataFrame, narrow_cols: List[str]) -> Tuple[any, any, any]:
+    standard_scaler = StandardScaler()
+
+    train_cols = twitter_service.get_feature_columns(narrow_cols)
+
+    X_train_raw, y_train = twitter_service.split_df_for_learning(df=df, train_cols=train_cols)
+    standard_scaler = standard_scaler.fit(X_train_raw)
+    X_train = standard_scaler.transform(X_train_raw)
+
+    return X_train, y_train, standard_scaler
+
+
+def split_off_data(df: pd.DataFrame,
+                   narrow_cols: List[str],
+                   tickers: List[str] = None,
+                   use_recent_for_holdout=True,
+                   split_off_test: bool = True) -> SplitData:
+    standard_scaler = StandardScaler()
     df_samp, df_val_raw = twitter_service.ho_split_by_days(df,
                                                            small_data_days_to_pull=None,
                                                            small_data_frac=.025,
@@ -203,52 +221,70 @@ def split_off_data(df: pd.DataFrame, narrow_cols: List[str], tickers: List[str] 
     y_train = None
     X_test = None
     y_test = None
-    df_test_std = None
-    df_val_std = None
+    # df_test_std = None
+    # df_val_std = None
     min_rows_enough = 200
 
     has_enough_data = df_samp is not None and df_val_raw is not None and df_val_raw.shape[0] > min_rows_enough
     if has_enough_data:
         train_cols = twitter_service.get_feature_columns(narrow_cols)
 
-        standard_scaler = StandardScaler()
         if split_off_test:
             df_train_raw, df_test_raw = twitter_service.ho_split_by_days(df_samp, small_data_days_to_pull=None, small_data_frac=.2,
-                                                                         use_only_recent_for_holdout=use_recent_for_holdout)  #
+                                                                         use_only_recent_for_holdout=use_recent_for_holdout)
+
             has_enough_data = df_train_raw is not None and df_test_raw is not None and df_test_raw.shape[0] > min_rows_enough
             if has_enough_data:
                 print(f"Original: {df.shape[0]}; train_set: {df_train_raw.shape[0]}; test_set: {df_test_raw.shape[0]}")
 
-                df_train_std = ticker_service.std_single_dataframe(df=df_train_raw, standard_scaler=standard_scaler)
-                df_test_std = ticker_service.std_single_dataframe(df=df_test_raw, standard_scaler=standard_scaler)
-                df_val_std = ticker_service.std_single_dataframe(df=df_val_raw, standard_scaler=standard_scaler)
+                # df_train_std = ticker_service.std_single_dataframe(df=df_train_raw, standard_scaler=scaler)
+                # df_test_std = ticker_service.std_single_dataframe(df=df_test_raw, standard_scaler=scaler)
+                # df_val_std = ticker_service.std_single_dataframe(df=df_val_raw, standard_scaler=scaler)
+                # X_train, y_train = twitter_service.split_df_for_learning(df=df_train_std, train_cols=train_cols)
+                # X_test, y_test = twitter_service.split_df_for_learning(df=df_test_std, train_cols=train_cols)
 
-                X_train, y_train = twitter_service.split_df_for_learning(df=df_train_std, train_cols=train_cols)
-                X_test, y_test = twitter_service.split_df_for_learning(df=df_test_std, train_cols=train_cols)
+                X_train_raw, y_train = twitter_service.split_df_for_learning(df=df_train_raw, train_cols=train_cols)
+                standard_scaler = standard_scaler.fit(X_train_raw)
+                X_train = standard_scaler.transform(X_train_raw)
+
+                X_test_raw, y_test = twitter_service.split_df_for_learning(df=df_test_raw, train_cols=train_cols)
+                X_test = standard_scaler.transform(X_test_raw)
         else:
             df_test_raw = None
-            df_test_std = None
+            # df_test_std = None
 
             df_train_raw = df_samp
             has_enough_data = df_train_raw is not None and df_train_raw.shape[0] > min_rows_enough
 
             if has_enough_data:
                 print(f"Original: {df.shape[0]}; train_set: {df_train_raw.shape[0]}; val_set: {df_val_raw.shape[0]}")
-                df_train_std = ticker_service.std_single_dataframe(df=df_train_raw, standard_scaler=standard_scaler)
-                df_val_std = ticker_service.std_single_dataframe(df=df_val_raw, standard_scaler=standard_scaler)
+                # df_train_std = ticker_service.std_single_dataframe(df=df_train_raw, standard_scaler=scaler)
+                # df_val_std = ticker_service.std_single_dataframe(df=df_val_raw, standard_scaler=scaler)
 
-                X_train, y_train = twitter_service.split_df_for_learning(df=df_train_std, train_cols=train_cols)
+                X_train_raw, y_train = twitter_service.split_df_for_learning(df=df_train_raw, train_cols=train_cols)
+                standard_scaler = standard_scaler.fit(X_train_raw)
+                X_train = standard_scaler.transform(X_train_raw)
+
+        # return SplitData(X_train=X_train,
+        #                  y_train=y_train,
+        #                  X_test=X_test,
+        #                  y_test=y_test,
+        #                  df_test_raw=df_test_raw,
+        #                  df_test_std=df_test_std,
+        #                  df_val_raw=df_val_raw,
+        #                  df_val_std=df_val_std,
+        #                  train_cols=train_cols,
+        #                  has_enough_data=has_enough_data)
 
         return SplitData(X_train=X_train,
                          y_train=y_train,
                          X_test=X_test,
                          y_test=y_test,
                          df_test_raw=df_test_raw,
-                         df_test_std=df_test_std,
                          df_val_raw=df_val_raw,
-                         df_val_std=df_val_std,
                          train_cols=train_cols,
-                         has_enough_data=has_enough_data)
+                         has_enough_data=has_enough_data,
+                         standard_scaler=standard_scaler)
     if not has_enough_data:
         print("Not enough data.")
 
@@ -291,6 +327,13 @@ def calc_profit(target_roi: float, df_helper: pd.DataFrame, group_preds: object,
                 ticker_service.calculate_roi(target_roi=target_roi, close_price=close, future_high=future_high,
                                              future_close=future_close, calc_dict=calc_dict, zero_in=zero_in)
 
+                trade_history.append(TwitterTrade(ticker=ticker,
+                                                  purchase_price=close,
+                                                  purchase_dt=date_utils.parse_std_datestring(date_str),
+                                                  sell_dt=date_utils.parse_std_datestring(future_date),
+                                                  sell_price=future_close
+                                                  ))
+
                 roi = (future_close - close) / close
                 roi_list.append(roi)
 
@@ -309,12 +352,7 @@ def calc_profit(target_roi: float, df_helper: pd.DataFrame, group_preds: object,
                     cash = total
                     num_shares = 0
 
-                    trade_history.append(TwitterTrade(ticker=ticker,
-                                                      purchase_price=close,
-                                                      purchase_dt=date_utils.parse_std_datestring(date_str),
-                                                      sell_dt=date_utils.parse_std_datestring(future_date),
-                                                      sell_price=future_close
-                                                      ))
+
                 else:
                     print("Not enough cash for purchase.")
 
@@ -575,18 +613,18 @@ def get_initialized_model(num_input_features: int, device: object):
 
 def calc_nn_roi(
     df_val_raw: pd.DataFrame,
-    df_val_std: pd.DataFrame,
     model: object,
     train_cols: List[str],
     target_roi_frac: float,
     zero_in: bool,
+    standard_scaler: StandardScaler,
     is_model_torch: bool = True,
     is_batch_first_run: bool = False
 ):
     if df_val_raw.shape[0] == 0:
         raise Exception("No holdout data.")
 
-    g_tickers, group_preds = group_and_mean_preds_buy_sell(df_val_std, model, train_cols, is_model_torch=is_model_torch)
+    g_tickers, group_preds = group_and_mean_preds_buy_sell(df_val_raw, model, train_cols, is_model_torch=is_model_torch, standard_scaler=standard_scaler)
 
     df_splitted = twitter_service.join_with_stock_splits(df=df_val_raw)
 
@@ -594,7 +632,7 @@ def calc_nn_roi(
 
     mean_sac = None
     if len(sac_roi_list) > 0:
-        persist_trade_history(twitter_trades=trade_history, overwrite_existing=is_batch_first_run)
+        persist_trade_history(twitter_trades=trade_history, overwrite_existing=False)
         mean_sac = mean(sac_roi_list)
         print(f"Mean sac_roi: {mean_sac}")
 
@@ -922,11 +960,12 @@ def num_days_from(from_date: str, to_date: str):
 
 
 def add_days_since_quarter_results(df: pd.DataFrame, should_drop_missing_future_date: bool = True):
-    df = df.dropna(axis="rows", subset=["datekey", "future_date"])
+    df = df.dropna(axis="rows", subset=["datekey", "future_date"]).copy()
 
     print(f"Num rows in play: {df.shape[0]}")
 
-    df["days_since"] = df.apply(lambda x: num_days_from(x["datekey"], x["future_date"]), axis=1)
+    # df["days_since"] = df.apply(lambda x: num_days_from(x["datekey"], x["future_date"]), axis=1)
+    df.loc[:, "days_since"] = df.apply(lambda x: num_days_from(x["datekey"], x["future_date"]), axis=1)
 
     return df
 
@@ -935,26 +974,50 @@ def add_calendar_days(df: pd.DataFrame):
     def day_of_week(date_str):
         return pd.Timestamp(date_str).dayofweek
 
-    df["fd_day_of_week"] = df.apply(lambda x: day_of_week(x["future_date"]), axis=1)
+    df.loc[:, "fd_day_of_week"] = df.apply(lambda x: day_of_week(x["future_date"]), axis=1)
 
     def day_of_year(date_str):
         return pd.Timestamp(date_str).dayofyear
 
-    df["fd_day_of_year"] = df.apply(lambda x: day_of_year(x["future_date"]), axis=1)
+    df.loc[:, "fd_day_of_year"] = df.apply(lambda x: day_of_year(x["future_date"]), axis=1)
 
     def day_of_month(date_str):
         return int(date_str.split("-")[2])
 
-    df["fd_day_of_month"] = df.apply(lambda x: day_of_month(x["future_date"]), axis=1)
+    df.loc[:, "fd_day_of_month"] = df.apply(lambda x: day_of_month(x["future_date"]), axis=1)
 
     return df
 
 
 def add_nasdaq_roi(df: pd.DataFrame):
+    # Add num hold days to function
+    # Add new column: shift forward num_hold_days
+    # add moving average column where target_column == new_column, window == num_hold_days
+    #    with pd.option_context('mode.chained_assignment', None):
+    #    df_copy[f"mov_avg"] = df_copy.loc[:, target_column].rolling(window=w).mean().astype("float64")
+    # add new column = mov_avg * num_hold_days
+
     df_roi_nasdaq = pd.read_parquet(str(constants.DAILY_ROI_NASDAQ_PATH))
     df_roi_nasdaq = df_roi_nasdaq.rename(columns={"roi": "nasdaq_day_roi"})
 
     df = pd.merge(df_roi_nasdaq, df, on=["date"], how="right")
+
+    return df.drop_duplicates(subset=["f22_ticker", "date"])
+
+
+def add_nasdaq_roi_new(df: pd.DataFrame, num_hold_days: int = 1):
+    df_roi_nasdaq = pd.read_parquet(str(constants.DAILY_ROI_NASDAQ_PATH))
+    df_roi_nasdaq = df_roi_nasdaq.rename(columns={"roi": "nasdaq_day_roi"})
+
+    df = pd.merge(df_roi_nasdaq, df, on=["date"], how="right")
+
+    if num_hold_days > 1:
+        df.loc[:, "roi_sell_date"] = df["nasdaq_day_roi"]
+        df["roi_sell_date"] = df["roi_sell_date"].shift(-num_hold_days)
+        with pd.option_context('mode.chained_assignment', None):
+            df[f"mov_avg"] = df.loc[:, "roi_sell_date"].rolling(window=num_hold_days).mean().astype("float64")
+        df.loc[:, "nasdaq_day_roi"] = np.subtract(np.power(np.add(1, df["mov_avg"]), num_hold_days), 1)
+        df = df.drop(columns=["roi_sell_date", "mov_avg"])
 
     return df.drop_duplicates(subset=["f22_ticker", "date"])
 
@@ -970,9 +1033,36 @@ def add_sma_stuff(df: pd.DataFrame):
     return ticker_utils.add_days_since_under_sma_many_tickers(df=df, col_sma="close_SMA_100", close_col="close")
 
 
-def xgb_learning(df: pd.DataFrame, narrow_cols: List[str], cat_uniques: Dict[str, List[str]]):
+def get_data_for_predictions(df: pd.DataFrame,
+                             narrow_cols: List[str],
+                             standard_scaler: StandardScaler):
+    feature_cols = twitter_service.get_feature_columns(narrow_cols)
+
+    df_features = df[feature_cols]
+
+    X_array_raw = np.array(df_features)
+    return standard_scaler.transform(X_array_raw)
+
+
+def xgb_learning_predicting(df_train: pd.DataFrame, df_predict: pd.DataFrame, narrow_cols: List[str]) -> bool:
+    X_train, y_train, standard_scaler = twitter_ml_utils.transform_to_numpy(df=df_train, narrow_cols=narrow_cols)
+
+    model = xgb.XGBClassifier(max_depth=4)
+    model.fit(X_train, y_train)
+
+    prediction = get_data_for_predictions(df=df_predict, narrow_cols=narrow_cols, standard_scaler=standard_scaler)
+
+    df_predict["prediction"] = prediction
+
+    return True
+
+
+def xgb_learning(df: pd.DataFrame,
+                 narrow_cols: List[str],
+                 cat_uniques: Dict[str, List[str]]) -> (List[float], bool):
     min_train_rows = 10
-    num_iterations = 500
+    num_iterations = 1
+    best_model = None
 
     zero_in = True
     if zero_in:
@@ -988,7 +1078,7 @@ def xgb_learning(df: pd.DataFrame, narrow_cols: List[str], cat_uniques: Dict[str
             X_train = sd.X_train
             y_train = sd.y_train
             df_val_raw = sd.df_val_raw
-            df_val_std = sd.df_val_std
+            # df_val_std = sd.df_val_std
             train_cols = sd.train_cols
             has_enough_data = sd.has_enough_data
 
@@ -997,27 +1087,26 @@ def xgb_learning(df: pd.DataFrame, narrow_cols: List[str], cat_uniques: Dict[str
                 model.fit(X_train, y_train)
 
                 if i == 0:
-                    twit_model_package = TwitterModelPackage(model=model, cat_uniques=cat_uniques)
+                    twit_model_package = TwitterModelPackage(model=model, cat_uniques=cat_uniques, scaler=sd.standard_scaler)
                     pickle_service.save(twit_model_package, str(constants.TWITTER_XGB_MODEL_PATH))
 
                 best_model = model
 
                 sac_mean = twitter_ml_utils.calc_nn_roi(df_val_raw=df_val_raw,
-                                                        df_val_std=df_val_std,
                                                         model=best_model,
                                                         train_cols=train_cols,
                                                         target_roi_frac=target_roi_frac,
                                                         zero_in=zero_in,
                                                         is_model_torch=False,
-                                                        is_batch_first_run=(i == 0)
-                                                        )
+                                                        is_batch_first_run=(i == 0),
+                                                        standard_scaler=sd.standard_scaler)
 
                 if sac_mean is not None:
                     sac_list.append(sac_mean)
 
                 if len(sac_list) > 0:
                     mean_sac_list = mean(sac_list)
-                    print(f"\nOverall mean s@close: {mean_sac_list}\n")
+                    print(f"\nBatch mean s@close: {mean_sac_list}\n")
             else:
                 print("No data from split_off_data.")
 
@@ -1026,10 +1115,9 @@ def xgb_learning(df: pd.DataFrame, narrow_cols: List[str], cat_uniques: Dict[str
         if not has_remaining_days:
             print("No more remaining days to test.")
 
-        # FIXME: 2021-01-01: chris.flesche: Temporary
-        break
+    did_train = best_model is not None
 
-    return sac_list
+    return sac_list, did_train
 
 
 def get_next_market_date(date_str: str, num_days: int):
@@ -1064,12 +1152,31 @@ def get_twitter_stock_data(df_tweets: pd.DataFrame, num_hold_days: int, workflow
                                                                          num_days_in_future=num_hold_days)
 
     # NOTE: 2021-01-02: chris.flesche: Some bug is refusing to recognize "is" identify comparison for Enum.
-
     print(workflow_mode.value)
     if workflow_mode.value == WorkflowMode.Prediction.value:
         print(f"Adding future date ...")
         df_stock_data = twitter_ml_utils.add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days)
     else:
         df_stock_data = df_stock_data.dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
+
+    return df_stock_data
+
+
+def get_twitter_stock_data_2(df_tweets: pd.DataFrame, num_hold_days: int):
+    df_stock_data = twitter_service.get_stock_data_for_twitter_companies_2(df_tweets=df_tweets,
+                                                                           num_days_in_future=num_hold_days)
+
+    df_stock_data = twitter_ml_utils.add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days)
+
+    # df_tmp = df_stock_data.sort_values(by=["future_date"], ascending=False)
+    # print(df_tmp[["future_date", "future_close"]].head())
+    # raise Exception("foo")
+    # NOTE: 2021-01-02: chris.flesche: Some bug is refusing to recognize "is" identify comparison for Enum.
+    # print(workflow_mode.value)
+    # if workflow_mode.value == WorkflowMode.Prediction.value:
+    #     print(f"Adding future date ...")
+    #     df_stock_data = twitter_ml_utils.add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days)
+    # else:
+    #     df_stock_data = df_stock_data.dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
 
     return df_stock_data

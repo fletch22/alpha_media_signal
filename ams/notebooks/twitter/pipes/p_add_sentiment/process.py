@@ -1,3 +1,4 @@
+import gc
 import os
 from pathlib import Path
 from typing import List
@@ -6,6 +7,7 @@ import dask
 import numpy as np
 import pandas as pd
 from dask.dataframe import from_pandas
+from distributed import progress, Client
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 from ams.config import constants
@@ -27,28 +29,32 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
     dask.config.set(scheduler='processes')
 
-    for f in files:
+    num_files = len(files)
+
+    print(f"Num files: {num_files}")
+    client = Client()
+
+    for ndx, f in enumerate(files):
+        logger.info(f"Reading {ndx + 1} of {num_files}: '{f}'")
         pdf = pd.read_parquet(f)
 
-        split_dfs = np.array_split(pdf, 12)
-        del pdf
+        print(f"Converting Pandas dataframe ({pdf.shape[0]} rows) to Dask DF ...")
+        ddf = from_pandas(pdf, npartitions=20)
+        ddf.persist()
 
-        for sdf in split_dfs:
-            print("Converting Pandas dataframe to Dask DF ...")
-            ddf = from_pandas(sdf, npartitions=22)
+        ddf = ddf.assign(sent_list=ddf.nlp_text.map(lambda x: add_senti(x)))
+        ddf = ddf.assign(f22_sentiment_neg=ddf.sent_list.map(lambda x: x[0]))
+        ddf = ddf.assign(f22_sentiment_neu=ddf.sent_list.map(lambda x: x[1]))
+        ddf = ddf.assign(f22_sentiment_pos=ddf.sent_list.map(lambda x: x[2]))
+        ddf = ddf.assign(f22_sentiment_compound=ddf.sent_list.map(lambda x: x[-1]))
+        ddf.drop("sent_list", axis=1)
 
-            ddf = ddf.assign(sent_list=ddf.nlp_text.map(lambda x: add_senti(x)))
-            ddf = ddf.assign(f22_sentiment_neg=ddf.sent_list.map(lambda x: x[0]))
-            ddf = ddf.assign(f22_sentiment_neu=ddf.sent_list.map(lambda x: x[1]))
-            ddf = ddf.assign(f22_sentiment_pos=ddf.sent_list.map(lambda x: x[2]))
-            ddf = ddf.assign(f22_sentiment_compound=ddf.sent_list.map(lambda x: x[-1]))
-            ddf.drop("sent_list", axis=1)
+        sent_drop_path = file_services.create_unique_folder_name(str(output_dir_path), prefix="sd")
+        ddf.to_parquet(path=str(sent_drop_path), schema='infer', engine="pyarrow", compression="snappy")
 
-            ddf.compute()
+        client.compute(ddf)
 
-            sent_drop_path = file_services.create_unique_folder_name(str(output_dir_path), prefix="sd")
-            ddf.to_parquet(path=str(sent_drop_path), engine="pyarrow", compression="snappy")
-
+    client.close()
 
 def start():
     source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "deduped", "main")
@@ -57,8 +63,7 @@ def start():
     output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'sent_drop', "main")
     os.makedirs(output_dir_path, exist_ok=True)
 
-    if not file_services.is_empty(output_dir_path):
-        raise Exception(f"Output folder '{output_dir_path}' is not empty.")
+    batchy_bae.ensure_clean_output_path(output_dir_path)
 
     batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False)
 

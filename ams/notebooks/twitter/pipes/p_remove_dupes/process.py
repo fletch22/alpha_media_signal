@@ -56,13 +56,15 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
     print(f"Total rows: {total_rows}")
 
+    spark.stop()
+
 
 def combine_and_persist(df_all: List[pd.DataFrame], output_dir_path: Path):
     df_combined = reduce(DataFrame.unionByName, df_all)
 
     df_combined = df_combined.drop_duplicates(["nlp_text"])
 
-    dataframe_services.persist_dataframe(df=df_combined, output_drop_folder_path=output_dir_path, prefix='dedupe', num_output_files=1)
+    dataframe_services.persist_dataframe(df=df_combined, output_drop_folder_path=output_dir_path, prefix='dedupe')
 
     return df_combined.count()
 
@@ -72,8 +74,7 @@ def start():
     output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "deduped", "main")
     os.makedirs(output_dir_path, exist_ok=True)
 
-    if not file_services.is_empty(output_dir_path):
-        raise Exception(f"Output folder '{output_dir_path}' is not empty.")
+    batchy_bae.ensure_clean_output_path(output_dir_path)
 
     batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False)
 

@@ -25,23 +25,24 @@ def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int]):
         # NOTE: 2020-10-14: chris.flesche: This technique helps us find the simple moving avg. If we try to calculate an SMA by getting yesterdays
         # date we might find that yesterday the market was closed. That's bad because we can't count that day while calculating the SMA. So we rely on
         # counting backwards through the equity trading history to get the nth prior trading day
-        df_equity.sort_values(by="date", ascending=True, inplace=True)
+        if df_equity is not None:
+            df_equity.sort_values(by="date", ascending=True, inplace=True)
 
-        dt_equity_oldest_str = min(df_equity["date"])
-        dt_oldest_str = dt_oldest_str if dt_oldest_str > dt_equity_oldest_str else dt_equity_oldest_str
+            dt_equity_oldest_str = min(df_equity["date"])
+            dt_oldest_str = dt_oldest_str if dt_oldest_str > dt_equity_oldest_str else dt_equity_oldest_str
 
-        df_olded = df_equity[df_equity["date"] < dt_oldest_str]
-        if df_olded.shape[0] > max_window:
-            with pd.option_context('mode.chained_assignment', None):
-                dt_start_str = df_olded.iloc[-max_window:, :]["date"].values.tolist()[0]
-        else:
-            if df_olded.shape[0] > 0:
-                dt_start_str = min(df_olded["date"])
+            df_olded = df_equity[df_equity["date"] < dt_oldest_str]
+            if df_olded.shape[0] > max_window:
+                with pd.option_context('mode.chained_assignment', None):
+                    dt_start_str = df_olded.iloc[-max_window:, :]["date"].values.tolist()[0]
+            else:
+                if df_olded.shape[0] > 0:
+                    dt_start_str = min(df_olded["date"])
 
-        df_dated = df_equity[df_equity["date"] > dt_start_str]
+            df_dated = df_equity[df_equity["date"] > dt_start_str]
 
-        df_sma = add_simple_moving_averages(df=df_dated, target_column=target_column, windows=windows)
-        all_dataframes.append(df_sma)
+            df_sma = add_simple_moving_averages(df=df_dated, target_column=target_column, windows=windows)
+            all_dataframes.append(df_sma)
 
     df_all = pd.concat(all_dataframes)
 

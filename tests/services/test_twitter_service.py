@@ -122,11 +122,13 @@ def test_bad_file():
 def test_twitter_trade_history():
     import pandas as pd
 
-    df = pd.read_csv(constants.TWITTER_TRADE_HISTORY_FILE_PATH, )
+    df = pd.read_csv(constants.TWITTER_TRADE_HISTORY_FILE_PATH)
+    print(f"Num rows: {df.shape[0]}")
 
     df = df.sample(frac=1.0)
 
-    df = df[df["purchase_price"] > 5.]
+    max_price = 5.
+    df = df[df["purchase_price"] > max_price]
 
     df["roi"] = (df["sell_price"] - df["purchase_price"]) / df["purchase_price"]
 
@@ -134,7 +136,7 @@ def test_twitter_trade_history():
 
     all_days = []
     max_stock_buy = 8
-    for ndx, (group_name, df_group) in enumerate(df_g):
+    for group_name, df_group in df_g:
         num_samples = df_group.shape[0]
         num_samples = max_stock_buy if num_samples >= max_stock_buy else num_samples
         df_g_samp = df_group.iloc[:num_samples]
@@ -150,8 +152,7 @@ def test_twitter_trade_history():
     initial_inv = 1000
     total = initial_inv
     for roi in all_days:
-        ret = total * roi
-        total += ret
+        total = (total * roi) + total
     print(f"Total roi: {(total - initial_inv) / initial_inv}")
 
     # validate_roi_data(df)

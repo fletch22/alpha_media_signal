@@ -58,15 +58,15 @@ Process Twitter Feed:
                 Step ii. Run 1-clean-raw.ipynb
 
     1. Download Twitter Daily Data
-    1.5 Smallified
-    2. Fix Tweet Multi Key (fixed_drop)
-    3. Flatten
-    4. Add Id
-    5. Deduped
-    6. Assign Sentiment
-    7. Learning Prep
-    8. Great Reduction (gathering all)
-    9. Twitter ML (gathering all)
+    2. Pipe Smallified
+    ~~3. Pipe Fix Tweet Multi Key (fixed_drop)~~ # No long er necessary
+    4. Flatten
+    5. Pipe Add Id
+    6. Pipe Deduped
+    7. Pipe Assign Sentiment (old 2-asign-sentiment) 
+    8. Pipe Learning Prep (old 3-twitter_learning_prep)
+    9. Pipe Great Reduction (gathering all)
+    10. Twitter ML (gathering all)
     
     # TODO: 2020-12-25: chris.flesche:
         Phase I Completion
@@ -81,6 +81,7 @@ Process Twitter Feed:
             Incorporate recent up-to-date Tweet data.
             Re-run models
             If results acceptable start phase II
+            Fix prediction - why lower? Bad scaling? Early scaling? cat_uniques off/bugged? Consider saving the scaler with the model.
         
         Phase II
             Backup to thumb drive.

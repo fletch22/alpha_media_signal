@@ -7,7 +7,7 @@ import yaml
 from ams.config.Credentials import Credentials
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-
+STOCK_PREDICTOR_ROOT = Path(PROJECT_ROOT.parent, 'stock-predictor')
 
 def ensure_dir(dir):
     os.makedirs(dir, exist_ok=True)

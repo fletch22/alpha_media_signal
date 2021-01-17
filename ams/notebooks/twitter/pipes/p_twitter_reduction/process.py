@@ -14,25 +14,6 @@ org_cols = ["f22_ticker", "date"]
 fraction = 1.
 
 
-def process(source_dir_path: Path, output_dir_path: Path):
-    all_dfs = []
-
-    file_paths = file_services.list_files(parent_path=source_dir_path, ends_with=".parquet.in_transition", use_dir_recursion=True)
-
-    for ndx, f in enumerate(file_paths):
-        print(f"Processing '{f}'.")
-        df = pd.read_parquet(f)
-
-        df_reduced = group_and_reduce(df=df)
-        all_dfs.append(df_reduced)
-
-    df_twitter_raw = pd.concat(all_dfs, axis=0)
-    df_twitter_raw = group_and_reduce(df=df_twitter_raw)
-
-    output_path = file_services.create_unique_filename(parent_dir=str(output_dir_path), prefix="twitter_reduce", extension="parquet")
-    df_twitter_raw.to_parquet(str(output_path))
-
-
 def increment_day_if_tweet_after_hours(row: pd.Series):
     date_str = row["date"]
     is_tweet_after_hours = row["f22_is_tweet_after_hours"]
@@ -72,12 +53,31 @@ def group_and_reduce(df: pd.DataFrame):
     return df
 
 
+def process(source_dir_path: Path, output_dir_path: Path):
+    all_dfs = []
+
+    file_paths = file_services.list_files(parent_path=source_dir_path, ends_with=".parquet.in_transition", use_dir_recursion=True)
+
+    num_files = len(file_paths)
+    for ndx, f in enumerate(file_paths):
+        print(f"Processing {ndx + 1} of {num_files}: '{f}'.")
+        df = pd.read_parquet(f)
+
+        df_reduced = group_and_reduce(df=df)
+        all_dfs.append(df_reduced)
+
+    df_twitter_raw = pd.concat(all_dfs, axis=0)
+    df_twitter_raw = group_and_reduce(df=df_twitter_raw)
+
+    output_path = file_services.create_unique_filename(parent_dir=str(output_dir_path), prefix="twitter_reduce", extension="parquet")
+    df_twitter_raw.to_parquet(str(output_path))
+
+
 def start():
     source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "learning_prep_drop", "main")
     output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "great_reduction", "main")
     os.makedirs(output_dir_path, exist_ok=True)
 
-    print(output_dir_path)
     batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False)
 
     return output_dir_path

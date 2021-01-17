@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.notebooks.twitter.pipes import batchy_bae
 from ams.services import file_services
 
+logger = logger_factory.create(__name__)
 
 def process(source_path: Path, output_dir_path: Path):
     parent_path = source_path
@@ -30,7 +31,7 @@ def process(source_path: Path, output_dir_path: Path):
                     except Exception as e:
                         pass
 
-                    if count % 1000 == 0:
+                    if count % 10000 == 0:
                         print(count)
                 print("Closing file.")
 
@@ -38,11 +39,15 @@ def process(source_path: Path, output_dir_path: Path):
 def start():
     source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "smallified_raw_drop", "main")
     output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "fixed_drop", "main")
+    batchy_bae.ensure_clean_output_path(output_dir_path)
 
     batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path,
-                     process_callback=process, should_archive=True)
+                     process_callback=process, should_archive=False)
 
     return output_dir_path
+
+
+
 
 
 if __name__ == '__main__':

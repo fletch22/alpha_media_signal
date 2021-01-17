@@ -1,3 +1,4 @@
+import gc
 import os
 import shutil
 from pathlib import Path
@@ -31,13 +32,20 @@ def revert_files_to_original_location(dest_dir_path: Path, files_in_transition: 
         shutil.move(str(f), str(dest_path))
 
 
-def remove_remaining_files(staging_path: Path):
-    files = file_services.list_files(staging_path, use_dir_recursion=False)
+def remove_remaining_files(target_path: Path) -> Path:
+    files = file_services.list_files(target_path, use_dir_recursion=False)
 
     tmp_trash = file_services.create_unique_folder_name(constants.TWITTER_TRASH_OUTPUT, prefix="batchy_bae")
     for f in files:
         file_path_new = Path(tmp_trash, f.name)
         shutil.move(str(f), str(file_path_new))
+
+    folders = file_services.list_child_folders(target_path)
+    for f in folders:
+        file_path_new = Path(tmp_trash, f.name)
+        shutil.move(str(f), str(file_path_new))
+
+    return Path(tmp_trash)
 
 
 def revert_in_transition_files(source_dir_path: Path):
@@ -57,7 +65,6 @@ def start(source_path: Path, output_dir_path: Path, process_callback: pipe_proce
 
 def move_to_staging(source_path: Path):
     staging_dir_path = Path(source_path.parent, STAGING_FOLDER_NAME)
-    print(staging_dir_path)
     os.makedirs(staging_dir_path, exist_ok=True)
 
     files = file_services.list_files(source_path, use_dir_recursion=True)
@@ -100,6 +107,13 @@ def unstage(source_path: Path, output_dir_path: Path):
 
     if total_files == 0:
         print("WARNING: No files found to archive.")
+
+
+def ensure_clean_output_path(output_dir_path: Path):
+    if not file_services.is_empty(output_dir_path):
+        logger.info("Cleaning output path ...")
+        trash_path = remove_remaining_files(output_dir_path)
+        logger.warning(f"Output folder '{output_dir_path}' is not empty. Files moved to '{trash_path}'.")
 
 
 def process(source_path: Path, output_dir_path: Path, process_callback: Callable[[Path, Path], None], should_archive: bool = True):

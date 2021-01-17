@@ -11,7 +11,7 @@ from ams.DateRange import DateRange
 from ams.config import constants
 from ams.services import ticker_service
 from ams.services.EquityFields import EquityFields
-from ams.services.ticker_service import get_nasdaq_info, get_ticker_eod_data
+from ams.services.ticker_service import get_ticker_eod_data
 from ams.utils import date_utils
 
 # NOTE: 2020-10-02: chris.flesche: vol > 100K; price > 5
@@ -875,46 +875,6 @@ def test_ticker_service():
     assert (roi == -.1)
 
 
-def test_get_nas_perf():
-    # Arrange
-    from_str = f"2020-07-05"
-    to_str = f"2020-12-24"
-    days_hold_stock = 1
-
-    date_from = date_utils.parse_std_datestring(from_str)
-    date_to = date_utils.parse_std_datestring(to_str)
-
-    df, _ = sample_roi(date_from=date_from, date_to=date_to, days_hold_stock=days_hold_stock)
-
-    print(df.head())
-
-    df.sort_values(by=["date"], inplace=True)
-    roi_list = df["roi"].to_list()
-    print(roi_list)
-
-
-def sample_roi(date_from: datetime, date_to: datetime, days_hold_stock: int) -> (pd.DataFrame, List[str]):
-    df_tickers = get_nasdaq_info()
-    tickers = df_tickers["ticker"].to_list()
-    sorted(tickers)
-
-    # tickers = tickers[:100]
-
-    # tickers = tickers[:math.ceil(len(tickers) / 2)]
-    # tickers = [t for t in tickers if t.startswith("A") or t.startswith("B")]
-    # tickers = ['AAPL', 'NVDA', 'GOOG', "MSFT", "FB", "GOOGL"]
-
-    # Act
-    df, tickers_gathered = ticker_service.get_nasdaq_perf(date_from=date_from,
-                                                          date_to=date_to,
-                                                          min_price=None,
-                                                          max_price=None,
-                                                          tickers=tickers,
-                                                          days_hold_stock=days_hold_stock)
-
-    return df, tickers_gathered
-
-
 def test_roi():
     # Arrange
     df = pd.read_parquet(constants.DAILY_ROI_NASDAQ_PATH)
@@ -923,18 +883,11 @@ def test_roi():
 
     print(f"Max date: {df['date'].max()}")
 
-    # Act
-    # num_years = 1
-    # roi_all = []
-    # start_year = 9
-    # for year in range(start_year, start_year + num_years):
-    #     from_str = f"20{year:02d}-01-01"
-    #     to_str = f"20{year:02d}-12-31"
-    #     days_hold_stock = 4
-    #     roi = find_roi(from_str, to_str, days_hold_stock)
-    #     roi_all.append(round(roi, 3))
-    #
-    # print(roi_all)
+    from_str = "2020-08-10"
+    to_str = "2021-01-07"
+    mean_roi = find_roi(from_str, to_str, days_hold_stock=5)
+
+    print(f"\n\nROI mean of means: {mean_roi:.4f}")
 
 
 def find_roi(from_str, to_str, days_hold_stock):
@@ -942,45 +895,7 @@ def find_roi(from_str, to_str, days_hold_stock):
     df = df[df["date"] > from_str]
     df = df[df["date"] < to_str]
 
-    print(f"\n\nROI mean of means: {df['roi'].mean():.4f}")
-
-    df.sort_values(by=["date"], inplace=True)
-
-    roi_list = df["roi"].to_list()
-
-    roi_list = [r for ndx, r in enumerate(roi_list) if ndx % days_hold_stock == 0]
-    chunked_rois = list(chunks(roi_list, days_hold_stock))
-
-    roi_list = []
-    for c in chunked_rois:
-        _, roi = roi_calc(c)
-        roi_list.append(roi)
-
-    num_days = len(roi_list)
-    print(f"Number of trading days: {num_days}")
-
-    to_zero = list(range(num_days))
-    shuffle(to_zero)
-
-    total_stocks = 6600
-    tot_to_zero = math.ceil((156 / 365) * num_days)
-    tot_to_zero = math.ceil(tot_to_zero * (tot_to_zero / total_stocks))
-    print(f"Total to zero trades: {tot_to_zero}")
-    to_zero = to_zero[:tot_to_zero]
-
-    risk_per_trade = tot_to_zero / total_stocks
-
-    num_simul_trades = 8
-    total_trades = num_days * num_simul_trades
-    total_trades_bunked = total_trades * risk_per_trade
-    print(f"risk_per_trade: {risk_per_trade:.4f}")
-    print(f"Total trades: {total_trades}")
-    print(f"Total trades bunked: {total_trades_bunked:.4f}")
-    investment, roi = roi_calc(roi_list)
-
-    print(f"ROI: {roi:.2f}: Investment: {investment:.2f}")
-
-    return roi
+    return df['roi'].mean()
 
 
 def test_raw_invest():
@@ -1090,7 +1005,6 @@ def test_nas_perf_2():
     print(f"Mean roi: {mean_roi}")
 
 
-
 def test_create_ticker_on_day():
     # Arrange
     # Act
@@ -1100,6 +1014,18 @@ def test_create_ticker_on_day():
     t_on_d_2 = ticker_service.load_tickers_on_day()
 
     assert (t_on_d == t_on_d_2)
+
+
+def test_get_most_recent():
+    # Arrange
+    ticker = "AAPL"
+    attributes = ("volume", "close")
+    # Act
+    prev_volume, prev_close = ticker_service.get_most_recent_stock_values(ticker=ticker, attributes=attributes)
+
+    # Assert
+    print(prev_volume)
+    print(prev_close)
 
 
 def calc_variance(diffs):

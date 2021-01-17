@@ -1,6 +1,6 @@
 import time
 from datetime import datetime, timedelta
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import pandas as pd
 from pandas import DataFrame, CategoricalDtype
@@ -85,7 +85,7 @@ def get_ticker_attr_from_date(ticker: str, date_str: str,
 def get_start_end_dates(date_strs: List[str]):
     date_strs = sorted(date_strs)
     start_date = date_strs[0]
-    end_date = date_strs[len(date_strs) - 1]
+    end_date = date_strs[-1]
 
     dt = date_utils.parse_std_datestring(end_date)
     dt_end_adjust = dt + timedelta(days=4)
@@ -102,7 +102,24 @@ def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_days_in_future: in
         if df_equity is not None:
             all_dfs.append(df_equity)
 
-    df_ticker = pd.concat(all_dfs)
+    df_ticker = None
+    if len(all_dfs) > 0:
+        df_ticker = pd.concat(all_dfs)
+
+    return df_ticker
+
+
+def get_ticker_on_dates_2(tick_dates: Dict[str, List[str]], num_days_in_future: int = 1) -> pd.DataFrame:
+    all_dfs = []
+    for ticker, date_strs in tick_dates.items():
+        df_equity = get_equity_on_dates_2(ticker=ticker, date_strs=date_strs,
+                                          num_days_in_future=num_days_in_future)
+        if df_equity is not None:
+            all_dfs.append(df_equity)
+
+    df_ticker = None
+    if len(all_dfs) > 0:
+        df_ticker = pd.concat(all_dfs)
 
     return df_ticker
 
@@ -122,7 +139,38 @@ def get_equity_on_dates(ticker: str, date_strs: List[str],
         cols = ["future_open", "future_low", "future_high", "future_close", "future_date"]
         df_in_range[cols] = df_in_range[cols].shift(-num_days_in_future)
 
+        df_in_range["prev_close"] = df_in_range["close"]
+        df_in_range["prev_volume"] = df_in_range["volume"]
+        cols = ["prev_close", "volume"]
+        df_in_range[cols] = df_in_range[cols].shift(2)
+
         df_in_dates = df_in_range[df_in_range["date"].isin(date_strs)]
+
+    return df_in_dates
+
+
+def get_equity_on_dates_2(ticker: str, date_strs: List[str],
+                          num_days_in_future: int = 1) -> pd.DataFrame:
+    df = get_ticker_eod_data(ticker)
+    df_in_dates = None
+    if df is not None:
+        start, end = get_start_end_dates(date_strs)
+        df_in_range = df[(df["date"] >= start) & (df["date"] <= end)].sort_values(by="date")
+        df_in_range["future_open"] = df_in_range["open"]
+        df_in_range["future_low"] = df_in_range["low"]
+        df_in_range["future_high"] = df_in_range["high"]
+        df_in_range["future_close"] = df_in_range["close"]
+        df_in_range["future_date"] = df_in_range["date"]
+        cols = ["future_open", "future_low", "future_high", "future_close", "future_date"]
+        df_in_range[cols] = df_in_range[cols].shift(-num_days_in_future)
+
+        df_in_range["prev_close"] = df_in_range["close"]
+        df_in_range["prev_volume"] = df_in_range["volume"]
+        cols = ["prev_close", "volume"]
+        df_in_range[cols] = df_in_range[cols].shift(-2)
+
+        df_in_dates = df_in_range[df_in_range["date"].isin(date_strs)]
+
     return df_in_dates
 
 
@@ -357,7 +405,7 @@ def std_single_dataframe(df: pd.DataFrame, standard_scaler: StandardScaler):
         # df_train.loc[df_train[c] == None, col_new] = True
 
         with pd.option_context('mode.chained_assignment', None):
-            df.loc[:, c] = standard_scaler.fit_transform(df[[c]])
+            df.loc[:, c] = standard_scaler.transform(df[[c]])
 
     return df
 
@@ -480,12 +528,12 @@ def add_days_until_sale(df: pd.DataFrame):
     return df
 
 
-def get_nasdaq_perf(date_from: datetime,
-                    tickers: List[str],
-                    date_to: datetime = None,
-                    min_price: float = None,
-                    max_price: float = None,
-                    days_hold_stock: int = 1) -> (pd.DataFrame, List[str]):
+def calc_and_persist_equity_daily_roi(date_from: datetime,
+                                      tickers: List[str],
+                                      date_to: datetime = None,
+                                      min_price: float = None,
+                                      max_price: float = None,
+                                      days_hold_stock: int = 1) -> (pd.DataFrame, List[str]):
     date_from_str = date_utils.get_standard_ymd_format(date_from)
     date_to_str = date_utils.get_standard_ymd_format(date_to)
 
@@ -577,3 +625,15 @@ def create_tickers_available_on_day():
 
 def load_tickers_on_day() -> Dict:
     return pickle_service.load(file_path=constants.TOD_PICKLE_PATH)
+
+
+def get_most_recent_stock_values(ticker: str, attributes: Tuple[str, str]):
+    df_e = get_ticker_eod_data(ticker)
+    result = None, None
+    if df_e is not None:
+        row = df_e[df_e["date"] == df_e["date"].max()].iloc[0]
+        values = []
+        for a in attributes:
+            values.append(row[a])
+        result = tuple(values)
+    return result

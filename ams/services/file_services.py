@@ -51,15 +51,19 @@ def create_unique_filename(parent_dir: str, prefix: str, extension: str = None) 
     date_str = date_utils.format_file_system_friendly_date(datetime.now())
     proposed_core_item_name = f"{prefix}_{date_str}"
 
+    filename = proposed_core_item_name
     if extension is not None:
-        proposed_core_item_name = f"{proposed_core_item_name}.{extension}"
+        filename = f"{proposed_core_item_name}.{extension}"
 
-    proposed_item = Path(parent_dir, proposed_core_item_name)
+    proposed_item = Path(parent_dir, filename)
     count = 1
-    while os.path.exists(proposed_item):
-        proposed_item = Path(parent_dir, f"{proposed_core_item_name}-({count})")
+    while proposed_item.exists():
+        filename = f"{proposed_core_item_name}-({count})"
+        if extension is not None:
+            filename = f"{filename}.{extension}"
+        proposed_item = Path(parent_dir, filename)
         count += 1
-        if count > 10:
+        if count > 100:
             raise Exception("Something went wrong. Too many files with similar names.")
 
     return proposed_item
@@ -143,5 +147,9 @@ def unnest_files(parent: Path, target_path: Path, filename_ends_with: str):
     files = list_files(parent_path=parent, ends_with=filename_ends_with, use_dir_recursion=True)
 
     for f in files:
-        file_dest = str(Path(target_path, f.name))
-        shutil.move(str(f), dst=file_dest)
+        file_dest = Path(target_path, f.name)
+        if file_dest.exists():
+            if filename_ends_with.startswith("."):
+                filename_ends_with = filename_ends_with[1:]
+            file_dest = create_unique_filename(parent_dir=str(file_dest.parent), prefix="unnested", extension=filename_ends_with)
+        shutil.move(str(f), dst=str(file_dest))
