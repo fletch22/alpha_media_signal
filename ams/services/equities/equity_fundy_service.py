@@ -20,7 +20,9 @@ def get_most_recent_quarter_data():
 def get_all_quarterly_data():
     df = get_equity_fundies()
 
-    df_fil = df[df["dimension"] == EquityFundaDimension.AsReportedQuarterly.value]
+    df_fil = df[df["dimension"] == EquityFundaDimension.AsReportedQuarterly.value].copy()
 
-    return df_fil.sort_values(by=["ticker", "calendardate"])
+    df_fil.sort_values(by=["ticker", "calendardate"], inplace=True)
+
+    return df_fil
 

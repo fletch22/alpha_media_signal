@@ -93,7 +93,7 @@ def append_tweets_to_output_file(output_path: Path, tweets: List[Dict], ticker: 
     json_lines = [json.dumps(t) for t in tweets]
     if len(json_lines):
         with open(str(output_path), 'a+') as f:
-            json_lines_nl = [f'{{"version": "0.9.1", "f22_ticker": ticker, "tweet": {j}}}\n' for j in json_lines]
+            json_lines_nl = [f'{{"version": "0.9.2", "f22_ticker": {ticker}, "tweet": {j}}}\n' for j in json_lines]
             f.writelines(json_lines_nl)
 
 
@@ -279,8 +279,8 @@ def search_with_multi_thread(date_range: DateRange):
     ticker_tuples = get_ticker_searchable_tuples()
 
     # from_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
-    # if from_date_str == "2020-12-31":
-    #     ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='WW', delete_before=True)
+    # if from_date_str == "2021-01-18":
+    #     ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='RAND', delete_before=True)
 
     parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop', "main")
     tweet_raw_output_path = file_services.create_unique_filename(str(parent),
@@ -336,7 +336,7 @@ def get_rec_quarter_for_twitter():
 
 def get_all_quarterly_data_for_twitter():
     df_rec_quart = equity_fundy_service.get_all_quarterly_data()
-    return df_rec_quart.drop(columns=["lastupdated", "dimension", "datekey", "reportperiod"])
+    return df_rec_quart.drop(columns=["lastupdated", "dimension", "datekey", "reportperiod"]).copy()
 
 
 def exagerrate_stock_val_change(value):
@@ -471,11 +471,11 @@ def convert_to_bool(df: pd.DataFrame):
 
 def refine_pool(df: pd.DataFrame, min_volume: int = None, min_price: float = None, max_price: float = None):
     if min_volume is not None:
-        df = df[df["prev_volume"] > min_volume]
+        df = df[df["prev_volume"] > min_volume].copy()
     if min_price is not None:
-        df = df[df["prev_close"] >= min_price]
+        df = df[df["prev_close"] >= min_price].copy()
     if max_price is not None:
-        df = df[df["prev_close"] <= max_price]
+        df = df[df["prev_close"] <= max_price].copy()
     return df
 
 
@@ -566,7 +566,7 @@ def omit_columns(df: pd.DataFrame):
     omit_cols = ['created_at_timestamp', 'in_reply_to_status_id', 'place_country', 'user_time_zone',
                  'place_name',
                  'user_location', 'metadata_result_type', 'place_name', 'place_country',
-                 'lang', 'in_reply_to_screen_name', 'lastupdated', 'created_at']
+                 'lang', 'in_reply_to_screen_name', 'lastupdated', 'created_at', "prev_date"]
 
     narrow_cols = list(set(df.columns) - set(omit_cols))
 
@@ -574,8 +574,8 @@ def omit_columns(df: pd.DataFrame):
 
 
 def balance_df(df: pd.DataFrame):
-    df_samp_buy = df[df["buy_sell"] == 1]
-    df_samp_sell = df[df["buy_sell"] != 1]
+    df_samp_buy = df[df["buy_sell"] == 1].copy()
+    df_samp_sell = df[df["buy_sell"] != 1].copy()
 
     num_buy = df_samp_buy.shape[0]
     num_sell = df_samp_sell.shape[0]
@@ -605,6 +605,8 @@ def split_train_test(train_set: pd.DataFrame, test_set: pd.DataFrame, train_cols
 def split_df_for_learning(df: pd.DataFrame, train_cols: List[str], label_col: str = "buy_sell"):
     df_set_bal = balance_df(df)
 
+    print(f"balanced data: {df_set_bal.shape[0]}")
+
     X = np.array(df_set_bal[train_cols])
     y = np.array(df_set_bal[label_col])
 
@@ -617,7 +619,7 @@ def get_feature_columns(narrow_cols):
                  "stock_val_change_scaled", "stock_val_change", "roi", "user_screen_name",
                  "future_date", "user_follow_request_sent", "f22_ticker"}
     # FIXME: 2021-01-16: chris.flesche: Experimental
-    omit_cols |= {"open", "close", "high", "low", "original_close_price", "nasdaq_day_roi"}
+    omit_cols |= {"nasdaq_day_roi"}
     # End FIXME
     train_cols = list(set(narrow_cols) - omit_cols)
     return train_cols
@@ -803,5 +805,5 @@ def remove_last_days(df: pd.DataFrame, num_days: int):
 
 
 if __name__ == '__main__':
-    date_range = DateRange.from_date_strings(from_date_str="2021-01-13", to_date_str="2021-01-15")
+    date_range = DateRange.from_date_strings(from_date_str="2021-01-18", to_date_str="2021-01-20")
     search_one_day_at_a_time(date_range=date_range)

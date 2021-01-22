@@ -136,3 +136,8 @@ def test_is_stock_market_closed_raises():
     with pytest.raises(Exception):
         # Assert
         is_closed = date_utils.is_stock_market_closed(dt=dt)
+
+
+def test_tuple():
+    a = [123, 234, 345]
+    a1, a2, a3 = tuple(a)

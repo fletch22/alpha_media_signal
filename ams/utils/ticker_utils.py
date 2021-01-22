@@ -9,45 +9,66 @@ def add_simple_moving_averages(df: pd.DataFrame, target_column: str, windows: Li
     df_copy = df.copy()
     for w in windows:
         with pd.option_context('mode.chained_assignment', None):
-            df_copy[f"{target_column}_SMA_{w}"] = df_copy.loc[:, target_column].rolling(window=w).mean().astype("float64")
+            df_copy[f"{target_column}_SMA_{w}"] = df_copy[target_column].rolling(window=w).mean().astype("float64")
     return df_copy
 
 
-def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int]):
+def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], predict_date_str: str, sma_day_before: bool):
     max_window = max(windows)
-    ticker_list = df['f22_ticker'].unique().tolist()
-    dt_oldest_str = min(df["date"])
 
     all_dataframes = []
 
-    for t in ticker_list:
-        df_equity = ticker_service.get_ticker_eod_data(t)
-        # NOTE: 2020-10-14: chris.flesche: This technique helps us find the simple moving avg. If we try to calculate an SMA by getting yesterdays
-        # date we might find that yesterday the market was closed. That's bad because we can't count that day while calculating the SMA. So we rely on
-        # counting backwards through the equity trading history to get the nth prior trading day
+    date_col = "date"
+
+    df_g = df.groupby(by=["f22_ticker"])
+
+    for ticker, df_group in df_g:
+        df_equity = ticker_service.get_ticker_eod_data(ticker)
+        dt_oldest_tweet_str = min(df_group["date"])
+
         if df_equity is not None:
-            df_equity.sort_values(by="date", ascending=True, inplace=True)
+            df_equity = df_equity[df_equity["date"] < predict_date_str].copy()
 
-            dt_equity_oldest_str = min(df_equity["date"])
-            dt_oldest_str = dt_oldest_str if dt_oldest_str > dt_equity_oldest_str else dt_equity_oldest_str
+            df_equity.dropna(subset=[date_col], inplace=True)
 
-            df_olded = df_equity[df_equity["date"] < dt_oldest_str]
-            if df_olded.shape[0] > max_window:
-                with pd.option_context('mode.chained_assignment', None):
-                    dt_start_str = df_olded.iloc[-max_window:, :]["date"].values.tolist()[0]
-            else:
-                if df_olded.shape[0] > 0:
-                    dt_start_str = min(df_olded["date"])
+            df_equity.sort_values(by=date_col, ascending=True, inplace=True)
 
-            df_dated = df_equity[df_equity["date"] > dt_start_str]
+            if df_equity is not None and df_equity.shape[0] > 0:
+                # dt_youngest_ticker_str = max(df_equity["date"])
+                # dt_oldest_tweet_str = dt_oldest_tweet_str if dt_oldest_tweet_str > dt_youngest_ticker_str else dt_oldest_ticker_str
 
-            df_sma = add_simple_moving_averages(df=df_dated, target_column=target_column, windows=windows)
-            all_dataframes.append(df_sma)
+                df_hist = df_equity[df_equity[date_col] < dt_oldest_tweet_str].copy()
+                dt_start_str = None
+                if df_hist.shape[0] > max_window:
+                    with pd.option_context('mode.chained_assignment', None):
+                        dt_start_str = df_hist.iloc[-max_window:][date_col].values.tolist()[0]
+                elif df_hist.shape[0] > 0:
+                        dt_start_str = df_hist[date_col].min()
 
-    df_all = pd.concat(all_dataframes)
+                if dt_start_str is not None:
+                    df_dated = df_equity[df_equity[date_col] >= dt_start_str].copy()
 
-    df_merged = pd.merge(df, df_all, how='inner', left_on=["f22_ticker", "date"], right_on=["ticker", "date"], suffixes=[None, "_drop"])
-    df_dropped = df_merged.drop(columns=[c for c in df_merged.columns if c.endswith("_drop")]).drop(columns=['ticker'])
+                    df_sma = add_simple_moving_averages(df=df_dated, target_column=target_column, windows=windows)
+
+                    all_dataframes.append(df_sma)
+
+    df_all = pd.concat(all_dataframes, axis=0)
+
+    if sma_day_before:
+        # print(f"Num tickers in df_all: {len(df_all['ticker'].unique())}")
+        # print(f"df_all before merge: {df_all.shape[0]}")
+        # print(f"df_all cols: {df_all.columns}")
+        # print(df[["f22_ticker", "prev_date", "date"]].head())
+        # print(df_all[["ticker", "date"]].head())
+
+        df_all = df_all.rename(columns={date_col: "prev_date", "ticker": "f22_ticker"})
+        df_merged = pd.merge(df, df_all, how='inner', on=["f22_ticker", "prev_date"], suffixes=[None, "_drop"])
+        # print(f"df_merged after: {df_merged.shape[0]}")
+        df_dropped = df_merged.drop(columns=[c for c in df_merged.columns if c.endswith("_drop")])
+        print(df_dropped[["f22_ticker", "date", "prev_date", "close_SMA_200"]].head())
+    else:
+        df_merged = pd.merge(df, df_all, how='inner', left_on=["f22_ticker", "date"], right_on=["ticker", date_col], suffixes=[None, "_drop"])
+        df_dropped = df_merged.drop(columns=[c for c in df_merged.columns if c.endswith("_drop")]).drop(columns=['ticker'])
 
     return df_dropped
 
@@ -63,7 +84,11 @@ def add_days_since_under_sma_many_tickers(df: pd.DataFrame, col_sma: str, close_
         df_group = add_days_since_under_sma_to_ticker(df_one_ticker=df_group, col_sma=col_sma, close_col=close_col)
         new_groups.append(df_group)
 
-    return pd.concat(new_groups)
+    df_result = df
+    if len(new_groups) > 0:
+        df_result = pd.concat(new_groups).reset_index(drop=True)
+
+    return df_result
 
 
 def get_count_days(row: pd.Series, col_sma: str, close_col: str):

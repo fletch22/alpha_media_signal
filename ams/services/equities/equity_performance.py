@@ -12,7 +12,7 @@ from ams.utils import date_utils
 def calc_and_persist_nasdaq_roi(date_from: datetime, date_to: datetime, days_hold_stock: int, min_price: float=None) -> (pd.DataFrame, List[str]):
     df_tickers = get_nasdaq_info()
     tickers = df_tickers["ticker"].to_list()
-    sorted(tickers)
+    tickers = sorted(tickers)
 
     # tickers = tickers[:100]
 
@@ -32,7 +32,7 @@ def calc_and_persist_nasdaq_roi(date_from: datetime, date_to: datetime, days_hol
 
 
 def start():
-    from_str = f"2020-07-10"
+    from_str = f"2020-08-10"
     to_str = date_utils.get_standard_ymd_format(datetime.now())
     days_hold_stock = 1
 
@@ -43,9 +43,10 @@ def start():
 
     print(df.head())
 
-    df.loc[:, :] = df[df["date"] >= "2020-08-10"]
+    df = df[df["date"] >= "2020-08-10"].copy()
     # df.sort_values(by=["date"], inplace=True)
     roi_mean = df["roi"].mean()
+
     print(roi_mean)
 
 

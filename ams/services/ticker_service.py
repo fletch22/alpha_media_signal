@@ -28,6 +28,10 @@ def set_ticker_cache(tc: Dict):
     ticker_cache = tc
 
 
+def does_ticker_data_exist(ticker: str):
+    return file_services.get_eod_ticker_file_path(ticker).exists()
+
+
 def get_ticker_eod_data(ticker: str) -> DataFrame:
     ticker_path = file_services.get_eod_ticker_file_path(ticker)
     df = None
@@ -139,37 +143,81 @@ def get_equity_on_dates(ticker: str, date_strs: List[str],
         cols = ["future_open", "future_low", "future_high", "future_close", "future_date"]
         df_in_range[cols] = df_in_range[cols].shift(-num_days_in_future)
 
+        df_in_range["prev_open"] = df_in_range["open"]
+        df_in_range["prev_low"] = df_in_range["low"]
+        df_in_range["prev_high"] = df_in_range["high"]
         df_in_range["prev_close"] = df_in_range["close"]
         df_in_range["prev_volume"] = df_in_range["volume"]
         cols = ["prev_close", "volume"]
-        df_in_range[cols] = df_in_range[cols].shift(2)
+        df_in_range[cols] = df_in_range[cols].shift(1)
 
         df_in_dates = df_in_range[df_in_range["date"].isin(date_strs)]
 
     return df_in_dates
 
 
-def get_equity_on_dates_2(ticker: str, date_strs: List[str],
-                          num_days_in_future: int = 1) -> pd.DataFrame:
+def get_equity_on_prev_trading_day(df: pd.DataFrame, date_str: str) -> pd.DataFrame:
+    df_grouped = df.groupby(["f22_ticker"])
+
+    prev_date = date_utils.parse_std_datestring(date_str) + timedelta(days=-7)
+    prev_date_str = date_utils.get_standard_ymd_format(prev_date)
+    all_dfs = []
+    cols = ["prev_open", "prev_low", "prev_high", "prev_close", "prev_volume"]
+    all_cols = cols + ["ticker", "date"]
+
+    for ticker, df_g in df_grouped:
+        df_ticker = get_ticker_eod_data(ticker)
+        if df_ticker is not None:
+            df_in_range = df_ticker[(df_ticker["date"] > prev_date_str) & (df_ticker["date"] <= date_str)].copy()
+
+            df_in_range.loc[:, "prev_open"] = df_in_range["open"]
+            df_in_range.loc[:, "prev_low"] = df_in_range["low"]
+            df_in_range.loc[:, "prev_high"] = df_in_range["high"]
+            df_in_range.loc[:, "prev_close"] = df_in_range["close"]
+            df_in_range.loc[:, "prev_volume"] = df_in_range["volume"]
+
+            df_in_range.loc[:, (cols)] = df_in_range[cols].shift(1)
+
+            df_in_range = df_in_range[df_in_range["date"] == date_str][all_cols].copy()
+            all_dfs.append(df_in_range)
+
+    df_all_tickers = None
+    if len(all_dfs) > 0:
+        df_all_tickers = pd.concat(all_dfs, axis=0)
+
+    rem_cols = list(set(df.columns) - set(cols))
+
+    df_merged = pd.merge(df[rem_cols], df_all_tickers, how="inner", left_on=["f22_ticker", "date"], right_on=["ticker", "date"])
+    df_merged.drop(columns=["ticker"], inplace=True)
+
+    return df_merged
+
+
+def get_equity_on_dates_2(ticker: str, date_strs: List[str], num_days_in_future: int = 1) -> pd.DataFrame:
     df = get_ticker_eod_data(ticker)
     df_in_dates = None
     if df is not None:
+        df.loc[:, "prev_date"] = df["date"]
+        df.loc[:, "prev_open"] = df["open"]
+        df.loc[:, "prev_low"] = df["low"]
+        df.loc[:, "prev_high"] = df["high"]
+        df.loc[:, "prev_close"] = df["close"]
+        df.loc[:, "prev_volume"] = df["volume"]
+        cols = ["prev_date", "prev_open", "prev_low", "prev_high", "prev_close", "prev_volume"]
+        df[cols] = df[cols].shift(1).copy()
+
         start, end = get_start_end_dates(date_strs)
-        df_in_range = df[(df["date"] >= start) & (df["date"] <= end)].sort_values(by="date")
-        df_in_range["future_open"] = df_in_range["open"]
-        df_in_range["future_low"] = df_in_range["low"]
-        df_in_range["future_high"] = df_in_range["high"]
-        df_in_range["future_close"] = df_in_range["close"]
-        df_in_range["future_date"] = df_in_range["date"]
+        df = df[(df["date"] >= start) & (df["date"] <= end)]
+        df.sort_values(by="date", inplace=True)
+        df.loc[:, "future_open"] = df["open"]
+        df.loc[:, "future_low"] = df["low"]
+        df.loc[:, "future_high"] = df["high"]
+        df.loc[:, "future_close"] = df["close"]
+        df.loc[:, "future_date"] = df["date"]
         cols = ["future_open", "future_low", "future_high", "future_close", "future_date"]
-        df_in_range[cols] = df_in_range[cols].shift(-num_days_in_future)
+        df[cols] = df[cols].shift(-num_days_in_future)
 
-        df_in_range["prev_close"] = df_in_range["close"]
-        df_in_range["prev_volume"] = df_in_range["volume"]
-        cols = ["prev_close", "volume"]
-        df_in_range[cols] = df_in_range[cols].shift(-2)
-
-        df_in_dates = df_in_range[df_in_range["date"].isin(date_strs)]
+        df_in_dates = df[df["date"].isin(date_strs)].copy()
 
     return df_in_dates
 
@@ -301,7 +349,9 @@ def get_tickers_w_filters(min_price: float = 5.0, min_volume: int = 100000):
 
 
 def get_ticker_info():
-    return pd.read_csv(constants.SHAR_TICKER_DETAIL_INFO_PATH)
+    df = pd.read_csv(constants.SHAR_TICKER_DETAIL_INFO_PATH)
+    df.sort_values(by=["ticker", "lastupdated"], inplace=True)
+    return df.groupby(["ticker"]).last().reset_index()
 
 
 def get_nasdaq_info():
@@ -309,22 +359,15 @@ def get_nasdaq_info():
     return df.loc[df["exchange"] == "NASDAQ"]
 
 
-def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[str], cat_uniques: Dict[str, List[str]] = None) -> (pd.DataFrame, Dict[str, List[str]]):
+def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[str]) -> (pd.DataFrame, Dict[str, List[str]]):
     df_one_hots = []
     unknown_val = "<unknown>"
-    cat_uniques_new = dict()
     for c in cols:
         df_all_tickers.loc[pd.isnull(df_all_tickers[c]), c] = unknown_val
 
-        if cat_uniques is not None and c in cat_uniques.keys():
-            uniques = cat_uniques[c]
-            df.loc[~df[c].isin(uniques), c] = unknown_val
-        else:
-            uniques = df_all_tickers[c].unique().tolist()
-            uniques.append(unknown_val)
-            uniques = list(set(uniques))
-
-        cat_uniques_new[c] = uniques
+        uniques = df_all_tickers[c].unique().tolist()
+        uniques.append(unknown_val)
+        uniques = list(set(uniques))
 
         df.loc[pd.isnull(df[c]), c] = unknown_val
         df.loc[:, c] = df.loc[:, c].astype(CategoricalDtype(uniques))
@@ -334,24 +377,17 @@ def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[s
     df_one_dropped = df.drop(columns=cols)
     df_one_hots.append(df_one_dropped)
 
-    return pd.concat(df_one_hots, axis=1), cat_uniques_new
+    return pd.concat(df_one_hots, axis=1)
 
 
-def make_f22_ticker_one_hotted(df_ranked: pd.DataFrame, cat_uniques: Dict[str, List[str]] = None) -> (pd.DataFrame, Dict[str, List[str]]):
+def make_f22_ticker_one_hotted(df_ranked: pd.DataFrame) -> (pd.DataFrame, Dict[str, List[str]]):
     col = "f22_ticker"
     df = df_ranked[[col]].copy()
     df[col] = df[col].fillna("<unknown>")
 
-    if cat_uniques is not None and col in cat_uniques.keys():
-        print("Using cat_uniques.")
-        unique_tickers = cat_uniques[col]
-        print(f"Num unique_tickers: {len(unique_tickers)}")
-        df.loc[~df[col].isin(unique_tickers), col] = "<unknown>"
-    else:
-        print("cat_uniques is not used.")
-        unique_tickers = df[col].unique().tolist()
-        unique_tickers.append("<unknown>")
-        unique_tickers = list(set(unique_tickers))
+    unique_tickers = df[col].unique().tolist()
+    unique_tickers.append("<unknown>")
+    unique_tickers = list(set(unique_tickers))
 
     df[col] = df[col].astype(CategoricalDtype(unique_tickers))
     df_new_col = pd.get_dummies(df[col], prefix=col)
@@ -359,15 +395,14 @@ def make_f22_ticker_one_hotted(df_ranked: pd.DataFrame, cat_uniques: Dict[str, L
     return pd.concat([df_ranked, df_new_col], axis=1), unique_tickers
 
 
-def get_nasdaq_tickers(cat_uniques: Dict[str, List[str]]):
+def get_nasdaq_tickers():
     df_nasdaq = get_nasdaq_info()
 
-    df_dropped = df_nasdaq.drop(
-        columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
-                 "secfilings", "companysite", "lastupdated", "cusips",
-                 "isdelisted", "name", "exchange", "firstadded", "permaticker", "sicindustry",
-                 "relatedtickers"
-                 ])
+    df_dropped = df_nasdaq.drop(columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
+                                         "secfilings", "companysite", "lastupdated", "cusips",
+                                         "isdelisted", "name", "exchange", "firstadded", "permaticker", "sicindustry",
+                                         "relatedtickers"
+                                         ])
 
     df_all_tickers = get_ticker_info()
     df_rem = df_all_tickers[df_dropped.columns]
@@ -375,20 +410,12 @@ def get_nasdaq_tickers(cat_uniques: Dict[str, List[str]]):
     columns = [c for c in df_rem.columns if str(df_rem[c].dtype) == "object"]
     columns.remove("ticker")
 
-    col_tick = "f22_ticker"
-    tickers = None
-    if cat_uniques is not None and col_tick in cat_uniques.keys():
-        tickers = cat_uniques[col_tick]
-
-    df_one_hotted, cat_uniques = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns, cat_uniques=cat_uniques)
+    df_one_hotted = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns)
 
     # FIXME: 2021-01-02: chris.flesche: Should be moved to a later step or refactored out.
     df_ren = df_one_hotted.rename(columns={"ticker": "ticker_drop"})
 
-    if tickers is not None:
-        cat_uniques[col_tick] = tickers
-
-    return df_ren, cat_uniques
+    return df_ren
 
 
 def std_single_dataframe(df: pd.DataFrame, standard_scaler: StandardScaler):
@@ -537,6 +564,9 @@ def calc_and_persist_equity_daily_roi(date_from: datetime,
     date_from_str = date_utils.get_standard_ymd_format(date_from)
     date_to_str = date_utils.get_standard_ymd_format(date_to)
 
+    print(f"date_from_str: {date_from_str}")
+    print(f"date_to_str: {date_to_str}")
+
     all_df = list()
     cols = ["future_open", "future_close", "future_high", "future_low"]
 
@@ -547,11 +577,11 @@ def calc_and_persist_equity_daily_roi(date_from: datetime,
             print(f"Processing ticker: {t}")
             df = df[df["date"] >= date_from_str]
             if date_to is not None:
-                df = df[df["date"] <= date_to_str]
+                df = df[df["date"] <= date_to_str].copy()
             if min_price is not None:
-                df = df[df["open"] > min_price]
+                df = df[df["open"] > min_price].copy()
             if max_price is not None:
-                df = df[df["open"] < max_price]
+                df = df[df["open"] < max_price].copy()
             if df is not None and df.shape[0] > 0:
                 df.sort_values(by=["date"], inplace=True)
                 df["future_open"] = df["open"]
@@ -567,6 +597,9 @@ def calc_and_persist_equity_daily_roi(date_from: datetime,
 
     min_date = df_nas["date"].min()
     max_date = df_nas["date"].max()
+
+    print(min_date)
+    print(max_date)
 
     dt_min = date_utils.parse_std_datestring(min_date)
     dt_max = date_utils.parse_std_datestring(max_date)
@@ -627,13 +660,18 @@ def load_tickers_on_day() -> Dict:
     return pickle_service.load(file_path=constants.TOD_PICKLE_PATH)
 
 
-def get_most_recent_stock_values(ticker: str, attributes: Tuple[str, str]):
+def get_most_recent_stock_values(ticker: str, attributes: Tuple[str, str, str], before_date_str: str):
     df_e = get_ticker_eod_data(ticker)
-    result = None, None
+    result = None, None, None, None, None, None
     if df_e is not None:
-        row = df_e[df_e["date"] == df_e["date"].max()].iloc[0]
-        values = []
-        for a in attributes:
-            values.append(row[a])
-        result = tuple(values)
+        df_e = df_e[df_e["date"] < before_date_str]
+        df_e.sort_values(by=["date"], inplace=True)
+
+        if df_e.shape[0] > 0:
+            row = df_e.iloc[-1]
+            values = []
+            for a in attributes:
+                values.append(row[a])
+            result = tuple(values)
+
     return result

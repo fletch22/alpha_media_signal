@@ -116,10 +116,16 @@ def is_stock_market_closed(dt: datetime):
 
 
 def find_next_market_open_day(dt: datetime, num_days_to_skip: int):
+    reverse = num_days_to_skip < 0
     while True:
         dt = dt + timedelta(days=num_days_to_skip)
         if is_stock_market_closed(dt):
-            num_days_to_skip = 1
+            if reverse:
+                num_days_to_skip = -1
+            else:
+                num_days_to_skip = 1
         else:
             break
     return dt
+
+

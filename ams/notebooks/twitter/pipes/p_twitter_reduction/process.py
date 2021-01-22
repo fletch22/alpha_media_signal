@@ -33,6 +33,7 @@ def group_and_reduce(df: pd.DataFrame):
     df_all = []
     df_g = df.groupby(org_cols)
     for ndx, (group_name, df_group) in enumerate(df_g):
+        # TODO: 2021-01-17: chris.flesche: Expermiment with summing instead for counts.
         df_group["favorite_count"] = df_group["favorite_count"].mean()
         df_group["user_listed_count"] = df_group["user_listed_count"].mean()
         df_group["user_friends_count"] = df_group["user_friends_count"].mean()
@@ -45,6 +46,8 @@ def group_and_reduce(df: pd.DataFrame):
         df_group["f22_sentiment_neg"] = df_group["f22_sentiment_neg"].mean()
         df_group["f22_sentiment_compound"] = df_group["f22_sentiment_compound"].mean()
         df_group["f22_compound_score"] = df_group["f22_compound_score"].mean()
+        # TODO: 2021-01-17: chris.flesche: Enable this when doing full recalc
+        # df_group["f22_day_tweet_count"] = df_group.shape[0]
 
         df_all.append(df_group)
     df = pd.concat(df_all, axis=0).reset_index(drop=True)

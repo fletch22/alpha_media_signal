@@ -71,15 +71,21 @@ Process Twitter Feed:
     # TODO: 2020-12-25: chris.flesche:
         Phase I Completion
             Backup files to thumb drive. Done. 
-            Change pipes to not use parent folder if parent folder is "stage".
+            Change pipes to not use parent folder if parent folder is "stage". Will not do.
             Validate predicted purchase results with historical data. 
+                Status: Will validate with WTD (WorldTradingData for live predictions, historical for historical predictions.
             Test all columns for correlative power.
+                Status:
+                    SMA + EOD_of_Purchase_Day seems to be strong
+                    
             Test results by removing ranking.
+                Status:
             Test risk of using smaller buy lot size.
                 n Per day
                 n Per week
+                Status: Done. 8 purchases seems good.
             Incorporate recent up-to-date Tweet data.
-            Re-run models
+                Status: Ongoing.
             If results acceptable start phase II
             Fix prediction - why lower? Bad scaling? Early scaling? cat_uniques off/bugged? Consider saving the scaler with the model.
         

@@ -33,6 +33,7 @@ def process(source_path: Path, output_dir_path: Path):
                         wf.close()
                     break
                 try:
+                    line = line.replace('{"version": "0.9.1", "f22_ticker": ticker, ', '{"version": "0.9.1", "f22_ticker": "ticker", ')
                     obj = json.loads(line)
                     if "version" in obj.keys():
                         obj = obj["tweet"]

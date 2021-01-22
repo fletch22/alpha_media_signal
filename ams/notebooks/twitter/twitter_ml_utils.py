@@ -18,8 +18,7 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
-from ams.config import constants
-from ams.notebooks.twitter import twitter_ml_utils
+from ams.config import constants, logger_factory
 from ams.services import twitter_service, ticker_service, pickle_service, file_services
 from ams.services.csv_service import write_dicts_as_csv
 from ams.services.equities.EquityFundaDimension import EquityFundaDimension
@@ -37,10 +36,13 @@ LEARNING_RATE = .0001
 initial_cash = 10000
 num_trades_at_once = 1
 
+logger = logger_factory.create(__name__)
+
 
 class WorkflowMode(Enum):
     Prediction = "Prediction"
     Training = "Training"
+
 
 def group_and_mean_preds_buy_sell(df: pd.DataFrame, model: object, train_cols: List[str], standard_scaler: StandardScaler, is_model_torch=False):
     df_g_holdout = df.groupby(['f22_ticker', 'purchase_date'])
@@ -200,6 +202,10 @@ def transform_to_numpy(df: pd.DataFrame, narrow_cols: List[str]) -> Tuple[any, a
     train_cols = twitter_service.get_feature_columns(narrow_cols)
 
     X_train_raw, y_train = twitter_service.split_df_for_learning(df=df, train_cols=train_cols)
+
+    if X_train_raw is None or X_train_raw.shape[0] == 0:
+        return None, None, None
+
     standard_scaler = standard_scaler.fit(X_train_raw)
     X_train = standard_scaler.transform(X_train_raw)
 
@@ -792,13 +798,16 @@ def add_tip_ranks(df: pd.DataFrame, tr_file_path: Path):
 
     df_ranked = pd.merge(df, df_tip_ranks, on=["date", "f22_ticker"], how="left")
 
-    df_ranked["rank_roi"] = df_ranked.apply(rank_roied, axis=1)
+    rows_are_null = df_ranked['target_price'].isnull()
+    df_ranked.loc[rows_are_null, "target_price"] = df_ranked["prev_close"] + .01
+
+    df_ranked.loc[:, "rank_roi"] = df_ranked.apply(rank_roied, axis=1)
 
     rank_mean = df_tip_ranks["rank"].mean()
 
-    df_ranked["rating"] = df_ranked["rating"].fillna(0)
-    df_ranked["rank"] = df_ranked["rank"].fillna(rank_mean)
-    df_ranked["rating_age_days"] = df_ranked["rating_age_days"].fillna(1000)
+    df_ranked.loc[:, "rating"] = df_ranked["rating"].fillna(0)
+    df_ranked.loc[:, "rank"] = df_ranked["rank"].fillna(rank_mean)
+    df_ranked.loc[:, "rating_age_days"] = df_ranked["rating_age_days"].fillna(1000)
 
     return df_ranked
 
@@ -947,7 +956,7 @@ def merge_fundies_with_stock(df_stock_data: pd.DataFrame):
     from ams.services.equities import equity_fundy_service as efs
     df_equity_fundies = efs.get_equity_fundies()
 
-    df_eq_fun_quarters = df_equity_fundies[df_equity_fundies["dimension"] == EquityFundaDimension.AsReportedQuarterly.value]
+    df_eq_fun_quarters = df_equity_fundies[df_equity_fundies["dimension"] == EquityFundaDimension.AsReportedQuarterly.value].copy()
 
     return pd.merge(df_eq_fun_quarters, df_stock_data, on=["ticker"], how='outer', suffixes=[None, "_eq_fun"])
 
@@ -1011,6 +1020,8 @@ def add_nasdaq_roi_new(df: pd.DataFrame, num_hold_days: int = 1):
 
     df = pd.merge(df_roi_nasdaq, df, on=["date"], how="right")
 
+    # print(f"Filthy: {df.shape[0]}")
+
     if num_hold_days > 1:
         df.loc[:, "roi_sell_date"] = df["nasdaq_day_roi"]
         df["roi_sell_date"] = df["roi_sell_date"].shift(-num_hold_days)
@@ -1019,11 +1030,13 @@ def add_nasdaq_roi_new(df: pd.DataFrame, num_hold_days: int = 1):
         df.loc[:, "nasdaq_day_roi"] = np.subtract(np.power(np.add(1, df["mov_avg"]), num_hold_days), 1)
         df = df.drop(columns=["roi_sell_date", "mov_avg"])
 
+    # print(f"after rolling mov avg: {df.shape[0]}")
+
     return df.drop_duplicates(subset=["f22_ticker", "date"])
 
 
-def add_sma_stuff(df: pd.DataFrame):
-    df = ticker_utils.add_sma_history(df=df, target_column="close", windows=[15, 20, 50, 100, 200])
+def add_sma_stuff(df: pd.DataFrame, predict_date_str: str, sma_day_before: bool=False):
+    df = ticker_utils.add_sma_history(df=df, target_column="close", windows=[15, 20, 50, 100, 200], predict_date_str=predict_date_str, sma_day_before=sma_day_before)
 
     df = ticker_utils.add_days_since_under_sma_many_tickers(df=df, col_sma="close_SMA_200", close_col="close")
     df = ticker_utils.add_days_since_under_sma_many_tickers(df=df, col_sma="close_SMA_15", close_col="close")
@@ -1045,7 +1058,10 @@ def get_data_for_predictions(df: pd.DataFrame,
 
 
 def xgb_learning_predicting(df_train: pd.DataFrame, df_predict: pd.DataFrame, narrow_cols: List[str]) -> bool:
-    X_train, y_train, standard_scaler = twitter_ml_utils.transform_to_numpy(df=df_train, narrow_cols=narrow_cols)
+    X_train, y_train, standard_scaler = transform_to_numpy(df=df_train, narrow_cols=narrow_cols)
+
+    if X_train is None:
+        return False
 
     model = xgb.XGBClassifier(max_depth=4)
     model.fit(X_train, y_train)
@@ -1058,8 +1074,7 @@ def xgb_learning_predicting(df_train: pd.DataFrame, df_predict: pd.DataFrame, na
 
 
 def xgb_learning(df: pd.DataFrame,
-                 narrow_cols: List[str],
-                 cat_uniques: Dict[str, List[str]]) -> (List[float], bool):
+                 narrow_cols: List[str]) -> (List[float], bool):
     min_train_rows = 10
     num_iterations = 1
     best_model = None
@@ -1072,7 +1087,7 @@ def xgb_learning(df: pd.DataFrame,
 
     sac_list = []
     for i in range(num_iterations):
-        sd = twitter_ml_utils.split_off_data(df=df, narrow_cols=narrow_cols, split_off_test=False)
+        sd = split_off_data(df=df, narrow_cols=narrow_cols, split_off_test=False)
 
         if sd and sd.has_enough_data:
             X_train = sd.X_train
@@ -1087,19 +1102,19 @@ def xgb_learning(df: pd.DataFrame,
                 model.fit(X_train, y_train)
 
                 if i == 0:
-                    twit_model_package = TwitterModelPackage(model=model, cat_uniques=cat_uniques, scaler=sd.standard_scaler)
+                    twit_model_package = TwitterModelPackage(model=model, scaler=sd.standard_scaler)
                     pickle_service.save(twit_model_package, str(constants.TWITTER_XGB_MODEL_PATH))
 
                 best_model = model
 
-                sac_mean = twitter_ml_utils.calc_nn_roi(df_val_raw=df_val_raw,
-                                                        model=best_model,
-                                                        train_cols=train_cols,
-                                                        target_roi_frac=target_roi_frac,
-                                                        zero_in=zero_in,
-                                                        is_model_torch=False,
-                                                        is_batch_first_run=(i == 0),
-                                                        standard_scaler=sd.standard_scaler)
+                sac_mean = calc_nn_roi(df_val_raw=df_val_raw,
+                                       model=best_model,
+                                       train_cols=train_cols,
+                                       target_roi_frac=target_roi_frac,
+                                       zero_in=zero_in,
+                                       is_model_torch=False,
+                                       is_batch_first_run=(i == 0),
+                                       standard_scaler=sd.standard_scaler)
 
                 if sac_mean is not None:
                     sac_list.append(sac_mean)
@@ -1143,7 +1158,7 @@ def load_twitter_raw(learning_prep_dir: Path):
 
 
 def load_model_for_prediction():
-    model_xgb: twitter_ml_utils.TwitterModelPackage = pickle_service.load(constants.TWITTER_XGB_MODEL_PATH)
+    model_xgb: TwitterModelPackage = pickle_service.load(constants.TWITTER_XGB_MODEL_PATH)
     return model_xgb
 
 
@@ -1155,7 +1170,7 @@ def get_twitter_stock_data(df_tweets: pd.DataFrame, num_hold_days: int, workflow
     print(workflow_mode.value)
     if workflow_mode.value == WorkflowMode.Prediction.value:
         print(f"Adding future date ...")
-        df_stock_data = twitter_ml_utils.add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days)
+        df_stock_data = add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days)
     else:
         df_stock_data = df_stock_data.dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
 
@@ -1166,17 +1181,22 @@ def get_twitter_stock_data_2(df_tweets: pd.DataFrame, num_hold_days: int):
     df_stock_data = twitter_service.get_stock_data_for_twitter_companies_2(df_tweets=df_tweets,
                                                                            num_days_in_future=num_hold_days)
 
-    df_stock_data = twitter_ml_utils.add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days)
-
-    # df_tmp = df_stock_data.sort_values(by=["future_date"], ascending=False)
-    # print(df_tmp[["future_date", "future_close"]].head())
-    # raise Exception("foo")
-    # NOTE: 2021-01-02: chris.flesche: Some bug is refusing to recognize "is" identify comparison for Enum.
-    # print(workflow_mode.value)
-    # if workflow_mode.value == WorkflowMode.Prediction.value:
-    #     print(f"Adding future date ...")
-    #     df_stock_data = twitter_ml_utils.add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days)
-    # else:
-    #     df_stock_data = df_stock_data.dropna(subset=["future_open", "future_low", "future_high", "future_close", "future_date"])
+    df_stock_data = add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days)
 
     return df_stock_data
+
+
+def split_train_predict(df: pd.DataFrame, predict_date_str: str):
+    df_th_train = df[df["date"] < predict_date_str].copy()
+
+    if df_th_train is None or df_th_train.shape[0] == 0:
+        return None, None
+
+    df_train = twitter_service.add_buy_sell(df=df_th_train)
+
+    df_predict = df[df["date"] == predict_date_str].copy()
+
+    logger.info(f"Num rows of prepared data: {df_train.shape[0]}")
+    logger.info(f"Oldest date of prepared data (future_date): {df_train['future_date'].max()}")
+
+    return df_train, df_predict

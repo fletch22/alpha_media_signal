@@ -8,6 +8,7 @@ from ams.config import constants
 class StockPredictorPaths(Enum):
     command_equity_daily_svc_path = Path(constants.STOCK_PREDICTOR_ROOT, "sedft.cmd")
     command_equity_fun_svc_path = Path(constants.STOCK_PREDICTOR_ROOT, "sefs.cmd")
+    command_test_path = Path(constants.STOCK_PREDICTOR_ROOT, "test.cmd")
 
 
 def invoke_command_script(command_path: Path):
@@ -24,6 +25,7 @@ def start(command_path: Path):
 
 def get_equity_daily_data():
     start(command_path=StockPredictorPaths.command_equity_daily_svc_path.value)
+    # start(command_path=StockPredictorPaths.command_test_path.value)
 
 
 def get_equity_fundamentals_data():

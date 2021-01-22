@@ -280,9 +280,8 @@ def process(source_dir_path: Path, output_dir_path: Path):
     LOGGER = log4jLogger.LogManager.getLogger(__name__)
     LOGGER.info("pyspark script logger initialized")
 
-    # print(f'Number of search tuples: {len(get_search_tuples())}')
-
     files = file_services.list_files(parent_path=source_dir_path, ends_with=".txt.in_transition")
+    files = [f for f in files if f.stat().st_size > 0]
     files = [str(f) for f in files]
 
     print(f"Number of files: {len(files)}")

@@ -8,15 +8,15 @@ from ams.config import constants, logger_factory
 from ams.services import ticker_service
 from ams.utils import date_utils
 
-import matplotlib
-matplotlib.use("TkAgg")  # Do this before importing pyplot!
-import matplotlib.pyplot as plt
+# import matplotlib
+# # matplotlib.use("TkAgg")  # Do this before importing pyplot!
+# import matplotlib.pyplot as plt
 
 
 logger = logger_factory.create(__name__)
 
 
-def start(start_dt: datetime, num_hold_days: int, num_days_perf: int, min_price: float = 0, size_buy_lot: int = None):
+def start(start_dt: datetime, num_hold_days: int, num_days_perf: int, end_date_str: str = None, min_price: float = 0, size_buy_lot: int = None):
     df_preds = pd.read_csv(constants.TWITTER_PREDICTIONS_PATH)
 
     all_days_rois = []
@@ -24,26 +24,25 @@ def start(start_dt: datetime, num_hold_days: int, num_days_perf: int, min_price:
     for day_ndx in range(num_days_perf):
         dt = start_dt + timedelta(days=day_ndx)
         date_str = date_utils.get_standard_ymd_format(dt)
-        get_days_roi_from_prediction_table(df_preds, date_str, num_hold_days, min_price, size_buy_lot)
+        if end_date_str is not None and date_str > end_date_str:
+            break
+        roi = get_days_roi_from_prediction_table(df_preds, date_str, num_hold_days, min_price, size_buy_lot)
+        if roi is not None:
+            all_days_rois.append(roi)
 
     if len(all_days_rois) > 0:
         print(f"Overall roi: {mean(all_days_rois):.4f}")
 
 
-def get_days_roi_from_prediction_table(df_preds: pd.DataFrame, date_str:str, num_hold_days:int, min_price: float = None, size_buy_lot:int = None):
+def get_days_roi_from_prediction_table(df_preds: pd.DataFrame, date_str: str, num_hold_days: int, min_price: float = None, size_buy_lot: int = None):
     df = df_preds[df_preds["purchase_date"] == date_str]
-    # df = df[df["num_hold_days"] == num_hold_days]
 
-    print(f"Num records for roi calc: {df.shape[0]}")
-
-    # Act
     tickers = df["f22_ticker"].to_list()
     if size_buy_lot is not None and size_buy_lot < len(tickers):
         shuffle(tickers)
         tickers = tickers[:size_buy_lot]
     rois = []
 
-    print(f"Num tickers: {len(tickers)} for {date_str}")
     for t in tickers:
         df_tick = ticker_service.get_ticker_eod_data(t)
         df_tick = df_tick[df_tick["date"] >= date_str]
@@ -73,18 +72,20 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame, date_str:str, num
 
     result = None
     if len(rois) > 0:
-        day_roi = mean(rois)
-        print(f"{date_str} roi: {day_roi:.4f}")
-        result = day_roi
+        result = mean(rois)
+        print(f"{date_str}: roi: {result}")
     else:
         print(f"No data found on {date_str}.")
 
     return result
 
+
 # Assert
 
 if __name__ == '__main__':
-    start_date_str = "2020-08-10"
+    start_date_str = "2020-08-01"
+    end_date_str = "2021-01-14"
+    min_price = 5.
     start_dt = date_utils.parse_std_datestring(start_date_str)
 
-    start(start_dt=start_dt, num_hold_days=5, num_days_perf=161, min_price=0, size_buy_lot=None)
+    start(start_dt=start_dt, num_hold_days=1, num_days_perf=171, end_date_str=end_date_str, min_price=min_price, size_buy_lot=None)

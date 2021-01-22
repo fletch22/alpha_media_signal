@@ -76,3 +76,4 @@ def test_ams():
     # Assert
     num_under = df_ungrouped[df_ungrouped["close_SMA_200_days_since_under"] > 0].shape[0]
     assert (num_under > 1)
+
