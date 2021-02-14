@@ -17,7 +17,7 @@ def test_convert_twitter_date():
     date_string = "Wed Aug 26 12:41:33 +0000 2020"
     # format = "%a %b %d %H:%M:%S %z %Y"
 
-    ts = date_utils.parse_twitter_date_string(date_string=date_string)
+    ts = date_utils.parse_twitter_date_string_as_timestamp(date_string=date_string)
 
     print(ts)
     ts = int(ts)

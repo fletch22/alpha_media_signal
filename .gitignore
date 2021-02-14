@@ -129,3 +129,9 @@ dmypy.json
 .pyre/
 .idea/
 logs/
+ams/pipes/dask-worker-space/
+ams/pipes/p_add_sentiment/dask-worker-space/
+dask-worker-space/dask-worker-space/global.lock
+resources/docker/airflow/data/postgres/pg_hba.conf
+resources/docker/airflow/data/
+dask-worker-space/

@@ -1,23 +1,154 @@
-from datetime import datetime
+import os
+from datetime import timedelta
 from pathlib import Path
+from zipfile import ZipFile
 
 import pandas as pd
 import pyspark
-import pytz
-from pyspark.sql import functions as F, types as T
+from pyspark.sql import functions as F
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.services import file_services
-from ams.utils.date_utils import TZ_AMERICA_NEW_YORK, STANDARD_DAY_FORMAT, convert_timestamp_to_nyc_date_str
+from ams.utils import date_utils
+from ams.utils.date_utils import convert_timestamp_to_nyc_date_str, convert_utc_timestamp_to_nyc, get_standard_ymd_format
+
+logger = logger_factory.create(__name__)
 
 
 def create_date_column(df: pyspark.sql.DataFrame):
-    def convert_to_date_string(utc_timestamp: int):
-        # return date_utils.convert_timestamp_to_nyc_date_str(utc_timestamp=utc_timestamp)
-        dt_utc = datetime.fromtimestamp(utc_timestamp)
-        dt_nyc = dt_utc.astimezone(pytz.timezone(TZ_AMERICA_NEW_YORK))
-        return dt_nyc.strftime(STANDARD_DAY_FORMAT)
-
-    parse_udf = F.udf(convert_to_date_string, T.StringType())
-
     return df.withColumn('date', convert_timestamp_to_nyc_date_str(F.col('created_at_timestamp')))
+
+
+def get_time_from_json(json):
+    # "tweet": {"created_at": "
+    date_str = None
+    raw_date_str = extract_raw_date_from_tweet(json)
+    if raw_date_str is not None:
+        try:
+            dt = date_utils.parse_twitter_dt_str_to_dt(raw_date_str)
+            date_str = date_utils.get_standard_ymd_format(dt)
+        except Exception as e:
+            pass
+
+    return date_str
+
+
+def extract_raw_date_from_tweet(json: str):
+    token = "\"created_at\": \""
+    raw_date_str = None
+    try:
+        if type(json) == bytes:
+            json = json.decode("utf-8")
+
+        token_ndx = json.index(token)
+        if token_ndx > 0:
+            json_pref = json[token_ndx + len(token):]
+            end_token = "\", \""
+            end_ndx = json_pref.index(end_token)
+            raw_date_str = json_pref[:end_ndx]
+    except Exception as e:
+        pass
+
+    return raw_date_str
+
+
+def get_youngest_tweet_from_line(line: str, youngest_dt_str: str):
+    if len(line) > 0:
+        date_str = get_time_from_json(json=line)
+        if date_str is not None and (youngest_dt_str is None or date_str > youngest_dt_str):
+            youngest_dt_str = date_str
+    return youngest_dt_str
+
+
+def get_youngest_raw_textfile_tweet(source_path: Path):
+    files = file_services.list_files(parent_path=source_path)
+    youngest_dt_str = None
+    logger.info(f"Number of files to search in source: {len(files)}")
+    for ndx, f in enumerate(files):
+        logger.info(f"Reading file {f} ({ndx + 1} of {len(files)})")
+        with open(str(f), 'rb') as f:
+            f.seek(-2, os.SEEK_END)
+            while f.read(1) != b'\n':
+                f.seek(-2, os.SEEK_CUR)
+            last_line = f.readline().decode()
+            youngest_dt_str = get_youngest_tweet_from_line(line=last_line, youngest_dt_str=youngest_dt_str)
+
+    return youngest_dt_str
+
+
+def get_max_date_from_all_lines(youngest_dt_str, r):
+    count = 0
+    # while True:
+    #     rez = r.readline()
+    #     if rez is None or len(rez.strip()) == 0:
+    #         break
+    line = ""
+    for line in r:
+        print("reading line")
+        pass
+    last_line = line
+
+    youngest_dt_str = get_youngest_tweet_from_line(line=last_line, youngest_dt_str=youngest_dt_str)
+    count += 1
+    return youngest_dt_str
+
+
+def get_youngest_end_drop_tweet():
+    files = file_services.list_files(constants.TWITTER_END_DROP)
+    yougest_date_str = ""
+    for f in files:
+        df = pd.read_parquet(f)
+
+        utc_timestamp = df["created_at_timestamp"].max()
+        dt_nyc = convert_utc_timestamp_to_nyc(utc_timestamp=utc_timestamp)
+        created_at_str = get_standard_ymd_format(dt_nyc)
+
+        if created_at_str > yougest_date_str:
+            yougest_date_str = created_at_str
+    return yougest_date_str
+
+
+def get_youngest_tweet_date_in_system():
+    raw_drop_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop", "main")
+    youngest_raw_dt_str = get_youngest_raw_textfile_tweet(source_path=raw_drop_path)
+
+    youngest_end_drop_dt_str = get_youngest_end_drop_tweet()
+
+    youngest_tweet_dt_str = youngest_end_drop_dt_str
+    if youngest_raw_dt_str is not None and youngest_raw_dt_str > youngest_end_drop_dt_str:
+        youngest_tweet_dt_str = youngest_end_drop_dt_str
+
+    return youngest_tweet_dt_str
+
+# FIXME: 2021-02-09: chris.flesche: Too slow.
+def get_youngest_archive_tweet():
+    files = file_services.list_files(constants.TWEET_RAW_DROP_ARCHIVE)
+
+    youngest_dt_str = "2020-01-01"
+    for f in files:
+        f_str = str(f)
+        if f_str.endswith(".txt"):
+            young_raw_dt_str = get_youngest_raw_textfile_tweet(source_path=f)
+            if young_raw_dt_str is not None and young_raw_dt_str > youngest_dt_str:
+                youngest_dt_str = young_raw_dt_str
+        elif f_str.endswith(".zip"):
+            with ZipFile(f_str) as zip_file:
+                f_list = zip_file.filelist
+                for f in f_list:
+                    with zip_file.open(f) as raw_txt_file:
+                        youngest_dt_str = get_max_date_from_all_lines(youngest_dt_str, r=raw_txt_file)
+
+    return youngest_dt_str
+
+# FIXME: 2021-02-09: chris.flesche: Too slow.
+def get_youngest_tweet_date_in_system_2():
+    raw_drop_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop", "main")
+    youngest_raw_dt_str = get_youngest_raw_textfile_tweet(source_path=raw_drop_path)
+
+    youngest_archive_dt_str = get_youngest_archive_tweet()
+
+    youngest_tweet_dt_str = youngest_archive_dt_str
+    if youngest_raw_dt_str is not None and youngest_raw_dt_str > youngest_archive_dt_str:
+        youngest_tweet_dt_str = youngest_raw_dt_str
+
+    return youngest_tweet_dt_str

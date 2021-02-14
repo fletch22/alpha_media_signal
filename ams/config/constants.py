@@ -26,24 +26,23 @@ DATA_PATH = Path(WORKSPACE_PATH, 'data')
 LOGGING_PATH = Path(DATA_PATH, 'logs', 'alpha_media_signal')
 ensure_dir(LOGGING_PATH)
 
-if os.name == 'nt':
-    RESOURCES_PATH = Path(DATA_PATH, 'credentials')
-    TWITTER_CREDS_PATH = Path(RESOURCES_PATH, "search_tweets_creds.yaml")
+RESOURCES_PATH = Path(DATA_PATH, 'credentials')
+TWITTER_CREDS_PATH = Path(RESOURCES_PATH, "search_tweets_creds.yaml")
 
-    with open(TWITTER_CREDS_PATH) as file:
-        # The FullLoader parameter handles the conversion from YAML
-        # scalar values to Python the dictionary format
-        creds_yaml = yaml.load(file, Loader=yaml.FullLoader)
+with open(TWITTER_CREDS_PATH) as file:
+    # The FullLoader parameter handles the conversion from YAML
+    # scalar values to Python the dictionary format
+    creds_yaml = yaml.load(file, Loader=yaml.FullLoader)
 
-    fletch22_key = 'search_tweets_fullarchive_development'
-    standard_search_key = 'standard_search_tweets'
-    rogd_key = "standard_search_tweets_rogd"
+fletch22_key = 'search_tweets_fullarchive_development'
+standard_search_key = 'standard_search_tweets'
+rogd_key = "standard_search_tweets_rogd"
 
-    FLETCH22_CREDS = Credentials(creds_yaml, fletch22_key)
-    STANDARD_CREDS = Credentials(creds_yaml, standard_search_key)
-    ROGD_CREDS = Credentials(creds_yaml, standard_search_key)
+FLETCH22_CREDS = Credentials(creds_yaml, fletch22_key)
+STANDARD_CREDS = Credentials(creds_yaml, standard_search_key)
+ROGD_CREDS = Credentials(creds_yaml, standard_search_key)
 
-    CURRENT_CREDS = ROGD_CREDS
+CURRENT_CREDS = ROGD_CREDS
 
 TWITTER_OUTPUT_RAW_PATH = Path(DATA_PATH, 'twitter')
 TWITTER_RAW_TWEETS_PREFIX = 'tweets_raw'
@@ -56,11 +55,11 @@ WEATHER_DATA_PATH = Path(WEATHER_DATA_DIR, "station_1.txt")
 
 FIN_DATA = Path(OVERFLOW_DATA_PATH, 'financial')
 
-TWITTER_OUTPUT = Path(OVERFLOW_DATA_PATH, 'twitter')
-TWITTER_OUTPUT.mkdir(exist_ok=True)
-TICKER_NAME_SEARCHABLE_PATH = Path(TWITTER_OUTPUT, 'ticker_names_searchable.csv')
+TWITTER_OVERFLOW_OUTPUT = Path(OVERFLOW_DATA_PATH, 'twitter')
+TWITTER_OVERFLOW_OUTPUT.mkdir(exist_ok=True)
+TICKER_NAME_SEARCHABLE_PATH = Path(TWITTER_OVERFLOW_OUTPUT, 'ticker_names_searchable.csv')
 
-TWITTER_TRASH_OUTPUT = Path(TWITTER_OUTPUT, "trash")
+TWITTER_TRASH_OUTPUT = Path(TWITTER_OVERFLOW_OUTPUT, "trash")
 ensure_dir(TWITTER_TRASH_OUTPUT)
 
 YAHOO_OUTPUT_PATH = Path(FIN_DATA, 'yahoo')
@@ -87,7 +86,7 @@ KAFKA_URL = "localhost:9092"
 
 GOOGLE_NEWS_OUTPUT_DIR_PATH = Path(OVERFLOW_DATA_PATH, "news\\google\\alpha_media_signal")
 
-TWITTER_INFERENCE_MODEL_PATH = Path(TWITTER_OUTPUT, "inference_model_drop")
+TWITTER_INFERENCE_MODEL_PATH = Path(TWITTER_OVERFLOW_OUTPUT, "inference_model_drop")
 TRAIN_READY_TWEETS = Path(TWITTER_INFERENCE_MODEL_PATH, "train_ready_tweets.mod")
 
 BACKUP_ROOT_PATH = Path("I:/sp_backups")
@@ -96,7 +95,7 @@ ALPHA_MEDIA_SIGNAL_PROJ = Path(WORKSPACE_PATH, "alpha_media_signal")
 NEWS_GESTALT_PROJ = Path(WORKSPACE_PATH, "news_gestalt")
 BLOGGER_HIGH_SCORE_PROJ = Path(WORKSPACE_PATH, "blogger_high_score")
 
-BERT_PATH = Path(TWITTER_OUTPUT, "bert")
+BERT_PATH = Path(TWITTER_OVERFLOW_OUTPUT, "bert")
 BERT_APPS_DATA_PATH = Path(BERT_PATH, "apps.csv")
 BERT_REVIEWS_DATA_PATH = Path(BERT_PATH, "reviews.csv")
 
@@ -128,7 +127,7 @@ TOD_PICKLE_PATH = Path(TICK_ON_DAY_PATH, "tod.pickle")
 
 THREE_BELOW_HISTORY_PATH = Path(TICK_ON_DAY_PATH, "three_below_history.csv")
 
-TWITTER_TRADE_HISTORY_PATH = Path(TWITTER_OUTPUT, "trade_history")
+TWITTER_TRADE_HISTORY_PATH = Path(TWITTER_OVERFLOW_OUTPUT, "trade_history")
 ensure_dir(TWITTER_TRADE_HISTORY_PATH)
 
 TWITTER_TRADE_HISTORY_FILE_PATH = Path(TWITTER_TRADE_HISTORY_PATH, "twitter_trade_history.csv")
@@ -145,5 +144,19 @@ US_MARKET_HOLIDAYS_PATH = Path(FIN_DATA, "us_market_holidays.csv")
 
 TWITTER_GREAT_REDUCTION_DIR = Path(TWITTER_OUTPUT_RAW_PATH, "great_reduction")
 
-TWITTER_PREDICTIONS_PATH = Path(TWITTER_MODEL_PATH, "predictions", "predictions.csv")
-ensure_dir(TWITTER_PREDICTIONS_PATH.parent)
+TWITTER_MODEL_PREDICTION_DIR_PATH = Path(TWITTER_MODEL_PATH, "predictions")
+
+TWITTER_TRAINING_PREDICTIONS_FILE_PATH = Path(TWITTER_MODEL_PREDICTION_DIR_PATH, "predictions.csv")
+ensure_dir(TWITTER_TRAINING_PREDICTIONS_FILE_PATH.parent)
+
+TWITTER_REAL_MONEY_PREDICTIONS_FILE_PATH = Path(TWITTER_MODEL_PREDICTION_DIR_PATH, "real_money_predictions.csv")
+ensure_dir(TWITTER_REAL_MONEY_PREDICTIONS_FILE_PATH.parent)
+
+TWEET_RAW_DROP_ARCHIVE = Path(TWITTER_OVERFLOW_OUTPUT, "raw_drop", "archive")
+
+TESTS_ROOT = Path(PROJECT_ROOT, "tests")
+TESTS_RESOURCES = Path(TESTS_ROOT, "resources")
+
+TEST_TEMP_PATH  = Path("e:\\tmp")
+
+TWITTER_END_DROP = Path(TWITTER_OUTPUT_RAW_PATH, "end_drop")

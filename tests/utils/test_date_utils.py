@@ -122,7 +122,7 @@ def test_is_stock_market_closed():
     dt = date_utils.parse_std_datestring("2021-07-05")
 
     # Act
-    is_closed = date_utils.is_stock_market_closed(dt=dt)
+    is_closed, reached_end_of_data = date_utils.is_stock_market_closed(dt=dt)
 
     # Assert
     assert (is_closed)
@@ -135,7 +135,7 @@ def test_is_stock_market_closed_raises():
     # Act
     with pytest.raises(Exception):
         # Assert
-        is_closed = date_utils.is_stock_market_closed(dt=dt)
+        is_closed, reached_end_of_data = date_utils.is_stock_market_closed(dt=dt)
 
 
 def test_tuple():

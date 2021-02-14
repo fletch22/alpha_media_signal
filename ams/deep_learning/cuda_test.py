@@ -29,8 +29,6 @@ answers = data.Field(sequential=False)
 
 train, dev, test = datasets.SNLI.splits(inputs, answers)
 
-raise Exception("foo")
-
 inputs.build_vocab(train, dev, test)
 if args.word_vectors:
     if os.path.isfile(args.vector_cache):

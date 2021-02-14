@@ -11,8 +11,36 @@ from ams.DateRange import DateRange
 from ams.config import constants
 from ams.services import ticker_service
 from ams.services.EquityFields import EquityFields
+from ams.services.equities import equity_fundy_service
 from ams.services.ticker_service import get_ticker_eod_data
 from ams.utils import date_utils
+
+
+def calc_variance(diffs):
+    mean_diff = mean(diffs)
+    sum_sq_diff = 0
+    for d in diffs:
+        sq_diff = (d - mean_diff) ** 2
+        sum_sq_diff += sq_diff
+    variance = math.sqrt(sum_sq_diff / (len(diffs)))
+    return variance
+
+
+def roi_calc(roi_list: List[float]):
+    init_inv = 100
+    investment = init_inv
+    for ndx, r in enumerate(roi_list):
+        investment = (investment * r) + investment
+        if investment < 0:
+            investment = 0
+    return investment, (investment / init_inv) - 1
+
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
 
 # NOTE: 2020-10-02: chris.flesche: vol > 100K; price > 5
 ticker_good = ['A', 'AA', 'AAGIY', 'AAI', 'AAL', 'AAN', 'AAOI', 'AAON', 'AAP', 'AAPL', 'AAT',
@@ -1028,27 +1056,32 @@ def test_get_most_recent():
     print(prev_close)
 
 
-def calc_variance(diffs):
-    mean_diff = mean(diffs)
-    sum_sq_diff = 0
-    for d in diffs:
-        sq_diff = (d - mean_diff) ** 2
-        sum_sq_diff += sq_diff
-    variance = math.sqrt(sum_sq_diff / (len(diffs)))
-    return variance
+def test_change_first_rows():
+    # Arrange
+    rows = []
+    for i in range(10):
+        r = dict(key=i, foo="bar")
+        rows.append(r)
+
+    df = pd.DataFrame(rows)
+    df.sort_values(by=["key"], ascending=False, inplace=True)
+
+    # Act
+    df.iloc[:2, df.columns.get_loc("foo")] = "apple"
+
+    # Assert
+    print(df.head(10))
 
 
-def roi_calc(roi_list: List[float]):
-    init_inv = 100
-    investment = init_inv
-    for ndx, r in enumerate(roi_list):
-        investment = (investment * r) + investment
-        if investment < 0:
-            investment = 0
-    return investment, (investment / init_inv) - 1
+def test_list_all_robinhood_eligible():
+    df = equity_fundy_service.get_most_recent_quarter_data()
+    tickers = ticker_service.get_all_tickers()
 
+    df = df[df["ticker"].isin(tickers)]
 
-def chunks(lst, n):
-    """Yield successive n-sized chunks from lst."""
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+    total_nasdaq = df.shape[0]
+    df_robin = df[(df["marketcap"] > 25000000) & (df["price"] > 1.0)]
+    num_nasdaq = df_robin.shape[0]
+    print(f"total: {total_nasdaq}; num_eligible: {num_nasdaq}")
+    # print(list(df.columns))
+

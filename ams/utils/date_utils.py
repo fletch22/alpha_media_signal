@@ -21,8 +21,13 @@ NASDAQ_CLOSE_AT_ONE_PM_DATES = ["2020-11-27", "2020-12-24"]
 
 stock_market_holidays = None
 
-def parse_twitter_date_string(date_string: str):
-    return datetime.strptime(date_string, TWITTER_LONG_FORMAT).timestamp()
+
+def parse_twitter_date_string_as_timestamp(date_string: str):
+    return parse_twitter_dt_str_to_dt(date_string, TWITTER_LONG_FORMAT).timestamp()
+
+
+def parse_twitter_dt_str_to_dt(date_str: str):
+    return datetime.strptime(date_str, TWITTER_LONG_FORMAT)
 
 
 def parse_std_datestring(datestring):
@@ -104,22 +109,26 @@ def get_market_holidays() -> str:
 def is_stock_market_closed(dt: datetime):
     date_str = get_standard_ymd_format(dt)
     max_date = sorted(get_market_holidays())[-1]
+    reached_end_of_data = False
     if date_str > max_date:
-        raise Exception("Encountered error trying to determine if market is closed. Date in question exceeds available data.")
+        reached_end_of_data = True
     is_closed = False
     if dt.weekday() > 4:
         is_closed = True
     else:
         if date_str in get_market_holidays():
             is_closed = True
-    return is_closed
+    return is_closed, reached_end_of_data
 
 
 def find_next_market_open_day(dt: datetime, num_days_to_skip: int):
     reverse = num_days_to_skip < 0
     while True:
         dt = dt + timedelta(days=num_days_to_skip)
-        if is_stock_market_closed(dt):
+        is_closed, reached_end_of_data = is_stock_market_closed(dt)
+        if reached_end_of_data:
+            raise Exception("While finding the next market open day, the system reached the end of the available data.")
+        if is_closed:
             if reverse:
                 num_days_to_skip = -1
             else:
@@ -127,5 +136,3 @@ def find_next_market_open_day(dt: datetime, num_days_to_skip: int):
         else:
             break
     return dt
-
-

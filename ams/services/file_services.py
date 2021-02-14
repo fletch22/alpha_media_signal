@@ -2,7 +2,8 @@ import ctypes
 import os
 import shutil
 from datetime import datetime
-from os import walk as walker
+from os import walk as walker, listdir
+from os.path import isfile, join
 from pathlib import Path
 from threading import Thread
 from typing import Sequence, Tuple, List
@@ -76,6 +77,15 @@ def create_unique_folder_name(parent_dir: str, prefix: str, ensure_exists: bool 
         os.makedirs(proposed_dir, exist_ok=True)
 
     return proposed_dir
+
+
+def has_no_files(the_path: Path):
+    found_none = True
+    for dir, sub_dirs, files in os.walk(the_path):
+        if files:
+            found_none = False
+            break
+    return found_none
 
 
 def zip_dir(dir_to_zip: Path, output_path):

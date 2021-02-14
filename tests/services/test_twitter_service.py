@@ -1,13 +1,18 @@
 import json
 import statistics
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 from ams.DateRange import DateRange
 from ams.config import constants, logger_factory
 from ams.services import twitter_service, ticker_service
 from ams.services.spark_service import get_or_create
+from ams.utils import date_utils
 
 logger = logger_factory.create(__name__)
+
+tweet_raw_output_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "test", "test_output.json")
 
 
 def test_tuples():
@@ -1368,7 +1373,6 @@ def test_compare_columns():
     print(missing_from_pred)
     # assert(from_train == from_predict)
 
-tweet_raw_output_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "test", "test_output.json")
 
 def test_multiple_searches():
     # Arrange
@@ -1392,3 +1396,25 @@ def test_multi_query():
     df = spark.json(tweet_raw_output_path)
 
     print(df.count())
+
+
+def test_fetch_up_to_date_tweets():
+    # Arrange
+    youngest_date_str = "2020-12-24"
+    # Act
+    with patch("ams.services.twitter_service.search_one_day_at_a_time") as mock_search, \
+        patch("ams.services.twitter_service.twitter_utils.get_youngest_tweet_date_in_system", return_value=youngest_date_str) as mock_get_youngest:
+
+        # Act
+        date_range = twitter_service.fetch_up_to_date_tweets()
+
+        mock_search.assert_called_once()
+        mock_get_youngest.assert_called_once()
+        from_date_str_actual = date_utils.get_standard_ymd_format(date_range.from_date)
+        to_date_str_actual = date_utils.get_standard_ymd_format(date_range.to_date)
+
+        today_str = date_utils.get_standard_ymd_format(datetime.now())
+
+        # Assert
+        assert("2020-12-25" == from_date_str_actual)
+        assert (to_date_str_actual == today_str)

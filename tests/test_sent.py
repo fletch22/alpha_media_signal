@@ -1,20 +1,18 @@
 from pathlib import Path
-from typing import List
 
-import numpy as np
 import pandas as pd
 
 from ams.config import constants
-from ams.notebooks.twitter.pipes.p_add_id import process as process_id
+from ams.pipes.p_add_id import process as process_id
 from ams.services import file_services
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
+
 def test_add_id():
     process_id.start()
-
 
 
 def test_get_inf_drop():
@@ -26,9 +24,6 @@ def test_get_inf_drop():
 
     df_short = df[["f22_id", "text"]]
     print(df_short.head(20))
-
-
-
 
 
 def test_all_twitter_dates():
@@ -80,3 +75,11 @@ def test_load_and_test():
     df = pd.read_csv(str(folder_path), sep="|")
 
     print(df[["text"]].head())
+
+
+def test_random_choice():
+    import numpy as np
+
+    for i in range(10):
+        val = np.random.choice(2, 1)
+        print(val)

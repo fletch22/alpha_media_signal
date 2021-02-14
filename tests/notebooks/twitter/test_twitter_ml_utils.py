@@ -1,23 +1,11 @@
-from random import shuffle
+from pathlib import Path
+from statistics import mean
 from typing import List
+
 import pandas as pd
 
 from ams.config import constants
-from ams.notebooks.twitter.twitter_ml_utils import add_nasdaq_roi_new
-
-
-def test_():
-    # Arrange
-    rois = [.05, .05, .05]
-    # Act
-
-    # for i in range(10):
-    #     shuffle(rois)
-    #     print(f"return: {calc_return(rois)}")
-
-    print((calc_return(rois) - 1000) / 1000)
-
-    # Assert
+from ams.twitter.twitter_ml_utils import add_nasdaq_roi_new
 
 
 def calc_return(rois: List[str]):
@@ -27,6 +15,7 @@ def calc_return(rois: List[str]):
         total = (total * r) + total
 
     return total
+
 
 def test_add_nasdaq_roi():
     # Arrange
@@ -51,4 +40,20 @@ def test_add_nasdaq_roi():
     # Assert
 
 
+def test_read_funky():
+    file_path_str = str(Path(constants.TWITTER_MODEL_PREDICTION_DIR_PATH, "performance_2.txt"))
+    all_roi = []
+    with open(file_path_str, "r+") as rf:
+        all_lines = rf.readlines()
+        for al in all_lines:
+            al = al.replace("\n", "")
+            start_token = "Roi 1: "
+            if al.startswith(start_token):
+                rois_raw_list = al.split(start_token)
+                rois_raw = rois_raw_list[1]
+                if not rois_raw.startswith("None"):
+                    print(rois_raw[:6])
+                    all_roi.append(float(rois_raw[:6]))
+
+    print(f"Average roi: {mean(all_roi)}")
 

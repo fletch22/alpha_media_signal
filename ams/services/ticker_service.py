@@ -91,11 +91,15 @@ def get_start_end_dates(date_strs: List[str]):
     start_date = date_strs[0]
     end_date = date_strs[-1]
 
-    dt = date_utils.parse_std_datestring(end_date)
-    dt_end_adjust = dt + timedelta(days=4)
+    dt_start = date_utils.parse_std_datestring(start_date)
+    dt_start_adjust = dt_start + timedelta(days=-30)
+    start_date_adj = date_utils.get_standard_ymd_format(dt_start_adjust)
+
+    dt_end = date_utils.parse_std_datestring(end_date)
+    dt_end_adjust = dt_end + timedelta(days=30)
     end_date_adj = date_utils.get_standard_ymd_format(dt_end_adjust)
 
-    return start_date, end_date_adj
+    return start_date_adj, end_date_adj
 
 
 def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_days_in_future: int = 1) -> pd.DataFrame:
@@ -113,11 +117,11 @@ def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_days_in_future: in
     return df_ticker
 
 
-def get_ticker_on_dates_2(tick_dates: Dict[str, List[str]], num_days_in_future: int = 1) -> pd.DataFrame:
+def get_ticker_on_dates_2(tick_dates: Dict[str, List[str]], num_hold_days: int, num_days_until_purchase: int) -> pd.DataFrame:
     all_dfs = []
     for ticker, date_strs in tick_dates.items():
         df_equity = get_equity_on_dates_2(ticker=ticker, date_strs=date_strs,
-                                          num_days_in_future=num_days_in_future)
+                                          num_hold_days=num_hold_days, num_days_until_purchase=num_days_until_purchase)
         if df_equity is not None:
             all_dfs.append(df_equity)
 
@@ -126,34 +130,6 @@ def get_ticker_on_dates_2(tick_dates: Dict[str, List[str]], num_days_in_future: 
         df_ticker = pd.concat(all_dfs)
 
     return df_ticker
-
-
-def get_equity_on_dates(ticker: str, date_strs: List[str],
-                        num_days_in_future: int = 1) -> pd.DataFrame:
-    df = get_ticker_eod_data(ticker)
-    df_in_dates = None
-    if df is not None:
-        start, end = get_start_end_dates(date_strs)
-        df_in_range = df[(df["date"] >= start) & (df["date"] <= end)].sort_values(by="date")
-        df_in_range["future_open"] = df_in_range["open"]
-        df_in_range["future_low"] = df_in_range["low"]
-        df_in_range["future_high"] = df_in_range["high"]
-        df_in_range["future_close"] = df_in_range["close"]
-        df_in_range["future_date"] = df_in_range["date"]
-        cols = ["future_open", "future_low", "future_high", "future_close", "future_date"]
-        df_in_range[cols] = df_in_range[cols].shift(-num_days_in_future)
-
-        df_in_range["prev_open"] = df_in_range["open"]
-        df_in_range["prev_low"] = df_in_range["low"]
-        df_in_range["prev_high"] = df_in_range["high"]
-        df_in_range["prev_close"] = df_in_range["close"]
-        df_in_range["prev_volume"] = df_in_range["volume"]
-        cols = ["prev_close", "volume"]
-        df_in_range[cols] = df_in_range[cols].shift(1)
-
-        df_in_dates = df_in_range[df_in_range["date"].isin(date_strs)]
-
-    return df_in_dates
 
 
 def get_equity_on_prev_trading_day(df: pd.DataFrame, date_str: str) -> pd.DataFrame:
@@ -193,10 +169,14 @@ def get_equity_on_prev_trading_day(df: pd.DataFrame, date_str: str) -> pd.DataFr
     return df_merged
 
 
-def get_equity_on_dates_2(ticker: str, date_strs: List[str], num_days_in_future: int = 1) -> pd.DataFrame:
+def get_equity_on_dates(ticker: str, date_strs: List[str], num_days_in_future: int = 1) -> pd.DataFrame:
     df = get_ticker_eod_data(ticker)
     df_in_dates = None
     if df is not None:
+        start, end = get_start_end_dates(date_strs)
+        df = df[(df["date"] >= start) & (df["date"] <= end)]
+        df.sort_values(by="date", inplace=True)
+
         df.loc[:, "prev_date"] = df["date"]
         df.loc[:, "prev_open"] = df["open"]
         df.loc[:, "prev_low"] = df["low"]
@@ -206,9 +186,6 @@ def get_equity_on_dates_2(ticker: str, date_strs: List[str], num_days_in_future:
         cols = ["prev_date", "prev_open", "prev_low", "prev_high", "prev_close", "prev_volume"]
         df[cols] = df[cols].shift(1).copy()
 
-        start, end = get_start_end_dates(date_strs)
-        df = df[(df["date"] >= start) & (df["date"] <= end)]
-        df.sort_values(by="date", inplace=True)
         df.loc[:, "future_open"] = df["open"]
         df.loc[:, "future_low"] = df["low"]
         df.loc[:, "future_high"] = df["high"]
@@ -216,6 +193,37 @@ def get_equity_on_dates_2(ticker: str, date_strs: List[str], num_days_in_future:
         df.loc[:, "future_date"] = df["date"]
         cols = ["future_open", "future_low", "future_high", "future_close", "future_date"]
         df[cols] = df[cols].shift(-num_days_in_future)
+
+        df_in_dates = df[df["date"].isin(date_strs)].copy()
+
+    return df_in_dates
+
+
+def get_equity_on_dates_2(ticker: str, date_strs: List[str], num_hold_days: int, num_days_until_purchase: int) -> pd.DataFrame:
+    df = get_ticker_eod_data(ticker)
+    df_in_dates = None
+    if df is not None:
+        start, end = get_start_end_dates(date_strs)
+        df = df[(df["date"] >= start) & (df["date"] <= end)]
+        df.sort_values(by="date", inplace=True)
+
+        df.loc[:, "purchase_date"] = df["date"]
+        df.loc[:, "purchase_open"] = df["open"]
+        df.loc[:, "purchase_low"] = df["low"]
+        df.loc[:, "purchase_high"] = df["high"]
+        df.loc[:, "purchase_close"] = df["close"]
+        df.loc[:, "purchase_volume"] = df["volume"]
+        cols = ["purchase_date", "purchase_open", "purchase_low", "purchase_high", "purchase_close", "purchase_volume"]
+        df.loc[:, (cols)] = df[cols].shift(-num_days_until_purchase)
+
+        # TODO: 2021-02-13: chris.flesche: Change these names to "sell_x"
+        df.loc[:, "future_open"] = df["open"]
+        df.loc[:, "future_low"] = df["low"]
+        df.loc[:, "future_high"] = df["high"]
+        df.loc[:, "future_close"] = df["close"]
+        df.loc[:, "future_date"] = df["date"]
+        cols = ["future_open", "future_low", "future_high", "future_close", "future_date"]
+        df.loc[:, (cols)] = df[cols].shift(-(num_hold_days + num_days_until_purchase))
 
         df_in_dates = df[df["date"].isin(date_strs)].copy()
 
@@ -660,7 +668,7 @@ def load_tickers_on_day() -> Dict:
     return pickle_service.load(file_path=constants.TOD_PICKLE_PATH)
 
 
-def get_most_recent_stock_values(ticker: str, attributes: Tuple[str, str, str], before_date_str: str):
+def get_most_recent_stock_values(ticker: str, attributes: Tuple[str, str, str, str, str, str], before_date_str: str):
     df_e = get_ticker_eod_data(ticker)
     result = None, None, None, None, None, None
     if df_e is not None:

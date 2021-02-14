@@ -27,7 +27,7 @@ def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], pr
         dt_oldest_tweet_str = min(df_group["date"])
 
         if df_equity is not None:
-            df_equity = df_equity[df_equity["date"] < predict_date_str].copy()
+            df_equity = df_equity[df_equity["date"] <= predict_date_str].copy()
 
             df_equity.dropna(subset=[date_col], inplace=True)
 
@@ -55,20 +55,13 @@ def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], pr
     df_all = pd.concat(all_dataframes, axis=0)
 
     if sma_day_before:
-        # print(f"Num tickers in df_all: {len(df_all['ticker'].unique())}")
-        # print(f"df_all before merge: {df_all.shape[0]}")
-        # print(f"df_all cols: {df_all.columns}")
-        # print(df[["f22_ticker", "prev_date", "date"]].head())
-        # print(df_all[["ticker", "date"]].head())
-
         df_all = df_all.rename(columns={date_col: "prev_date", "ticker": "f22_ticker"})
         df_merged = pd.merge(df, df_all, how='inner', on=["f22_ticker", "prev_date"], suffixes=[None, "_drop"])
-        # print(f"df_merged after: {df_merged.shape[0]}")
-        df_dropped = df_merged.drop(columns=[c for c in df_merged.columns if c.endswith("_drop")])
-        print(df_dropped[["f22_ticker", "date", "prev_date", "close_SMA_200"]].head())
     else:
-        df_merged = pd.merge(df, df_all, how='inner', left_on=["f22_ticker", "date"], right_on=["ticker", date_col], suffixes=[None, "_drop"])
-        df_dropped = df_merged.drop(columns=[c for c in df_merged.columns if c.endswith("_drop")]).drop(columns=['ticker'])
+        df_all = df_all.rename(columns={"ticker": "f22_ticker"})
+        df_merged = pd.merge(df, df_all, how='inner', left_on=["f22_ticker", "date"], right_on=["f22_ticker", date_col], suffixes=[None, "_drop"])
+
+    df_dropped = df_merged.drop(columns=[c for c in df_merged.columns if c.endswith("_drop")])
 
     return df_dropped
 

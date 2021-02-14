@@ -3,7 +3,6 @@ from ams.services import spark_service
 
 def test_connection():
     # Arrange
-
     # Act
-    spark_service.get_or_create("test")
+    spark_session = spark_service.get_or_create("test")
     # Assert

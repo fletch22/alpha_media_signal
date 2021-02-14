@@ -5,14 +5,15 @@ import re
 import time
 import urllib
 from concurrent.futures.thread import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import timedelta, datetime
 from pathlib import Path
-from random import random, randint, shuffle
+from random import shuffle
 from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 import requests
+import schedule
 from searchtweets import load_credentials, gen_rule_payload, ResultStream
 from sklearn.metrics import accuracy_score
 from sklearn.neural_network import MLPClassifier
@@ -28,13 +29,14 @@ from ams.services.equities import equity_fundy_service
 from ams.services.equities.ExchangeType import ExchangeType
 from ams.services.equities.TickerService import TickerService
 from ams.services.ticker_service import fillna_column
-from ams.utils import date_utils, equity_utils
+from ams.utils import date_utils, equity_utils, twitter_utils
 from ams.utils.PrinterThread import PrinterThread
 
 logger = logger_factory.create(__name__)
 
 COL_AFTER_HOURS = "f22_is_tweet_after_hours"
-COL_PURCH_DATE = "purchase_date"
+
+EARLIEST_TWEET_DATE_STR = "2020-08-10"
 
 
 def _get_credentials():
@@ -93,7 +95,7 @@ def append_tweets_to_output_file(output_path: Path, tweets: List[Dict], ticker: 
     json_lines = [json.dumps(t) for t in tweets]
     if len(json_lines):
         with open(str(output_path), 'a+') as f:
-            json_lines_nl = [f'{{"version": "0.9.2", "f22_ticker": {ticker}, "tweet": {j}}}\n' for j in json_lines]
+            json_lines_nl = [f'{{"version": "0.9.2", "f22_ticker": "{ticker}", "tweet": {j}}}\n' for j in json_lines]
             f.writelines(json_lines_nl)
 
 
@@ -278,9 +280,9 @@ def search_one_day_at_a_time(date_range: DateRange):
 def search_with_multi_thread(date_range: DateRange):
     ticker_tuples = get_ticker_searchable_tuples()
 
-    # from_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
-    # if from_date_str == "2021-01-18":
-    #     ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='RAND', delete_before=True)
+    from_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
+    if from_date_str == "2021-02-05":
+        ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='RAND', delete_before=True)
 
     parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop', "main")
     tweet_raw_output_path = file_services.create_unique_filename(str(parent),
@@ -323,9 +325,9 @@ def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_days_in_fu
     return ticker_service.get_ticker_on_dates(ttd, num_days_in_future=num_days_in_future)
 
 
-def get_stock_data_for_twitter_companies_2(df_tweets: pd.DataFrame, num_days_in_future: int = 1):
+def get_stock_data_for_twitter_companies_2(df_tweets: pd.DataFrame, num_hold_days: int, num_days_until_purchase: int):
     ttd = ticker_service.extract_ticker_tweet_dates(df_tweets)
-    return ticker_service.get_ticker_on_dates_2(ttd, num_days_in_future=num_days_in_future)
+    return ticker_service.get_ticker_on_dates_2(ttd, num_hold_days=num_hold_days, num_days_until_purchase=num_days_until_purchase)
 
 
 def get_rec_quarter_for_twitter():
@@ -336,7 +338,7 @@ def get_rec_quarter_for_twitter():
 
 def get_all_quarterly_data_for_twitter():
     df_rec_quart = equity_fundy_service.get_all_quarterly_data()
-    return df_rec_quart.drop(columns=["lastupdated", "dimension", "datekey", "reportperiod"]).copy()
+    return df_rec_quart.drop(columns=["lastupdated", "dimension", "datekey", "reportperiod"])
 
 
 def exagerrate_stock_val_change(value):
@@ -410,15 +412,8 @@ def is_after_nasdaq_closed(created_at_timestamp: int):
 
 
 def add_is_tweet_after_hours(df: pd.DataFrame):
+    df[COL_AFTER_HOURS] = None
     df[COL_AFTER_HOURS] = df.apply(lambda x: is_after_nasdaq_closed(x['created_at_timestamp']), axis=1)
-    return df
-
-
-def add_purchase_date(df: pd.DataFrame):
-    df[COL_PURCH_DATE] = df["date"]
-    df.loc[df[COL_AFTER_HOURS] == True, COL_PURCH_DATE] = df.loc[
-        df[COL_AFTER_HOURS] == True, "future_date"]
-
     return df
 
 
@@ -438,7 +433,7 @@ def convert_col_to_bool(df: pd.DataFrame, cols: List[str]):
         df = df.replace({c: {'true': True, 'false': False, '': False, '0': False, '1': True}})
         df[c] = df[c].fillna(False).astype('bool')
 
-    return df
+    return df.copy()
 
 
 def convert_to_bool(df: pd.DataFrame):
@@ -564,9 +559,10 @@ def train_mlp(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np
 
 def omit_columns(df: pd.DataFrame):
     omit_cols = ['created_at_timestamp', 'in_reply_to_status_id', 'place_country', 'user_time_zone',
-                 'place_name',
+                 'place_name', "famasector", "f22_id",
                  'user_location', 'metadata_result_type', 'place_name', 'place_country',
-                 'lang', 'in_reply_to_screen_name', 'lastupdated', 'created_at', "prev_date"]
+                 'lang', 'in_reply_to_screen_name', 'lastupdated', 'created_at', "prev_date", "future_open", "future_close",
+                 "future_low", "future_high", "calendardate", "reportperiod", "dimension", "datekey"]
 
     narrow_cols = list(set(df.columns) - set(omit_cols))
 
@@ -602,13 +598,16 @@ def split_train_test(train_set: pd.DataFrame, test_set: pd.DataFrame, train_cols
     return X_train, y_train, X_test, y_test, train_cols
 
 
-def split_df_for_learning(df: pd.DataFrame, train_cols: List[str], label_col: str = "buy_sell"):
-    df_set_bal = balance_df(df)
+def split_df_for_learning(df: pd.DataFrame, train_cols: List[str], label_col: str = "buy_sell", require_balance: bool = True):
+    if require_balance:
+        df = balance_df(df)
+        logger.info(f"balanced data: {df.shape[0]}")
 
-    print(f"balanced data: {df_set_bal.shape[0]}")
+    if df.shape[0] == 0:
+        return None, None
 
-    X = np.array(df_set_bal[train_cols])
-    y = np.array(df_set_bal[label_col])
+    X = np.array(df[train_cols])
+    y = np.array(df[label_col])
 
     return X, y
 
@@ -618,33 +617,9 @@ def get_feature_columns(narrow_cols):
                  "future_close", "stock_val_change_ex",
                  "stock_val_change_scaled", "stock_val_change", "roi", "user_screen_name",
                  "future_date", "user_follow_request_sent", "f22_ticker"}
-    # FIXME: 2021-01-16: chris.flesche: Experimental
     omit_cols |= {"nasdaq_day_roi"}
     # End FIXME
-    train_cols = list(set(narrow_cols) - omit_cols)
-    return train_cols
-
-
-def split_by_ticker(df: pd.DataFrame):
-    col_ticker = "f22_ticker"
-    tickers = df[col_ticker].unique().tolist()
-    random.shuffle(tickers)
-
-    num_ticks = len(tickers)
-
-    train_tickers = tickers[:math.floor(num_ticks * .8)]
-    test_tickers = tickers[math.ceil(-(num_ticks * .2)):]
-
-    train_set = df[df[col_ticker].isin(train_tickers)]
-    print(f"train_set: {train_set.shape[0]}")
-
-    test_set = df[df[col_ticker].isin(test_tickers)]
-    print(f"test_set: {test_set.shape[0]}")
-
-    train_set = train_set.drop(columns=[col_ticker], axis=1)
-    test_set = test_set.drop(columns=[col_ticker], axis=1)
-
-    return train_set, test_set
+    return list(set(narrow_cols) - omit_cols)
 
 
 def split_by_date(df):
@@ -661,80 +636,6 @@ def split_by_date(df):
     return df_train, df_test
 
 
-def split_by_days(df, num_days_to_pull=1):
-    date_max = df["purchase_date"].max()
-    date_min = df["purchase_date"].min()
-
-    dt_max = date_utils.parse_std_datestring(date_max)
-    dt_min = date_utils.parse_std_datestring(date_min)
-
-    total_days = (dt_max - dt_min).days
-
-    days_to_pull = []
-    for i in range(num_days_to_pull + 1):
-        rnd_days = randint(0, i)
-
-        rand_dt = dt_min + timedelta(days=rnd_days)
-        rand_date_string = date_utils.get_standard_ymd_format(rand_dt)
-        days_to_pull.append(rand_date_string)
-
-    df_train = df[~df["purchase_date"].isin(days_to_pull)]
-    df_test = df[df["purchase_date"].isin(days_to_pull)]
-
-    return df_train, df_test
-
-
-def ho_split_by_ticker(df):
-    min_count = 1
-    max_count = 100000
-
-    # NOTE: The sort will be preserved
-    df.sort_values(by=['date'], inplace=True, ascending=False)
-    df_holdout_raw = df[['f22_ticker', 'purchase_date']].groupby(['f22_ticker', 'purchase_date']) \
-        .filter(lambda group: \
-                    len(group) >= min_count and len(group) <= max_count)
-
-    df_g_holdout = df_holdout_raw.groupby(['f22_ticker', 'purchase_date'])
-
-    num_groups = 50
-
-    holdout_indexes = []
-    group_count = 0
-    youngest_date = '2099-01-01'
-    for group_name, df_group in df_g_holdout:
-        group_count += 1
-        if group_count > num_groups:
-            break
-        for row_index, row in df_group.iterrows():
-            holdout_indexes.append(row_index)
-
-    df_holdouts = df[df.index.isin(holdout_indexes)]
-
-    embargo_tickers = df_holdouts['f22_ticker'].unique().tolist()
-
-    df_samp = df[~df["f22_ticker"].isin(embargo_tickers)]
-
-    print(f"ho: {df_holdouts.shape[0]}; samp: {df_samp.shape[0]}")
-
-    return df_samp, df_holdouts
-
-
-def ho_split_by_date(df, num_holdouts=40000):
-    df.sort_values(by=['purchase_date'], inplace=True)
-
-    if num_holdouts > 0:
-        df_holdouts = df.iloc[-num_holdouts:]
-        df_samp = df.iloc[:-num_holdouts]
-
-        f22_dates = df_holdouts["purchase_date"].unique().tolist()
-        df_samp = df_samp[~df_samp["purchase_date"].isin(f22_dates)]
-    else:
-        df_samp = df
-        df_holdouts = None
-
-    return df_samp, df_holdouts
-
-
 def ho_split_by_days(df, small_data_days_to_pull: int = None, small_data_frac: float = None,
                      use_only_recent_for_holdout: bool = False):
     if small_data_days_to_pull is not None and small_data_frac is not None:
@@ -744,7 +645,7 @@ def ho_split_by_days(df, small_data_days_to_pull: int = None, small_data_frac: f
     date_max = df["purchase_date"].max()
     date_min = df["purchase_date"].min()
 
-    print(f"Split | min: {date_min} | max: {date_max}")
+    logger.info(f"Split | min: {date_min} | max: {date_max}")
 
     dt_max = date_utils.parse_std_datestring(date_max)
     dt_min = date_utils.parse_std_datestring(date_min)
@@ -770,19 +671,12 @@ def ho_split_by_days(df, small_data_days_to_pull: int = None, small_data_frac: f
         rand_date_string = date_utils.get_standard_ymd_format(rand_dt)
         days_to_pull.append(rand_date_string)
 
-    print(f"Split dates for small dataset: {days_to_pull}")
+    logger.info(f"Split dates for small dataset: {days_to_pull}")
 
     df_samp = df[~df["purchase_date"].isin(days_to_pull)]
     df_holdouts = df[df["purchase_date"].isin(days_to_pull)]
 
     return df_samp, df_holdouts
-
-
-def ho_split_by_tickers(df: pd.DataFrame, tickers: List[str]):
-    df_ticker = df[df["f22_ticker"].isin(tickers)]
-    df_other = df[~df["f22_ticker"].isin(tickers)]
-
-    return df_other, df_ticker
 
 
 def remove_last_days(df: pd.DataFrame, num_days: int):
@@ -804,6 +698,42 @@ def remove_last_days(df: pd.DataFrame, num_days: int):
     return result, has_remaining_days
 
 
-if __name__ == '__main__':
-    date_range = DateRange.from_date_strings(from_date_str="2021-01-18", to_date_str="2021-01-20")
+def fetch_up_to_date_tweets():
+    date_range = get_search_date_range()
+
     search_one_day_at_a_time(date_range=date_range)
+
+    return date_range
+
+
+def get_search_date_range():
+    youngest_tweet_date_str = twitter_utils.get_youngest_tweet_date_in_system()
+    from_date = date_utils.parse_std_datestring(youngest_tweet_date_str) + timedelta(days=1)
+    to_date = datetime.now()
+
+    to_date_str = date_utils.get_standard_ymd_format(to_date)
+    from_date_str = date_utils.get_standard_ymd_format(to_date)
+    if to_date_str <= from_date_str:
+        to_date = from_date + timedelta(days=1)
+    date_range = DateRange(from_date=from_date, to_date=to_date)
+    return date_range
+
+
+def get_daily_prediction():
+    jobs_start = "01:30"
+    schedule.every().day.at(jobs_start).do(fetch_up_to_date_tweets)
+
+    while True:
+        logger.info(f"Waiting to start job at {jobs_start} ...")
+        schedule.run_pending()
+        time.sleep(120)
+
+
+if __name__ == '__main__':
+    # get_daily_prediction()
+
+    fetch_up_to_date_tweets()
+    # date_range = DateRange.from_date_strings(from_date_str="2021-02-12", to_date_str="2021-02-13")
+    # search_one_day_at_a_time(date_range=date_range)
+    # youngest_tweet_date_str = twitter_utils.get_youngest_tweet_date_in_system()
+    # print(youngest_tweet_date_str)

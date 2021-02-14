@@ -1,0 +1,17 @@
+Feb 10th, 2021:
+
+    ToDo: BOUGHT 4 DAY: ['SINO', 'WWR', 'CBAT', 'IDEX', 'FUTU', 'RIOT', 'FUV', 'PPSI']
+
+    ToDo: Need to rate 3 and 4 day predictions
+
+Feb 9th, 2021:
+
+    TODO: Added some FIXMEs. Fix the FIXMEs.
+
+    Got these predictions for today: 
+
+    "2021-02-09 process complete: 1 day prediction: ['AXTI', 'AQMS', 'PSNL', 'FLUX', 'KURA', 'TPIC', 'BIDU', 'FREQ']", "2021-02-09 process complete: 3 day prediction: ['OEG']", 
+	"2021-02-09 process complete: 4 day prediction: ['SINO', 'WWR', 'CBAT', 'IDEX', 'FUTU', 'RIOT', 'FUV', 'PPSI']"
+
+	2 and 5 day did not work.
+

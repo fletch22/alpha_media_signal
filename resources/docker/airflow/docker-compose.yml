@@ -1,0 +1,66 @@
+version: "3"
+services:
+  postgres:
+    image: postgres:9.6
+    container_name: "postgres"
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_DB=airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - .\data\postgres:/var/lib/postgresql/data/pgdata
+
+  #  comment initdb after you will have use it at first run
+#  initdb:
+#    build: .
+#    entrypoint: airflow db init
+#    environment:
+#      - POSTGRES_USER=airflow
+#      - POSTGRES_PASSWORD=airflow
+#    depends_on:
+#      - postgres
+
+  webserver:
+#      build: .
+      image: f22_airflow
+      restart: always
+      depends_on:
+        - postgres
+      environment:
+        - POSTGRES_USER=airflow
+        - POSTGRES_PASSWORD=airflow
+      volumes:
+        - ..\..\..\:/usr/local/airflow/dags
+        - C:/Users/Chris/workspaces/:/home/jupyter
+        - D:/workspaces/:/home/jupyter/overflow_workspace
+#        - .\airflow_files\dags:/usr/local/airflow/dags
+      ports:
+        - "18080:8080"
+      entrypoint: airflow webserver # /bin/bash -c "airflow db init && airflow webserver"
+      healthcheck:
+        test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+        interval: 30s
+        timeout: 30s
+        retries: 3
+
+  scheduler:
+#    build: .
+    image: f22_airflow
+    restart: always
+    depends_on:
+      - postgres
+    volumes:
+      - .\airflow_files\dags:/usr/local/airflow/dags
+    entrypoint: /bin/bash -c "airflow scheduler" #-c "cd /usr/local/airflow && ls -l" # "airflow scheduler"
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-scheduler.pid ]"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
