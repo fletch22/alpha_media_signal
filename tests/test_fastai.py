@@ -5,8 +5,10 @@ from fastai.data.transforms import FuncSplitter, Normalize
 from fastai.tabular.core import TabularPandas, FillMissing, Categorify, CategoryBlock, TabDataLoader, DataLoaders, ifnone
 from fastai.tabular.learner import tabular_learner, F1Score, accuracy
 
+from ams.config import logger_factory
 from ams.utils import date_utils
 
+logger = logger_factory.create(__name__)
 
 def test_df():
     procs = [FillMissing, Categorify, Normalize]
@@ -20,14 +22,13 @@ def test_df():
 
     train_cut_off_ndx = math.floor(num_dates * (pct_train / 100)) - 1
     train_cut_off = a_dist[train_cut_off_ndx]
-    print(f"tcoi: {train_cut_off_ndx}; {train_cut_off}")
+    logger.info(f"tcoi: {train_cut_off_ndx}; {train_cut_off}")
 
     def split(dt_str):
         return True if train_cut_off > dt_str else False
 
     splits = FuncSplitter(split)(df['a'])
 
-    print(splits)
     to = TabularPandas(df, procs, cat_vars, cont_vars, y_names="c", y_block=CategoryBlock(),
                        splits=splits, do_setup=True)
     trn_dl = TabDataLoader(to.train, bs=64, num_workers=0, shuffle=True, drop_last=True)
@@ -61,6 +62,5 @@ def test_df():
     #     return [_one_emb_sz(to.procs.classes, n, sz_dict) for n in to.cat_names]
     #
     # emb_szs = get_emb_sz(to)
-    # print(emb_szs)
 
 

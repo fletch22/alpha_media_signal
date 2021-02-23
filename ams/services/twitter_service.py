@@ -51,7 +51,7 @@ def search(query: str, date_range: DateRange = None):
     language = 'lang:en'
     query_esc = f'{query} {language}'
 
-    print(query_esc)
+    logger.info(query_esc)
 
     kwargs = {}
     if date_range is not None:
@@ -256,7 +256,7 @@ def find_cashtag(raw_line: str, search_tuples: List) -> List[str]:
             if re.search(ticker, raw_line) and re.search(name, raw_line, re.IGNORECASE):
                 cashtags_stock.append(ticker)
 
-    print(cashtags_stock)
+    logger.info(cashtags_stock)
 
     tweet['flagged_stocks'] = cashtags_stock
     return tweet
@@ -288,7 +288,7 @@ def search_with_multi_thread(date_range: DateRange):
     tweet_raw_output_path = file_services.create_unique_filename(str(parent),
                                                                  prefix="multithreaded_drop",
                                                                  extension='txt')
-    print(f'Output path: {str(tweet_raw_output_path)}')
+    logger.info(f'Output path: {str(tweet_raw_output_path)}')
 
     pt = PrinterThread()
     sprint = pt.print
@@ -317,7 +317,7 @@ def search_with_multi_thread(date_range: DateRange):
     finally:
         pt.end()
 
-    print(f"Total tweets: {ticker_tweet_count}")
+    logger.info(f"Total tweets: {ticker_tweet_count}")
 
 
 def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_days_in_future: int = 1):
@@ -359,7 +359,7 @@ def std_col(df: pd.DataFrame, col_name: str):
 
 def add_buy_sell(df: pd.DataFrame):
     roi_threshold_pct = 0
-    df.loc[:, 'stock_val_change'] = ((df['future_close'] - df['close']) / df['close']) - df["nasdaq_day_roi"]
+    df.loc[:, 'stock_val_change'] = ((df['future_close'] - df['purchase_close']) / df['purchase_close']) - df["nasdaq_day_roi"]
 
     df.loc[:, 'buy_sell'] = df['stock_val_change'].apply(lambda x: 1 if x >= roi_threshold_pct else -1)
     df.loc[:, 'stock_val_change_ex'] = df["stock_val_change"].apply(exagerrate_stock_val_change)
@@ -444,26 +444,6 @@ def convert_to_bool(df: pd.DataFrame):
                                     'user_protected', 'user_geo_enabled'])
 
 
-# def std_numeric_cols(df: pd.DataFrame, cols_additional: List[str]):
-#     df["original_close_price"] = df["close"]
-#     std_cols = [
-#         'favorite_count',
-#         'user_listed_count',
-#         'user_statuses_count',
-#         'user_friends_count',
-#         'retweet_count', 'user_follow_request_sent', 'user_followers_count',
-#         'f22_num_other_tickers_in_tweet', 'f22_sentiment_pos',
-#         'f22_sentiment_neu', 'f22_sentiment_neg', 'f22_sentiment_compound',
-#         'f22_compound_score', 'open', 'high', 'low', 'close', 'closeunadj', 'volume', "f22_day_tweet_count"]
-#
-#     std_cols += cols_additional
-#
-#     for i, c in enumerate(std_cols):
-#         df[c] = scaler.fit_transform(df[[c]])
-#
-#     return df
-
-
 def refine_pool(df: pd.DataFrame, min_volume: int = None, min_price: float = None, max_price: float = None):
     if min_volume is not None:
         df = df[df["prev_volume"] > min_volume].copy()
@@ -474,18 +454,38 @@ def refine_pool(df: pd.DataFrame, min_volume: int = None, min_price: float = Non
     return df
 
 
-def join_with_stock_splits(df: pd.DataFrame):
-    df_stock_splits = sas.get_splits()[["ticker", "date", "value"]]
-
-    df_holdouts_clean = df.drop(columns=["date"])
-
-    df_split_aware = pd.merge(df_holdouts_clean, df_stock_splits, how='left',
-                              left_on=["f22_ticker", "purchase_date"], right_on=["ticker", "date"])
-    df_splitted = df_split_aware.rename(columns={"value": "split_share_multiplier"}).drop(
-        columns=["ticker", "date"])
-    df_splitted["split_share_multiplier"] = df_splitted["split_share_multiplier"].fillna(1.0)
-
-    return df_splitted
+# def join_with_stock_splits(df: pd.DataFrame):
+#     df_stock_splits = sas.get_splits()[["ticker", "date", "value"]]
+#
+#     df_holdouts_clean = df.drop(columns=["date"])
+#
+#     df_split_aware = pd.merge(df_holdouts_clean, df_stock_splits, how='left',
+#                               left_on=["f22_ticker", "purchase_date"], right_on=["ticker", "date"])
+#     df_splitted = df_split_aware.rename(columns={"value": "split_share_multiplier"}).drop(
+#         columns=["ticker", "date"])
+#     df_splitted["split_share_multiplier"] = df_splitted["split_share_multiplier"].fillna(1.0)
+#
+#     return df_splitted
+# def join_with_stock_splits_2(df: pd.DataFrame, date_range: DateRange):
+#     df_stock_splits = sas.get_splits()[["ticker", "date", "value"]]
+#     df_stock_splits.rename(columns={"value": "split_share_multiplier", "date": "split_date"}, inplace=True)
+#     df_stock_splits = df_stock_splits[(df_stock_splits["split_date"] >= date_range.from_date_str) & (df_stock_splits["split_date"] <= date_range.to_date_str)]
+#
+#     df_ss_g = df_stock_splits.groupby(by=["ticker"])
+#
+#     all_groups = list()
+#     for ndx, (group_name, df_group) in enumerate(df_ss_g):
+#         # TODO: 2021-01-17: chris.flesche: Expermiment with summing instead for counts.
+#         df_group.loc[:, "ps_share_multiplier"] = df_group["split_share_multiplier"].mean()
+#         all_groups.append(df_group)
+#
+#     df_all = pd.concat(all_groups, axis=0)
+#     df_split_aware = pd.merge(df, df_all, how='left',
+#                               left_on=["f22_ticker", "purchase_date"], right_on=["ticker", "split_date"])
+#     df_split_aware = df_split_aware.drop(columns=["ticker", "split_date", "split_share_multiplier"])
+#     df_split_aware.loc[:, "ps_share_multiplier"] = df_split_aware["ps_share_multiplier"].fillna(1.0)
+#
+#     return df_split_aware
 
 
 def dec_tree(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np.array, max_depth: int):
@@ -495,7 +495,7 @@ def dec_tree(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np.
 
     from sklearn.metrics import accuracy_score
 
-    print(accuracy_score(y_test, y_test_pred))
+    logger.info(accuracy_score(y_test, y_test_pred))
 
     return model
 
@@ -507,7 +507,7 @@ def dec_tree_regressor(X_train: np.array, y_train: np.array, X_test: np.array, y
 
     from sklearn.metrics import r2_score
 
-    print(r2_score(y_test, y_test_pred))
+    logger.info(r2_score(y_test, y_test_pred))
 
     return model
 
@@ -527,7 +527,7 @@ def rnd_forest_clf(X_train: np.array, y_train: np.array, X_test: np.array, y_tes
 
     y_test_pred = rf.predict(X_test)
 
-    print(accuracy_score(y_test, y_test_pred))
+    logger.info(accuracy_score(y_test, y_test_pred))
 
     return rf
 
@@ -544,7 +544,7 @@ def train_mlp(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np
     accs = accuracy_score(y_test, y_pred)  # Accuracy Score
     end = time.time()
 
-    print(f"{accs}: Elapsed time: {end - start} seconds.")
+    logger.info(f"{accs}: Elapsed time: {end - start} seconds.")
 
     import matplotlib.pyplot as plt
 
@@ -730,10 +730,9 @@ def get_daily_prediction():
 
 
 if __name__ == '__main__':
-    # get_daily_prediction()
+    get_daily_prediction()
 
-    fetch_up_to_date_tweets()
+    # fetch_up_to_date_tweets()
     # date_range = DateRange.from_date_strings(from_date_str="2021-02-12", to_date_str="2021-02-13")
     # search_one_day_at_a_time(date_range=date_range)
     # youngest_tweet_date_str = twitter_utils.get_youngest_tweet_date_in_system()
-    # print(youngest_tweet_date_str)

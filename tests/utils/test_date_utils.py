@@ -4,9 +4,11 @@ from datetime import timedelta, datetime
 import pytest
 import pytz
 
+from ams.config import logger_factory
 from ams.utils import date_utils
 from ams.utils.date_utils import TZ_AMERICA_NEW_YORK
 
+logger = logger_factory.create(__name__)
 
 def test_dt():
     date_max = "2020-11-01"
@@ -20,8 +22,6 @@ def test_dt():
 
     rand_dt = timestamp_min + timedelta(days=rnd_days)
     rand_date_string = date_utils.get_standard_ymd_format(rand_dt)
-
-    print(rand_date_string)
 
 
 def test_return():
@@ -42,7 +42,6 @@ def test_return():
     tots = 40
     for ndx, ud in enumerate(up_or_downs):
         amt = rnd_amts[ndx]
-        print(amt)
         if ud:
             tots += amt
         else:
@@ -70,7 +69,7 @@ def test_is_after_close():
     tz_nyc = pytz.timezone(TZ_AMERICA_NEW_YORK)
     dt_nyc = tz_nyc.localize(dt_here)
     dt_utc = dt_nyc.astimezone(pytz.utc)
-    print(f"\ntest function: {dt_utc}")
+    logger.info(f"\ntest function: {dt_utc}")
 
     # Act
     is_closed = date_utils.is_after_nasdaq_closed(utc_timestamp=dt_utc.timestamp())
@@ -83,7 +82,7 @@ def test_get_prev_nasdaq_dt():
     # Arrange
     dt_sept = date_utils.parse_std_datestring("2020-09-10")
 
-    print(list(range(-3)))
+    logger.info(list(range(-3)))
 
     # Act
     dt_prev = date_utils.find_next_market_open_day(dt=dt_sept, num_days_to_skip=-7)
@@ -112,7 +111,7 @@ def test_foo():
 
     df["fd_day_of_month"] = df.apply(lambda x: day_of_month(x["foo"]), axis=1)
 
-    print(df.head())
+    logger.info(df.head())
 
     # pd.Timestamp("2019-04-12").dayofweek
 

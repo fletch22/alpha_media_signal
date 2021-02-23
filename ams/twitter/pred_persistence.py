@@ -29,7 +29,7 @@ def persist_predictions(df_buy, pp: PredictionParams):
 
     if not is_new:
         df_preds = pd.read_csv(pred_path)
-        df_preds = df_preds[~((df_preds["purchase_date"] == pp.predict_date_str) & (df_preds["num_hold_days"] == pp.num_hold_days))]
+        df_preds = df_preds[~((df_preds["purchase_date"] == pp.purchase_date_str) & (df_preds["num_hold_days"] == pp.num_hold_days))]
 
         logger.info(f"Old rows found: {df_preds.shape[0]}")
 

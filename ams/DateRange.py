@@ -13,3 +13,11 @@ class DateRange:
         from_date = date_utils.parse_std_datestring(from_date_str)
         to_date = date_utils.parse_std_datestring(to_date_str)
         return DateRange(from_date=from_date, to_date=to_date)
+
+    @property
+    def from_date_str(self):
+        return date_utils.get_standard_ymd_format(self.from_date)
+
+    @property
+    def to_date_str(self):
+        return date_utils.get_standard_ymd_format(self.to_date)

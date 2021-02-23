@@ -8,10 +8,12 @@ from typing import Tuple, List
 import requests
 
 from ams.DateRange import DateRange
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.services import file_services, twitter_service
 from ams.utils import date_utils
 from ams.utils.PrinterThread import PrinterThread
+
+logger = logger_factory.create(__name__)
 
 EMPTY_STRING = ""
 
@@ -36,27 +38,6 @@ def multithreaded_query(ticker_tuples: List[Tuple[str, str]], date_range: DateRa
             news_topic = f"{ticker} {name}"
             total_pages += query(news_topic=news_topic, output_path=output_path, date_range=date_range)
 
-        # def custom_request(search_terms: Tuple[str, DateRange]):
-        #     ticker = search_terms[0]
-        #     name = search_terms[1]
-        #     date_range = search_terms[2]
-        #
-        #     if ticker <= "AAXN":
-        #         return 0
-        #
-        #     pt.print(f'{ticker}  {name} | from {f_date_str} thru {t_date_str}')
-        #
-        #     news_topic = f"{ticker} {name}"
-        #
-        #     return query(news_topic=news_topic, output_path=output_path, date_range=date_range)
-
-        # with ThreadPoolExecutor(1) as executor:
-        #     results = executor.map(custom_request, ticker_tuples, timeout=None)
-        #
-        # total_pages = 0
-        # for page_count in results:
-        #     total_pages += page_count
-        # pt.print(results)
     finally:
         pt.end()
 
@@ -170,7 +151,7 @@ def get_news():
     total_pages = roll_through_the_days(date_range=date_range, output_path=output_path)
     end = time.time()
 
-    print(f"Elapsed: {end - start}; total_pages; {total_pages}")
+    logger.info(f"Elapsed: {end - start}; total_pages; {total_pages}")
 
     return total_pages, end - start
 

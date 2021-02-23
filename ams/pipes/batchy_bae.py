@@ -105,11 +105,11 @@ def archive(source_path: Path, staging_dir_path: Path):
             shutil.move(str(f), str(dest_path))
 
     if total_files == 0:
-        print("WARNING: No files found to archive.")
+        logger.info("WARNING: No files found to archive.")
 
 
 def unstage(source_path: Path, output_dir_path: Path):
-    print("Unstaging...")
+    logger.info("Unstaging...")
     files_in_transition = get_files_in_transition(source_path)
     total_files = len(files_in_transition)
     if total_files > 0:
@@ -119,7 +119,7 @@ def unstage(source_path: Path, output_dir_path: Path):
             shutil.move(str(f), str(dest_path))
 
     if total_files == 0:
-        print("WARNING: No files found to archive.")
+        logger.info("WARNING: No files found to archive.")
 
 
 def ensure_clean_output_path(output_dir_path: Path):

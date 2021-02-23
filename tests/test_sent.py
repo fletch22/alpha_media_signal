@@ -2,14 +2,15 @@ from pathlib import Path
 
 import pandas as pd
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.pipes.p_add_id import process as process_id
-from ams.services import file_services
+from ams.services import file_services, ticker_service
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
+logger = logger_factory.create(__name__)
 
 def test_add_id():
     process_id.start()
@@ -20,10 +21,10 @@ def test_get_inf_drop():
 
     df = pd.read_csv(file_path_str)
 
-    print(f"Cols: {list(df.columns)}")
+    logger.info(f"Cols: {list(df.columns)}")
 
     df_short = df[["f22_id", "text"]]
-    print(df_short.head(20))
+    logger.info(df_short.head(20))
 
 
 def test_all_twitter_dates():
@@ -38,31 +39,21 @@ def test_all_twitter_dates():
     df_all = []
     rows = 0
     count_limit = 400000
+    replace_chars = "foo"
 
-    print(f"Found {len(files)} files.")
+    logger.info(f"Found {len(files)} files.")
 
     for f in files:
-        # df = pd.read_csv(f, header=0, sep='\n', quoting=csv.QUOTE_ALL, quotechar='"', engine="python")
         df = pd.read_csv(f)
 
         df_text = df
         df_text = df[["text"]]
 
-        # print(f"Num cols: {len(list(df_text.columns))}")
-        # print(f"Cols: {str(list(df_text.columns))}")
-
-        # df["text"] = df["text"].replace(["\\"], "\"\"")
         df_text["text"] = df_text["text"].apply(replace_chars)
 
-        # df.drop("text", axis=1)
-
-        # df_text["create_at_timestamp"]
-        print(df_text.iloc[0, 0])
+        logger.info(df_text.iloc[0, 0])
 
         df_text.to_csv(output_path)
-
-        # print(df_text.head(10))
-        # break
 
 
 def convert_date():
@@ -74,7 +65,7 @@ def test_load_and_test():
 
     df = pd.read_csv(str(folder_path), sep="|")
 
-    print(df[["text"]].head())
+    logger.info(df[["text"]].head())
 
 
 def test_random_choice():
@@ -82,4 +73,28 @@ def test_random_choice():
 
     for i in range(10):
         val = np.random.choice(2, 1)
-        print(val)
+        logger.info(val)
+
+
+def test_find_funny_roi():
+    # Arrange
+    # Act
+    df = pd.read_csv(constants.TWITTER_TRAINING_PREDICTIONS_FILE_PATH)
+
+    # print(df.columns)
+
+    df = df[(df["purchase_date"] == "2020-10-20") & (df["num_hold_days"] == 10)]
+
+    print(df.head())
+
+    df = ticker_service.get_ticker_eod_data("NTEC")
+
+    row = df[df["date"] == "2020-10-20"].iloc[0]
+    purchase_price = row["close"]
+
+    row = df[df["date"] == "2020-11-03"].iloc[0]
+    sell_price = row["close"]
+
+    print(f"Pp: {purchase_price}; Sp: {sell_price}")
+
+    # Assert

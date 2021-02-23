@@ -9,4 +9,4 @@ def test_get():
 
     df = pd.read_parquet(str(file_path))
 
-    print(df.head())
+    logger.info(df.head())

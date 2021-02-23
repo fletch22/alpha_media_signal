@@ -12,8 +12,7 @@ logger = logger_factory.create(__name__)
 
 
 def process(source_dir_path: Path, output_dir_path: Path):
-    findspark.init()
-    spark = spark_service.get_or_create(app_name='twitter_flatten')
+    spark = spark_service.get_or_create(app_name='twitter')
     sc = spark.sparkContext
     log4jLogger = sc._jvm.org.apache.log4j
     LOGGER = log4jLogger.LogManager.getLogger(__name__)
@@ -37,8 +36,6 @@ def process(source_dir_path: Path, output_dir_path: Path):
     df = df.withColumn("place_full_name", F.col('place_full_name').cast(T.StringType()))
 
     df.coalesce(num_coalesce).write.format("parquet").mode("overwrite").save(str(out_write_path))
-
-    spark.stop()
 
 
 def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool):

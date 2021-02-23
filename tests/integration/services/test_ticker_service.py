@@ -1,5 +1,7 @@
+from ams.config import logger_factory
 from ams.services import ticker_service
 
+logger = logger_factory.create(__name__)
 
 def test_get_equity_on_dates():
     # Arrange
@@ -8,4 +10,4 @@ def test_get_equity_on_dates():
     df = ticker_service.get_equity_on_dates(ticker="AAPL", date_strs=date_strs)
 
     # Assert
-    print(df["future_open"].to_list())
+    logger.info(df["future_open"].to_list())

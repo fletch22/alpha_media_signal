@@ -9,22 +9,24 @@ from ams.services import file_services
 logger = logger_factory.create(__name__)
 
 
-def fix_naked_ticker(broke_json):
+def fix_naked_ticker(json):
     token = '{"version": "0.9.2", "f22_ticker": '
-    start_pos = len(token)
-    next_char = broke_json[start_pos:start_pos + 1]
-    if next_char == "\"":
-        return broke_json
-    end_ticker_pos = broke_json.index(",", start_pos)
-    ticker = broke_json[start_pos:end_ticker_pos]
+    if json.find(token) == 0:
+        start_pos = len(token)
+        next_char = json[start_pos:start_pos + 1]
+        if next_char != "\"":
+            end_ticker_pos = json.index(",", start_pos)
+            ticker = json[start_pos:end_ticker_pos]
 
-    return f"""{broke_json[:start_pos]}\"{ticker}\"{broke_json[end_ticker_pos:]}"""
+            json = f"""{json[:start_pos]}\"{ticker}\"{json[end_ticker_pos:]}"""
+    return json
+
 
 
 def process(source_path: Path, output_dir_path: Path):
     files = file_services.walk(source_path, use_dir_recursion=False)
 
-    print(f"Num files to process: {len(files)}")
+    logger.info(f"Num files to process: {len(files)}")
 
     max_records_per_file = 50000
     total_records_processed = 0
@@ -42,7 +44,7 @@ def process(source_path: Path, output_dir_path: Path):
                 line = r.readline()
                 if len(line) == 0:
                     if wf is not None:
-                        print("Closing file.")
+                        logger.info("Closing file.")
                         wf.close()
                     break
                 try:
@@ -57,10 +59,10 @@ def process(source_path: Path, output_dir_path: Path):
                 except Exception as e:
                     pass
                 if count % 1000 == 0:
-                    print(count)
+                    logger.info(count)
                 if count >= max_records_per_file:
                     if wf is not None:
-                        print("Closing file.")
+                        logger.info("Closing file.")
                         wf.close()
                     count = 0
                     create_new = True
@@ -80,14 +82,10 @@ def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool)
     return source_dir_path, output_dir_path
 
 
-def start_old():
-    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop", "main")
-    output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "smallified_raw_drop", "main")
-    ensure_dir(output_dir_path)
+if __name__ == '__main__':
+    twitter_output_path = Path(constants.TEST_TEMP_PATH, "twitter")
+    source_dir_path = Path(twitter_output_path, "raw_drop", "main")
 
-    batchy_bae.ensure_clean_output_path(output_dir_path)
-
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path,
-                     process_callback=process, should_archive=False)
-
-    return output_dir_path
+    start(source_dir_path=source_dir_path,
+          twitter_root_path=twitter_output_path,
+          snow_plow_stage=False)

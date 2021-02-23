@@ -1,28 +1,27 @@
+import glob
 import os
 import time
-import glob
 
 import torch
-import torch.optim as O
 import torch.nn as nn
-
+import torch.optim as O
 from torchtext import data
 from torchtext import datasets
 
+from ams.config import logger_factory
 from ams.deep_learning.model import SNLIClassifier
 from ams.deep_learning.util import get_args, makedirs
 
+logger = logger_factory.create(__name__)
 
 args = get_args()
 if torch.cuda.is_available():
     torch.cuda.set_device(args.gpu)
     device = torch.device('cuda:{}'.format(args.gpu))
-    print("Using GPU")
+    logger.info("Using GPU")
 else:
-    print("Using CPU")
+    logger.info("Using CPU")
     device = torch.device('cpu')
-
-
 
 inputs = data.Field(lower=args.lower, tokenize='spacy')
 answers = data.Field(sequential=False)
@@ -40,7 +39,7 @@ if args.word_vectors:
 answers.build_vocab(train)
 
 train_iter, dev_iter, test_iter = data.BucketIterator.splits(
-            (train, dev, test), batch_size=args.batch_size, device=device)
+    (train, dev, test), batch_size=args.batch_size, device=device)
 
 config = args
 config.n_embed = len(inputs.vocab)
@@ -67,9 +66,10 @@ start = time.time()
 best_dev_acc = -1
 header = '  Time Epoch Iteration Progress    (%Epoch)   Loss   Dev/Loss     Accuracy  Dev/Accuracy'
 dev_log_template = ' '.join('{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,{:>8.6f},{:8.6f},{:12.4f},{:12.4f}'.split(','))
-log_template =     ' '.join('{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,{:>8.6f},{},{:12.4f},{}'.split(','))
+log_template = ' '.join('{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,{:>8.6f},{},{:12.4f},{}'.split(','))
 makedirs(args.save_path)
-print(header)
+logger.info(header)
+
 
 def run():
     global iterations
@@ -79,7 +79,8 @@ def run():
         for batch_idx, batch in enumerate(train_iter):
 
             # switch model to training mode, clear gradient accumulators
-            model.train(); opt.zero_grad()
+            model.train();
+            opt.zero_grad()
 
             iterations += 1
 
@@ -89,13 +90,14 @@ def run():
             # calculate accuracy of predictions in the current batch
             n_correct += (torch.max(answer, 1)[1].view(batch.label.size()) == batch.label).sum().item()
             n_total += batch.batch_size
-            train_acc = 100. * n_correct/n_total
+            train_acc = 100. * n_correct / n_total
 
             # calculate loss of the network output with respect to training labels
             loss = criterion(answer, batch.label)
 
             # backpropagate and update optimizer learning rate
-            loss.backward(); opt.step()
+            loss.backward();
+            opt.step()
 
             # checkpoint model periodically
             if iterations % args.save_every == 0:
@@ -110,20 +112,21 @@ def run():
             if iterations % args.dev_every == 0:
 
                 # switch model to evaluation mode
-                model.eval(); dev_iter.init_epoch()
+                model.eval();
+                dev_iter.init_epoch()
 
                 # calculate accuracy on validation set
                 n_dev_correct, dev_loss = 0, 0
                 with torch.no_grad():
                     for dev_batch_idx, dev_batch in enumerate(dev_iter):
-                         answer = model(dev_batch)
-                         n_dev_correct += (torch.max(answer, 1)[1].view(dev_batch.label.size()) == dev_batch.label).sum().item()
-                         dev_loss = criterion(answer, dev_batch.label)
+                        answer = model(dev_batch)
+                        n_dev_correct += (torch.max(answer, 1)[1].view(dev_batch.label.size()) == dev_batch.label).sum().item()
+                        dev_loss = criterion(answer, dev_batch.label)
                 dev_acc = 100. * n_dev_correct / len(dev)
 
-                print(dev_log_template.format(time.time()-start,
-                    epoch, iterations, 1+batch_idx, len(train_iter),
-                    100. * (1+batch_idx) / len(train_iter), loss.item(), dev_loss.item(), train_acc, dev_acc))
+                logger.info(dev_log_template.format(time.time() - start,
+                                              epoch, iterations, 1 + batch_idx, len(train_iter),
+                                              100. * (1 + batch_idx) / len(train_iter), loss.item(), dev_loss.item(), train_acc, dev_acc))
 
                 # update best valiation set accuracy
                 if dev_acc > best_dev_acc:
@@ -142,12 +145,12 @@ def run():
 
             elif iterations % args.log_every == 0:
 
-                # print progress message
-                print(log_template.format(time.time()-start,
-                    epoch, iterations, 1+batch_idx, len(train_iter),
-                    100. * (1+batch_idx) / len(train_iter), loss.item(), ' '*8, n_correct/n_total*100, ' '*12))
+                logger.info(log_template.format(time.time() - start,
+                                          epoch, iterations, 1 + batch_idx, len(train_iter),
+                                          100. * (1 + batch_idx) / len(train_iter), loss.item(), ' ' * 8, n_correct / n_total * 100, ' ' * 12))
             if args.dry_run:
                 break
+
 
 if __name__ == '__main__':
     run()

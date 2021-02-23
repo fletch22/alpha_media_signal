@@ -77,7 +77,7 @@ def process(source_dir_path: Path, output_dir_path: Path):
     if len(df_all) > 0:
         persist_df(df_all=df_all, output_dir_path=output_dir_path)
 
-    print(f"Total records processed: {total_count}")
+    logger.info(f"Total records processed: {total_count}")
 
 
 def add_synth_id(df: pd.DataFrame):

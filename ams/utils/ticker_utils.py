@@ -13,7 +13,7 @@ def add_simple_moving_averages(df: pd.DataFrame, target_column: str, windows: Li
     return df_copy
 
 
-def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], predict_date_str: str, sma_day_before: bool):
+def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], tweet_date_str: str, sma_day_before: bool):
     max_window = max(windows)
 
     all_dataframes = []
@@ -27,7 +27,7 @@ def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], pr
         dt_oldest_tweet_str = min(df_group["date"])
 
         if df_equity is not None:
-            df_equity = df_equity[df_equity["date"] <= predict_date_str].copy()
+            df_equity = df_equity[df_equity["date"] <= tweet_date_str].copy()
 
             df_equity.dropna(subset=[date_col], inplace=True)
 

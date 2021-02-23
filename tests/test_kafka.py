@@ -27,16 +27,6 @@ def test_kafka():
         data = {'number': e}
         kafka_prod_svc.send_message(data=data)
 
-    print('is this thing on?')
-
-    # timeout = 1000.0
-    # while True:
-    #     message = consumer.poll(timeout)
-    #     if message == {}:
-    #         break
-    #     print('Got message!')
-    #     print(f'Consumed message {message} from topic {topic}')
-
     pt = PrinterThread()
     try:
         pt.start()

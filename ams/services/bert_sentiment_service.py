@@ -4,8 +4,11 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 from transformers import BertModel, BertTokenizer
 
-PRE_TRAINED_MODEL_NAME = 'bert-base-cased'
+from ams.config import logger_factory
 
+logger = logger_factory.create(__name__)
+
+PRE_TRAINED_MODEL_NAME = 'bert-base-cased'
 
 def inference_model(model, data_loader, device, n_examples):
     model = model.eval()
@@ -56,10 +59,10 @@ class GPReviewDataset(Dataset):
         return len(self.tweets)
 
     def __getitem__(self, item):
-        print(f"Item: {item}")
+        logger.info(f"Item: {item}")
 
         tweet = str(self.tweets[item])
-        print(f"Encoding tweet {tweet[:20]}...")
+        logger.info(f"Encoding tweet {tweet[:20]}...")
 
         encoding = self.tokenizer.encode_plus(
             tweet,
@@ -104,8 +107,8 @@ def get_bert_preds(df: pd.DataFrame):
     BATCH_SIZE = 15
     MAX_LEN = 280
 
-    print(f'df_red count: {df.shape[0]}')
-    print(f"df_red cols: {df.columns}")
+    logger.info(f'df_red count: {df.shape[0]}')
+    logger.info(f"df_red cols: {df.columns}")
     val_data_loader = create_data_loader(df, tokenizer, MAX_LEN, BATCH_SIZE)
 
     bert_model = BertModel.from_pretrained(PRE_TRAINED_MODEL_NAME)
@@ -120,7 +123,7 @@ def get_bert_preds(df: pd.DataFrame):
         return_tensors='pt',  # Return PyTorch tensors
     )
 
-    print(encoding.keys())
+    logger.info(encoding.keys())
 
     last_hidden_state, pooled_output = bert_model(
         input_ids=encoding['input_ids'],
@@ -130,6 +133,6 @@ def get_bert_preds(df: pd.DataFrame):
     device = torch.device("cpu")
     preds = inference_model(bert_model, val_data_loader, device, df.shape[0])
 
-    print(f"Preds type: {type(preds[0])}")
-    print(f"Length preds: {len(preds)}")
-    print(f"Length preds: {preds}")
+    logger.info(f"Preds type: {type(preds[0])}")
+    logger.info(f"Length preds: {len(preds)}")
+    logger.info(f"Length preds: {preds}")

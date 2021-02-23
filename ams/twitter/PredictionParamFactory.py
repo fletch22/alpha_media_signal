@@ -17,15 +17,17 @@ class PredictionParamFactory:
         if max_date_str is None:
             max_date_str = date_utils.get_standard_ymd_format(datetime.now())
 
-        pred_params = PredictionParams()
-        pred_params.prediction_mode = PredictionMode.DevelopmentAndTraining
-        pred_params.min_date_str = min_date_str
-        pred_params.predict_date_str = max_date_str
-        pred_params.max_date_str = max_date_str
-        pred_params.num_hold_days = num_hold_days
-        pred_params.df = df
-
-        pred_params.clean_pure_run = False
-        pred_params.train_params = TrainParams()
+        pred_params = PredictionParams(df=df,
+                                   prediction_mode=PredictionMode.DevelopmentAndTraining,
+                                   tweet_date_str=max_date_str,
+                                   num_days_until_purchase=1,
+                                   min_date_str=min_date_str,
+                                   max_date_str=max_date_str,
+                                   num_hold_days=num_hold_days)
 
         return pred_params
+
+    @classmethod
+    def create_mid_january_trainer(cls, df: pd.DataFrame, num_hold_days):
+        date_str = "2021-01-13"
+        return PredictionParamFactory.create_generic_trainer(df=df, num_hold_days=num_hold_days, max_date_str=date_str)

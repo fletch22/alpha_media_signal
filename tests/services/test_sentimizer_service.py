@@ -8,6 +8,10 @@ from ams.config import constants
 from ams.services import sentimizer_service, file_services, bert_sentiment_service
 from ams.utils.Stopwatch import Stopwatch
 
+from ams.config import logger_factory
+
+logger = logger_factory.create(__name__)
+
 
 def test_get_sentiment():
     # Arrange
@@ -21,11 +25,11 @@ def test_get_sentiment():
     stopwatch.end(msg="3 sentiments")
 
     # Assert
-    print(sentiment)
+    logger.info(sentiment)
 
     analyzer = SentimentIntensityAnalyzer()
 
-    print(analyzer.polarity_scores(text_training))
+    logger.info(analyzer.polarity_scores(text_training))
 
 
 def test_bert():
@@ -43,4 +47,4 @@ def test_bert():
     preds = bert_sentiment_service.get_bert_preds(df=df_red)
 
     # Assert
-    print(preds)
+    logger.info(preds)

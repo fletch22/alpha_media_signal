@@ -19,7 +19,7 @@ def zipdir(dir_path: Path, ziph, omit_folders: list = None):
                     skip_file = True
 
             if not skip_file:
-                print(f"{arcname}")
+                logger.info(f"{arcname}")
                 ziph.write(source_path, arcname)
 
 

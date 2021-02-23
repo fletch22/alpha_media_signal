@@ -1,3 +1,4 @@
+
 import json
 import time
 from pathlib import Path
@@ -10,6 +11,10 @@ from ams import config
 from ams.services import file_services
 from ams.steaming.BearerTokenAuth import BearerTokenAuth
 from ams.twitter import append_tweets_to_output_file
+
+from ams.config import logger_factory
+
+logger = logger_factory.create(__name__)
 
 stream_url = "https://api.twitter.com/labs/1/tweets/stream/filter"
 rules_url = "https://api.twitter.com/labs/1/tweets/stream/filter/rules"
@@ -73,7 +78,7 @@ def process_tweets(it: Generator, output_path: Path):
             append_tweets_to_output_file(output_path=output_path, tweets=[tweet])
             count += 1
             if count % 10 == 0:
-                print(f'Captured {count} total tweets.')
+                logger.info(f'Captured {count} total tweets.')
 
     return count
 
@@ -98,7 +103,7 @@ def run(rules: List):
 
     tweet_raw_output_path = file_services.create_unique_filename(config.TWITTER_OUTPUT_RAW_PATH, prefix=config.TWITTER_RAW_TWEETS_PREFIX, extension='txt')
 
-    print(f'Will write tweets to {tweet_raw_output_path}')
+    logger.info(f'Will write tweets to {tweet_raw_output_path}')
 
     # Listen to the stream.
     # This reconnection logic will attempt to reconnect when a disconnection is detected.

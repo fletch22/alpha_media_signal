@@ -1,3 +1,67 @@
+Feb 17th 2021:
+
+    ToDo: Add Zip_Service; add step to pipe_fitter to zip up raw files.
+    ToDo: Add raw tweet unzipper.
+
+Feb 16th, 2021:
+
+    ToDo: Incorporate split logic in pred_perf, historical preds, etc.
+
+	XGBoost:
+
+		1. Predict a split line (initially use label halfway between 2 labels; e.g., .5)
+		2. Split into 2 leaves by choosing a random split point in the data.
+		3. This will create 2 leaves of 2 sets of data.
+		4. Calc similarity score for the set in each leaf:
+
+			residual == prediction - label value
+			res = residual
+
+			simX = (res1 + res2 + res3)^2/(num_samples + lambda)
+
+		5. Gain is the Sum of all the similarities minus the root similarity
+
+			Gain = sim1 + sim2 + sim3 - simm_root
+
+		6. Start again with a new decision threshold. Compare the gain.
+
+		7. Default level of splits == 6
+
+		8. Pruning branches. 
+
+			Using gamma variable (default 130), we subtract gamma from gain. If the result is negative, we remove the branch.
+
+		9. When lambda > 0, it is easier to prune leaves because gains are smaller (due to larger divisor)
+
+		10. For each leaf: 
+				Cal the output value:
+					sum_of_res/(num_res + lambda)
+
+		11. Learning rate is 'eta'
+
+		12. Use the learning rate to calulate the next prediction:
+
+		For each leaf:
+			
+			Calculate the following
+			
+				new_prediction = initial_prediction + (eta * output value) 
+
+			Take the new prediction and create a new tree; i.e., go to Step 1 with the new prediction.
+
+
+
+
+
+
+
+
+
+Feb 14th, 2021:
+
+
+
+
 Feb 10th, 2021:
 
     ToDo: BOUGHT 4 DAY: ['SINO', 'WWR', 'CBAT', 'IDEX', 'FUTU', 'RIOT', 'FUV', 'PPSI']

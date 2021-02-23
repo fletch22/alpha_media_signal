@@ -17,16 +17,16 @@ from ams.pipes.p_smallify_files import process as smallify_process
 from ams.pipes.p_twitter_reduction import process as twit_reduce_process
 from ams.services import command_service, file_services, slack_service
 from ams.services.equities import equity_performance
+from ams.services.equities.equity_performance import calc_and_persist_nasdaq_roi
 from ams.twitter import twitter_ml_utils, twitter_ml
 from ams.utils import date_utils
+from tests.services import zip_service
 
 logger = logger_factory.create(__name__)
 
 
-def validate_final_output(output_dir_path: Path, num_orig_files: int):
+def validate_final_output(output_dir_path: Path):
     files = file_services.walk(output_dir_path)
-    num_output_files_new = len(files)
-    assert (num_orig_files == num_output_files_new - 1)
 
     for f in files:
         df = pd.read_parquet(str(f))
@@ -42,13 +42,24 @@ def archive_input(source_dir_path: Path, output_dir_path: Path):
         new_path = Path(output_dir_path, f.name)
         shutil.move(str(f), str(new_path))
 
+        output_path = Path(new_path.parent, f"{new_path.stem}.zip")
+        zip_service.zip_file(file_path=new_path, output_path=output_path)
 
-def process(twitter_root_path: Path, end_drop_path: Path, input_archive_path: Path):
-    num_orig_files = len(file_services.walk(end_drop_path))
+        # NOTE: 2021-02-17: chris.flesche: delete file if zip was successful?
+        # new_path.unlink()
 
-    command_service.get_equity_daily_data()
-    command_service.get_equity_fundamentals_data()
-    equity_performance.start()
+
+def process(twitter_root_path: Path, end_drop_path: Path, input_archive_path: Path, skip_external_data_dl: bool = False):
+
+    if not skip_external_data_dl:
+        command_service.get_equity_daily_data()
+        command_service.get_equity_fundamentals_data()
+        equity_performance.start()
+
+        earliest_dt = date_utils.parse_std_datestring("2020-08-10")
+        calc_and_persist_nasdaq_roi(date_from=earliest_dt, date_to=datetime.now(), days_hold_stock=1)
+    else:
+        logger.info("Skipping external data download.")
 
     source_dir_path = Path(twitter_root_path, "raw_drop", "main")
     ensure_dir(source_dir_path)
@@ -66,10 +77,10 @@ def process(twitter_root_path: Path, end_drop_path: Path, input_archive_path: Pa
     # add_output_dir = Path("e:\\tmp\\twitter\\id_fixed\\main")
     rem_output_dir = rem_dupes_process.start(source_dir_path=add_output_dir, twitter_root_path=twitter_root_path, snow_plow_stage=True)
 
-    # rem_output_dir = Path("C:\\Users\\Chris\\workspaces\\data\\twitter\\deduped\\main")
+    # rem_output_dir = Path(constants.TWITTER_OUTPUT_RAW_PATH, "deduped", "main")
     coal_output_dir = coalesce_process.start(source_dir_path=rem_output_dir, twitter_root_path=twitter_root_path, snow_plow_stage=True)
 
-    # coal_output_dir = Path("e:\\tmp\\twitter\\coalesced\\main")
+    # coal_output_dir = Path(constants.TWITTER_OUTPUT_RAW_PATH, "coalesced\\main")
     sent_output_dir = add_sent_process.start(source_dir_path=coal_output_dir, twitter_root_path=twitter_root_path, snow_plow_stage=True)
 
     # sent_output_dir = Path("e:\\tmp\\twitter\\sent_drop\\main")
@@ -78,9 +89,9 @@ def process(twitter_root_path: Path, end_drop_path: Path, input_archive_path: Pa
 
     transfer_to_end_drop(end_drop_path=end_drop_path, twit_output_dir=twit_output_dir)
 
-    validate_final_output(output_dir_path=end_drop_path, num_orig_files=num_orig_files)
+    validate_final_output(output_dir_path=end_drop_path)
 
-    # small_source_path = Path("C:\\Users\\Chris\\workspaces\\data\\twitter\\raw_drop\\main")
+    # small_source_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop\\main")
     archive_input(source_dir_path=small_source_path, output_dir_path=input_archive_path)
 
     return True
@@ -109,13 +120,13 @@ def process_old():
     # twit_reduce_process.start_old()
 
 
-def predict(predict_date_str: str, num_hold_days: int):
-    twitter_ml.make_a_real_prediction(predict_date_str=predict_date_str, num_hold_days=num_hold_days)
+def predict(tweet_date_str: str, num_hold_days: int):
+    purchase_date_str = twitter_ml.make_a_real_prediction(tweet_date_str=tweet_date_str, num_hold_days=num_hold_days)
 
-    return twitter_ml_utils.get_real_predictions(sample_size=8,
+    return twitter_ml_utils.get_real_predictions(sample_size=16,
                                                  num_hold_days=num_hold_days,
                                                  min_price=5.,
-                                                 purchase_date_str=predict_date_str)
+                                                 purchase_date_str=purchase_date_str)
 
 
 def predict_multiple_holds(num_hold_list: List[int]) -> List[str]:
@@ -123,8 +134,11 @@ def predict_multiple_holds(num_hold_list: List[int]) -> List[str]:
     for num_hold_days in num_hold_list:
         tod_dt = datetime.now()
         today_str = date_utils.get_standard_ymd_format(tod_dt)
-        prev_mark_dt_str = twitter_ml_utils.get_next_market_date(date_str=today_str, num_days=-1)
-        sample_tickers = predict(predict_date_str=prev_mark_dt_str, num_hold_days=num_hold_days)
+        tweet_date_str = twitter_ml_utils.get_next_market_date(date_str=today_str, num_days=-1)
+
+        logger.info(f"TDS: {tweet_date_str}")
+
+        sample_tickers = predict(tweet_date_str=tweet_date_str, num_hold_days=num_hold_days)
 
         message = f"{today_str} process complete: {num_hold_days} day prediction: {sample_tickers}"
         msgs.append(message)
@@ -133,11 +147,12 @@ def predict_multiple_holds(num_hold_list: List[int]) -> List[str]:
 
 def get_todays_prediction(twitter_root_path: Path, input_archive_path: Path):
     end_drop_path = constants.TWITTER_END_DROP
+    messages = []
     try:
         was_successful = process(twitter_root_path=twitter_root_path, end_drop_path=end_drop_path, input_archive_path=input_archive_path)
 
         if was_successful:
-            messages = predict_multiple_holds(num_hold_list=[5, 2])
+            get_and_message_predictions(num_days_hold_list=[10, 5, 4, 3, 2, 1])
         else:
             messages = ["Evidently no data today."]
     except Exception as e:
@@ -151,9 +166,14 @@ def get_todays_prediction(twitter_root_path: Path, input_archive_path: Path):
         except BaseException as be:
             logger.info(be)
 
+
 def spec_1():
     nh_list = [5, 2, 4, 3, 1]
-    for i in nh_list:
+    get_and_message_predictions(nh_list)
+
+
+def get_and_message_predictions(num_days_hold_list):
+    for i in num_days_hold_list:
         m = predict_multiple_holds(num_hold_list=[i])
         try:
             logger.info(m)
@@ -163,11 +183,30 @@ def spec_1():
 
 
 if __name__ == '__main__':
-    # end_drop_path = constants.TWITTER_END_DROP
-    # get_todays_prediction(twitter_root_path=constants.TWITTER_OUTPUT_RAW_PATH, input_archive_path=constants.TWEET_RAW_DROP_ARCHIVE)
+    end_drop_path = constants.TWITTER_END_DROP
+    get_todays_prediction(twitter_root_path=constants.TWITTER_OUTPUT_RAW_PATH, input_archive_path=constants.TWEET_RAW_DROP_ARCHIVE)
     # process(twitter_root_path=constants.TWITTER_OUTPUT_RAW_PATH, end_drop_path=end_drop_path, input_archive_path=constants.TWEET_RAW_DROP_ARCHIVE)
 
-    # today_str = "2021-02-11"
-    # sample_tickers = predict(predict_date_str=today_str, num_hold_days=2)
-    # print(sample_tickers)
-    spec_1()
+    # constants.xgb.defaults.max_depth = 4
+    # # tweet_date_str = "2021-01-13"
+    # tweet_date_str = "2021-02-18"
+    #
+    # n_hold_list = [5, 2, 1, 10, 3, 4]
+    # # n_hold_list = [9, 8, 7, 6]
+    # for i in n_hold_list:
+    #     num_hold_days = i
+    #     message = predict(tweet_date_str, num_hold_days)
+    #     message = f"Tweet date: {tweet_date_str}: {i} days: {message}"
+    #     try:
+    #         logger.info(message)
+    #         slack_service.send_direct_message_to_chris(message=message)
+    #     except BaseException as be:
+    #         logger.info(be)
+
+    # purchase_date_str = "2021-01-14"
+    # tickers = twitter_ml_utils.get_real_predictions(sample_size=16,
+    #                                       num_hold_days=5,
+    #                                       min_price=5.,
+    #                                       purchase_date_str=purchase_date_str)
+    #
+    # print(tickers)

@@ -4,6 +4,10 @@ from ams.DateRange import DateRange
 from ams.services import ticker_service
 from ams.services.equities import equity_fundy_service
 
+from ams.config import logger_factory
+
+logger = logger_factory.create(__name__)
+
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
@@ -15,13 +19,13 @@ def test_get_most_recent_quarter_data():
     tickers = ["AAPL", "IBM"]
     df_ticker = df[df["ticker"].isin(tickers)]
 
-    print(df_ticker.head(100))
+    logger.info(df_ticker.head(100))
 
 
 def test_max():
     all = [1, 2, 3, 4]
 
-    print(max(all))
+    logger.info(max(all))
 
 
 def test_get_tickers_in_range():
@@ -33,9 +37,7 @@ def test_get_tickers_in_range():
                                          "isdelisted", "name", "exchange", "firstadded", "permaticker", "sicindustry", "relatedtickers"])
 
     for c in df_dropped.columns:
-        print(f"{c}: {len(df_dropped[c].unique().tolist())}")
-
-    # print(df.head(20))
+        logger.info(f"{c}: {len(df_dropped[c].unique().tolist())}")
 
     # Assert
 
@@ -48,8 +50,7 @@ def test_get_top_100_market_cap():
 
     tickers = df_nasdaq.loc[:100, "ticker"].unique().tolist()
     # Act
-    print(tickers)
-
+    logger.info(tickers)
 
     # Assert
 
@@ -106,15 +107,15 @@ def test_most_rec_quarter_join():
 
     df_result = pd.merge(df_ticker, df_equity_funds, on="ticker", suffixes=[None, "_ef"]).sort_values(by=["date"])
 
-    print(df_result.head(20))
+    logger.info(df_result.head(20))
 
     df_drop_future = df_result[df_result["date"] > df_result["date_ef"]]
 
-    print(df_drop_future.head(20))
+    logger.info(df_drop_future.head(20))
 
     df_dd = df_drop_future.sort_values(by=["date_ef"]).drop_duplicates(subset=["id"], keep="last").sort_values(by=["date"])
 
-    print(df_dd.head(20))
+    logger.info(df_dd.head(20))
 
     # Act
 

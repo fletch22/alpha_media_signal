@@ -4,9 +4,10 @@ from typing import List
 
 import pandas as pd
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.twitter.twitter_ml_utils import add_nasdaq_roi_new
 
+logger = logger_factory.create(__name__)
 
 def calc_return(rois: List[str]):
     ini_inv = 1000
@@ -35,8 +36,6 @@ def test_add_nasdaq_roi():
     df_nr = add_nasdaq_roi_new(df=df, num_hold_days=3)
 
     # Act
-    print(df_nr.head())
-
     # Assert
 
 
@@ -52,8 +51,8 @@ def test_read_funky():
                 rois_raw_list = al.split(start_token)
                 rois_raw = rois_raw_list[1]
                 if not rois_raw.startswith("None"):
-                    print(rois_raw[:6])
+                    logger.info(rois_raw[:6])
                     all_roi.append(float(rois_raw[:6]))
 
-    print(f"Average roi: {mean(all_roi)}")
+    logger.info(f"Average roi: {mean(all_roi)}")
 

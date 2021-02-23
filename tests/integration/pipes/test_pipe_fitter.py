@@ -2,13 +2,14 @@ import shutil
 from pathlib import Path
 from unittest.mock import patch
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.config.constants import ensure_dir
 from ams.pipes import pipe_fitter
 from ams.services import file_services, ticker_service
 
 sample_raw_drop_path = Path(constants.TESTS_RESOURCES, "sample_raw_drop.txt")
 
+logger = logger_factory.create(__name__)
 
 def test_create_test_records():
     create_sample_raw_drop(num_records=10)
@@ -59,5 +60,5 @@ def test_process():
 def test_foo():
     # Arrange
     # Act
-    print(ticker_service.get_ticker_eod_data("AAPL")["date"].max())
+    logger.info(ticker_service.get_ticker_eod_data("AAPL")["date"].max())
     # Assert

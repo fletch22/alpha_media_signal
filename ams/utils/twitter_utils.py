@@ -84,7 +84,7 @@ def get_max_date_from_all_lines(youngest_dt_str, r):
     #         break
     line = ""
     for line in r:
-        print("reading line")
+        logger.info("reading line")
         pass
     last_line = line
 

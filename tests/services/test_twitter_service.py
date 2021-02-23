@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from ams.DateRange import DateRange
 from ams.config import constants, logger_factory
-from ams.services import twitter_service, ticker_service
+from ams.services import twitter_service, ticker_service, stock_action_service
 from ams.services.spark_service import get_or_create
 from ams.utils import date_utils
 
@@ -18,12 +18,12 @@ tweet_raw_output_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "test", "test_ou
 def test_tuples():
     tickers_tuples = twitter_service.get_ticker_searchable_tuples()
 
-    print(len(list(set(tickers_tuples))))
+    logger.info(len(list(set(tickers_tuples))))
 
-    print(f"Num ticker tuples: {len(tickers_tuples)}")
+    logger.info(f"Num ticker tuples: {len(tickers_tuples)}")
     sample = tickers_tuples[:4]
 
-    print(sample)
+    logger.info(sample)
 
 
 def test_get_cashtags():
@@ -37,7 +37,7 @@ def test_get_cashtags():
 
     # Assert
     # assert(result is not None)
-    print(index)
+    logger.info(index)
 
 
 def test_twitter_service():
@@ -59,7 +59,7 @@ def test_dict():
     group_preds[ticker] = info
     info["foo"] = 1
 
-    print(group_preds)
+    logger.info(group_preds)
 
 
 def test_variance():
@@ -95,19 +95,19 @@ def test_variance():
     xgd_std = statistics.stdev(xgd_roi)
     nas_std = statistics.stdev(nas_roi)
 
-    print(f"xgd std: {xgd_std}; nas std: {nas_std}")
+    logger.info(f"xgd std: {xgd_std}; nas std: {nas_std}")
 
-    print(f"{xgd_std}/{nas_std}")
+    logger.info(f"{xgd_std}/{nas_std}")
 
     import statistics as s
-    print(f"Mean: xgd: {s.mean(xgd_roi)}; nas roi: {s.mean(nas_roi)}")
+    logger.info(f"Mean: xgd: {s.mean(xgd_roi)}; nas roi: {s.mean(nas_roi)}")
 
 
 def test_nas_roi():
     import pandas as pd
     df_roi_nasdaq = pd.read_parquet(str(constants.DAILY_ROI_NASDAQ_PATH))
 
-    print(df_roi_nasdaq.head(100))
+    logger.info(df_roi_nasdaq.head(100))
 
 
 def test_bad_file():
@@ -121,14 +121,14 @@ def test_bad_file():
         all_lines = rf.readlines()
         for line in all_lines:
             thing = json.loads(line)
-            print(thing["user"])
+            logger.info(thing["user"])
 
 
 def test_twitter_trade_history():
     import pandas as pd
 
     df = pd.read_csv(constants.TWITTER_TRADE_HISTORY_FILE_PATH)
-    print(f"Num rows: {df.shape[0]}")
+    logger.info(f"Num rows: {df.shape[0]}")
 
     df = df.sample(frac=1.0)
 
@@ -147,18 +147,18 @@ def test_twitter_trade_history():
         df_g_samp = df_group.iloc[:num_samples]
         day_mean = df_g_samp["roi"].mean()
         tickers = df_g_samp["ticker"].to_list()
-        print(tickers)
+        logger.info(tickers)
         all_days.append(day_mean)
 
-    print(f'roi with max stock buy {max_stock_buy}: {statistics.mean(all_days)} ')
-    print(df['roi'].mean())
-    print(f"Total trades: {len(all_days)}: {all_days}")
+    logger.info(f'roi with max stock buy {max_stock_buy}: {statistics.mean(all_days)} ')
+    logger.info(df['roi'].mean())
+    logger.info(f"Total trades: {len(all_days)}: {all_days}")
 
     initial_inv = 1000
     total = initial_inv
     for roi in all_days:
         total = (total * roi) + total
-    print(f"Total roi: {(total - initial_inv) / initial_inv}")
+    logger.info(f"Total roi: {(total - initial_inv) / initial_inv}")
 
     # validate_roi_data(df)
 
@@ -182,8 +182,8 @@ def validate_roi_data(df):
         close = tick_row["close"]
         future_close = tick_row["future_close"]
 
-        print(f"PP: {purchase_price}; SP: {sell_price}")
-        print(f"close: {close}; fp: {future_close}")
+        logger.info(f"PP: {purchase_price}; SP: {sell_price}")
+        logger.info(f"close: {close}; fp: {future_close}")
         assert (round(purchase_price, 3) == round(close, 3))
         assert (round(sell_price, 3) == round(future_close, 3))
 
@@ -702,7 +702,7 @@ def test_compare():
     assert (from_xgb_keys == from_sav_keys)
 
     for k in from_xgb_keys:
-        print(k)
+        logger.info(k)
         list_xgb = list(from_xgb[k])
         sorted(list_xgb)
         list_saved = list(from_saved[k])
@@ -1369,9 +1369,8 @@ def test_compare_columns():
     from_pred_set = set(from_predict)
 
     missing_from_pred = list(from_train_set - from_pred_set)
-    print(len(from_train))
-    print(missing_from_pred)
-    # assert(from_train == from_predict)
+    logger.info(len(from_train))
+    logger.info(missing_from_pred)
 
 
 def test_multiple_searches():
@@ -1395,7 +1394,7 @@ def test_multi_query():
     spark = get_or_create("test")
     df = spark.json(tweet_raw_output_path)
 
-    print(df.count())
+    logger.info(df.count())
 
 
 def test_fetch_up_to_date_tweets():
@@ -1404,7 +1403,6 @@ def test_fetch_up_to_date_tweets():
     # Act
     with patch("ams.services.twitter_service.search_one_day_at_a_time") as mock_search, \
         patch("ams.services.twitter_service.twitter_utils.get_youngest_tweet_date_in_system", return_value=youngest_date_str) as mock_get_youngest:
-
         # Act
         date_range = twitter_service.fetch_up_to_date_tweets()
 
@@ -1416,5 +1414,24 @@ def test_fetch_up_to_date_tweets():
         today_str = date_utils.get_standard_ymd_format(datetime.now())
 
         # Assert
-        assert("2020-12-25" == from_date_str_actual)
+        assert ("2020-12-25" == from_date_str_actual)
         assert (to_date_str_actual == today_str)
+
+
+def test_split():
+    # Arrange
+    date_range = DateRange.from_date_strings(from_date_str="2020-12-17", to_date_str="2020-12-25")
+    df_stock = ticker_service.get_ticker_eod_data("HEXO")
+    df_stock = df_stock[(df_stock["date"] >= date_range.from_date_str) & (df_stock["date"] <= date_range.to_date_str)]
+    df_stock.rename(columns={"ticker": "f22_ticker"}, inplace=True)
+    df_stock.loc[:, "purchase_date"] = date_range.from_date_str
+
+    df_stock_splits = stock_action_service.get_splits()[["ticker", "date", "value"]]
+    print(df_stock.head())
+    print(df_stock_splits.head())
+
+    # Act
+    df_rez = twitter_service.join_with_stock_splits_2(df=df_stock, date_range=date_range)
+
+    # Assert
+    print(df_rez.head())

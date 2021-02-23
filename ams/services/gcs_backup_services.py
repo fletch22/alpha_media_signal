@@ -17,9 +17,6 @@ def backup_project_to_gcs(include_data: bool = True):
     stopWatch = Stopwatch(start_now=True)
 
     with tempfile.TemporaryDirectory() as t:
-        # t = config.constants.TWITTER_OUTPUT
-        print(t)
-
         source_dir_project = config.constants.ALPHA_MEDIA_SIGNAL_PROJ
         output_path = Path(t, f"project.zip")
         backup_folder(source_dir_project, output_path=output_path)
@@ -81,7 +78,7 @@ def backup_project_to_gcs(include_data: bool = True):
         command = ["gsutil", "rsync", str(t), "gs://api_uploads/twitter"]
         completed_process = subprocess.run(command, shell=True, check=True)
 
-        print(completed_process.returncode)
+        logger.info(completed_process.returncode)
 
     stopWatch.end(msg="Backup")
 

@@ -7,7 +7,7 @@ from pandas import DataFrame, CategoricalDtype
 from sklearn.preprocessing import StandardScaler
 
 from ams.DateRange import DateRange
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.services import file_services, pickle_service
 from ams.services.EquityFields import EquityFields
 from ams.utils import date_utils
@@ -18,6 +18,8 @@ ticker_date_row_cache = {}
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
+
+logger = logger_factory.create(__name__)
 
 
 def get_ticker_cache():
@@ -257,7 +259,7 @@ def pull_in_next_trading_day_info(df_tweets: pd.DataFrame):
     df_stocks = pd.concat(df_list)
     end = time.time()
     elapsed = end - start
-    print(f"Got all stock data: {elapsed}")
+    logger.info(f"Got all stock data: {elapsed}")
 
     col_tmp = "tmp_future_values"
     df_tweets[col_tmp] = df_tweets.apply(
@@ -275,7 +277,7 @@ def get_next_trading_day(ticker: str, trading_days: List[str]):
 
     df_dated = None
     if df is None:
-        print(f"Equity ticker {ticker} not found.")
+        logger.info(f"Equity ticker {ticker} not found.")
     else:
         start_date = trading_days[0]
         end_date = trading_days[len(trading_days) - 1]
@@ -345,7 +347,7 @@ def get_tickers_w_filters(min_price: float = 5.0, min_volume: int = 100000):
     tickers = []
     for d in da_paths:
         ticker = d.stem
-        print(f"Inspecting '{ticker}'")
+        logger.info(f"Inspecting '{ticker}'")
         df = get_ticker_eod_data(ticker)
         row = df.iloc[-1]
         price = row["close"]
@@ -382,8 +384,8 @@ def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[s
         df_new_cols = pd.get_dummies(df[c], prefix=c)
         df_one_hots.append(df_new_cols)
 
-    df_one_dropped = df.drop(columns=cols)
-    df_one_hots.append(df_one_dropped)
+    df.drop(columns=cols, inplace=True)
+    df_one_hots.append(df)
 
     return pd.concat(df_one_hots, axis=1)
 
@@ -404,16 +406,16 @@ def make_f22_ticker_one_hotted(df_ranked: pd.DataFrame) -> (pd.DataFrame, Dict[s
 
 
 def get_nasdaq_tickers():
-    df_nasdaq = get_nasdaq_info()
+    df_nasdaq = get_nasdaq_info().copy()
 
-    df_dropped = df_nasdaq.drop(columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
-                                         "secfilings", "companysite", "lastupdated", "cusips",
-                                         "isdelisted", "name", "exchange", "firstadded", "permaticker", "sicindustry",
-                                         "relatedtickers"
-                                         ])
+    df_nasdaq.drop(columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
+                            "secfilings", "companysite", "lastupdated", "cusips",
+                            "isdelisted", "name", "exchange", "firstadded", "permaticker", "sicindustry",
+                            "relatedtickers"
+                            ], inplace=True)
 
     df_all_tickers = get_ticker_info()
-    df_rem = df_all_tickers[df_dropped.columns]
+    df_rem = df_all_tickers[df_nasdaq.columns].copy()
 
     columns = [c for c in df_rem.columns if str(df_rem[c].dtype) == "object"]
     columns.remove("ticker")
@@ -421,9 +423,9 @@ def get_nasdaq_tickers():
     df_one_hotted = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns)
 
     # FIXME: 2021-01-02: chris.flesche: Should be moved to a later step or refactored out.
-    df_ren = df_one_hotted.rename(columns={"ticker": "ticker_drop"})
+    df_one_hotted.rename(columns={"ticker": "ticker_drop"}, inplace=True)
 
-    return df_ren
+    return df_one_hotted
 
 
 def std_single_dataframe(df: pd.DataFrame, standard_scaler: StandardScaler):
@@ -463,20 +465,15 @@ def get_single_attr(df: pd.DataFrame, col: str):
 
 
 def get_stock_info(df: pd.DataFrame, ticker: str, date_str: str):
-    df_ticker_on_date = df[(df["f22_ticker"] == ticker) & (df["purchase_date"] == date_str)]
+    df_ticker_on_date = df[(df["f22_ticker"] == ticker) & (df["date"] == date_str)]
 
     original_open = get_single_attr(df_ticker_on_date, "open")
     if original_open is None:
         raise Exception("original_open is None.")
 
-    close = get_single_attr(df_ticker_on_date, "original_close_price")
+    close = get_single_attr(df_ticker_on_date, "purchase_close")
     if close is None:
         raise Exception("close is None.")
-
-    split_share_multiplier = get_single_attr(df_ticker_on_date, "split_share_multiplier")
-    if split_share_multiplier is None:
-        raise Exception("split_share_multiplier is None.")
-    split_share_multiplier = 1 / split_share_multiplier
 
     future_close = get_single_attr(df_ticker_on_date, "future_close")
     if future_close is None:
@@ -523,7 +520,6 @@ def calculate_roi(target_roi: float, close_price: float, future_high: float, fut
             calc_dict[calc_key] = []
         calc_list = calc_dict[calc_key]
         calc_list.append(calc_roi)
-        # print(f"calc_key: {calc_key}: calc_roi: {calc_roi}: {statistics.mean(calc_list):.4f}%")
     else:
         for i in range(800):
             calc_tar_roi = target_roi + (i * .001)
@@ -535,7 +531,6 @@ def calculate_roi(target_roi: float, close_price: float, future_high: float, fut
                 calc_dict[calc_key] = []
             calc_list = calc_dict[calc_key]
             calc_list.append(calc_roi)
-            # print(f"calc_key: {calc_key}: calc_roi: {calc_roi}: {statistics.mean(calc_list):.4f}%")
 
             if calc_roi == last_roi:
                 num_repeats += 1
@@ -549,7 +544,7 @@ def calculate_roi(target_roi: float, close_price: float, future_high: float, fut
 
 def add_days_until_sale(df: pd.DataFrame):
     def days_between(row):
-        date_str = row["purchase_date"]
+        date_str = row["date"]
         future_date_str = row["future_date"]
 
         dt_date = date_utils.parse_std_datestring(date_str)
@@ -572,8 +567,8 @@ def calc_and_persist_equity_daily_roi(date_from: datetime,
     date_from_str = date_utils.get_standard_ymd_format(date_from)
     date_to_str = date_utils.get_standard_ymd_format(date_to)
 
-    print(f"date_from_str: {date_from_str}")
-    print(f"date_to_str: {date_to_str}")
+    logger.info(f"date_from_str: {date_from_str}")
+    logger.info(f"date_to_str: {date_to_str}")
 
     all_df = list()
     cols = ["future_open", "future_close", "future_high", "future_low"]
@@ -582,7 +577,7 @@ def calc_and_persist_equity_daily_roi(date_from: datetime,
     for ndx, t in enumerate(tickers):
         df = get_ticker_eod_data(ticker=t)
         if df is not None:
-            print(f"Processing ticker: {t}")
+            logger.info(f"Processing ticker: {t}")
             df = df[df["date"] >= date_from_str]
             if date_to is not None:
                 df = df[df["date"] <= date_to_str].copy()
@@ -606,8 +601,8 @@ def calc_and_persist_equity_daily_roi(date_from: datetime,
     min_date = df_nas["date"].min()
     max_date = df_nas["date"].max()
 
-    print(min_date)
-    print(max_date)
+    logger.info(min_date)
+    logger.info(max_date)
 
     dt_min = date_utils.parse_std_datestring(min_date)
     dt_max = date_utils.parse_std_datestring(max_date)
@@ -629,7 +624,7 @@ def calc_and_persist_equity_daily_roi(date_from: datetime,
         dt_current = dt_current + timedelta(days=1)
 
     df = pd.DataFrame(results, columns=["date", "roi"])
-    print(f"DF cols: {df.columns}")
+    logger.info(f"DF cols: {df.columns}")
     df.to_parquet(constants.DAILY_ROI_NASDAQ_PATH)
 
     return df, ticks_gathered
@@ -643,10 +638,10 @@ def create_tickers_available_on_day():
 
     t_on_d = dict()
     for t_ndx, t in enumerate(all_tickers):
-        print(f"Processing {t}.")
+        logger.info(f"Processing {t}.")
         df = get_ticker_eod_data(ticker=t)
         if df is None or df.shape[0] == 0:
-            print(f"\tNo values for {t}.")
+            logger.info(f"\tNo values for {t}.")
             continue
         dates = df["date"].to_list()
         close_prices = df["close"].to_list()
@@ -655,10 +650,8 @@ def create_tickers_available_on_day():
                 t_on_d[d] = {t: close_prices[ndx]}
             else:
                 t_on_d[d][t] = close_prices[ndx]
-        # if t_ndx > 10:
-        #     break
 
-    print("About to pickle t_on_d.")
+    logger.info("About to pickle t_on_d.")
     pickle_service.save(t_on_d, file_path=constants.TOD_PICKLE_PATH)
 
     return t_on_d

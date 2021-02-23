@@ -1,8 +1,13 @@
 import pandas as pd
 
 from ams.DateRange import DateRange
+
 from ams.services import ticker_service
 from ams.utils import ticker_utils
+
+from ams.config import logger_factory
+
+logger = logger_factory.create(__name__)
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -32,7 +37,7 @@ def test_get_sma():
     # Assert
     assert (df_tweets_new["SMA_2"].fillna(0).mean() > 0)
     assert (df_tweets_new["SMA_200"].fillna(0).mean() == 0)
-    print(df_tweets_new.head(20))
+    logger.info(df_tweets_new.head(20))
 
 
 def test_add_sma_history():
@@ -48,7 +53,7 @@ def test_add_sma_history():
     assert ("close_SMA_200" in df.columns)
     # assert(df[df["close_SMA_200"].isnull()].shape[0] == 0)
 
-    print(list(df.columns))
+    logger.info(list(df.columns))
 
 
 def test_set_num_days_under_sma():

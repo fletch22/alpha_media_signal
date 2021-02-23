@@ -1,5 +1,8 @@
 import time
 
+from ams.config import logger_factory
+
+logger = logger_factory.create(__name__)
 
 class Stopwatch:
     start_time = None
@@ -16,4 +19,4 @@ class Stopwatch:
 
     def end(self, msg: str = "Time", print_elapsed=True):
         elapsed = round(time.time() - self.start_time, 4)
-        print(f"{msg} elapsed: {elapsed}s")
+        logger.info(f"{msg} elapsed: {elapsed}s")

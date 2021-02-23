@@ -3,6 +3,9 @@ from statistics import mean
 
 from ams.config import constants
 from ams.services import file_services
+from ams.config import logger_factory
+
+logger = logger_factory.create(__name__)
 
 news_html = """
 <!doctype html><html lang="en-CA"><head><meta charset="UTF-8"><meta content="/images/branding/googleg/1x/googleg_standard_color_128dp.png" itemprop="image"><title>AAAP - Google Search</title><script nonce="5aI1H3fZBkjv8Tt6wuE9mw==">(function(){
@@ -30,10 +33,10 @@ def test_parse_for_storage():
     # Act
     news_clean = news_html.replace("\n", EMPTY_STRING).replace("\r", EMPTY_STRING).replace("\t", EMPTY_STRING)
 
-    print("'diamonds', in your head.".encode("UTF-8"))
+    logger.info("'diamonds', in your head.".encode("UTF-8"))
 
     # Assert
-    print(len(news_html) - len(news_clean))
+    logger.info(len(news_html) - len(news_clean))
 
 
 def test_write_read():

@@ -14,6 +14,9 @@ from ams.services.EquityFields import EquityFields
 from ams.services.equities import equity_fundy_service
 from ams.services.ticker_service import get_ticker_eod_data
 from ams.utils import date_utils
+from ams.config import logger_factory
+
+logger = logger_factory.create(__name__)
 
 
 def calc_variance(diffs):
@@ -646,7 +649,7 @@ def test_get_ticker_data_prepped():
     from sklearn.svm import SVC
     SVC
 
-    print(f'Num in date range: {df_dated.shape[0]}')
+    logger.info(f'Num in date range: {df_dated.shape[0]}')
 
 
 def test_ticker_in_range():
@@ -679,13 +682,13 @@ def test_ticker_on_date():
     high_price = ticker_service.get_ticker_attribute_on_date(ticker="AAPL", dt=dt)
     end = time.time()
 
-    print(f"1st Elapsed: {end - start} seconds")
+    logger.info(f"1st Elapsed: {end - start} seconds")
 
     start = time.time()
     high_price = ticker_service.get_ticker_attribute_on_date(ticker="AAPL", dt=dt)
     end = time.time()
 
-    print(f"2nd Elapsed: {end - start} seconds")
+    logger.info(f"2nd Elapsed: {end - start} seconds")
 
     # Assert
     assert (high_price == 393.91)
@@ -753,8 +756,6 @@ def test_merge_future_price():
 
     ttd = ticker_service.extract_ticker_tweet_dates(df_tweets)
 
-    print(ttd)
-
     # Act
 
     # Assert
@@ -776,7 +777,7 @@ def test_get_equity_on_dates():
     ttd = ticker_service.extract_ticker_tweet_dates(df_tweets)
     df = ticker_service.get_ticker_on_dates(ttd)
 
-    print(df.head())
+    logger.info(df.head())
 
 
 def test_pull_in_next_trading_day_info():
@@ -825,8 +826,8 @@ def test_get_tickers_w_filter():
     tickers = ticker_service.get_tickers_w_filters()
 
     # Assert
-    print(len(tickers))
-    print(tickers)
+    logger.info(len(tickers))
+    logger.info(tickers)
 
 
 def test_fillna():
@@ -843,7 +844,7 @@ def test_fillna():
     # Action
     df = ticker_service.fillna_column(df=df_tweets, col="close")
 
-    print(df.head())
+    logger.info(df.head())
 
 
 def test_date_diff():
@@ -862,7 +863,7 @@ def test_date_diff():
 
     df_tweets = pd.DataFrame(tweet_rows)
 
-    print(df_tweets.columns)
+    logger.info(df_tweets.columns)
 
     def days_between(row):
         date_str = row["purchase_date"]
@@ -876,7 +877,7 @@ def test_date_diff():
 
     df_tweets["days_util_sale"] = df_tweets.apply(lambda x: days_between(x), axis=1)
 
-    print(df_tweets.head())
+    logger.info(df_tweets.head())
 
 
 def test_ticker_service():
@@ -907,15 +908,15 @@ def test_roi():
     # Arrange
     df = pd.read_parquet(constants.DAILY_ROI_NASDAQ_PATH)
 
-    print(df.shape[0])
+    logger.info(df.shape[0])
 
-    print(f"Max date: {df['date'].max()}")
+    logger.info(f"Max date: {df['date'].max()}")
 
     from_str = "2020-08-10"
     to_str = "2021-01-07"
     mean_roi = find_roi(from_str, to_str, days_hold_stock=5)
 
-    print(f"\n\nROI mean of means: {mean_roi:.4f}")
+    logger.info(f"\n\nROI mean of means: {mean_roi:.4f}")
 
 
 def find_roi(from_str, to_str, days_hold_stock):
@@ -992,7 +993,7 @@ def test_raw_invest():
 
     variance = calc_variance(diffs)
 
-    print(f"{mean(diffs):.3f}; variance: {variance}")
+    logger.info(f"{mean(diffs):.3f}; variance: {variance}")
 
     import seaborn as sns
 
@@ -1024,13 +1025,12 @@ def test_nas_perf_2():
                 roi = (end_price - start_price) / start_price
                 roi_list.append(roi)
 
-                # print(f"{t} start {start_price} end {end_price}")
                 count += 1
                 if count > max_count:
                     break
 
     mean_roi = mean(roi_list)
-    print(f"Mean roi: {mean_roi}")
+    logger.info(f"Mean roi: {mean_roi}")
 
 
 def test_create_ticker_on_day():
@@ -1052,8 +1052,8 @@ def test_get_most_recent():
     prev_volume, prev_close = ticker_service.get_most_recent_stock_values(ticker=ticker, attributes=attributes)
 
     # Assert
-    print(prev_volume)
-    print(prev_close)
+    logger.info(prev_volume)
+    logger.info(prev_close)
 
 
 def test_change_first_rows():
@@ -1070,7 +1070,7 @@ def test_change_first_rows():
     df.iloc[:2, df.columns.get_loc("foo")] = "apple"
 
     # Assert
-    print(df.head(10))
+    logger.info(df.head(10))
 
 
 def test_list_all_robinhood_eligible():
@@ -1082,6 +1082,5 @@ def test_list_all_robinhood_eligible():
     total_nasdaq = df.shape[0]
     df_robin = df[(df["marketcap"] > 25000000) & (df["price"] > 1.0)]
     num_nasdaq = df_robin.shape[0]
-    print(f"total: {total_nasdaq}; num_eligible: {num_nasdaq}")
-    # print(list(df.columns))
+    logger.info(f"total: {total_nasdaq}; num_eligible: {num_nasdaq}")
 

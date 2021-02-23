@@ -2,7 +2,7 @@ import collections
 import random
 from pathlib import Path
 from statistics import mean
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Union, Set
 
 import numpy as np
 import pandas as pd
@@ -14,6 +14,7 @@ from ams.config import constants, logger_factory
 from ams.services import twitter_service, ticker_service, pickle_service, file_services
 from ams.services.csv_service import write_dicts_as_csv
 from ams.services.equities.EquityFundaDimension import EquityFundaDimension
+from ams.services.ticker_service import get_ticker_eod_data
 from ams.twitter import pred_perf_testing
 from ams.twitter.PredictionParams import PredictionParams, PredictionMode
 from ams.twitter.pred_persistence import save_predictions
@@ -107,11 +108,6 @@ def model_torch_predict(X_torch, model):
         raw_out = model(X_torch)
     y_pred_tag = torch.round(torch.sigmoid(raw_out.data))
     return y_pred_tag
-
-
-def has_f22_column(df: pd.DataFrame):
-    cols = [c for c in df.columns if c.startswith("f22")]
-    logger.info(cols)
 
 
 def transform_to_numpy(df: pd.DataFrame, narrow_cols: List[str], require_balance: bool = True) -> Tuple[any, any, any]:
@@ -209,16 +205,13 @@ def calc_profit(target_roi: float, df_helper: pd.DataFrame, group_preds: object,
     trade_history: List[TwitterTrade] = []
     for ticker, info in group_preds.items():
         num_shares = 0
-        action = "<not specified yet>"
 
         for date_str, pred_mean in info.items():
             should_buy = (pred_mean == 1)
 
-            close, future_close, future_high, future_open, future_date, split_share_multiplier = ticker_service.get_stock_info(df=df_helper,
-                                                                                                                               ticker=ticker,
-                                                                                                                               date_str=date_str)
-            num_shares = split_share_multiplier * num_shares
-
+            close, future_close, future_high, future_open, future_date = ticker_service.get_stock_info(df=df_helper,
+                                                                                                       ticker=ticker,
+                                                                                                       date_str=date_str)
             pot_roi = (future_high - close) / close
             pot_roi_list.append(pot_roi)
 
@@ -316,31 +309,29 @@ def get_roi_matrix(df: pd.DataFrame, group_preds: object, target_roi_frac: float
     return avg_list, cpr.roi_list, cpr.trade_history
 
 
-def calc_nn_roi(
-    df_val_raw: pd.DataFrame,
-    model: object,
-    train_cols: List[str],
-    target_roi_frac: float,
-    zero_in: bool,
-    standard_scaler: StandardScaler,
-    is_model_torch: bool = True
-):
-    if df_val_raw.shape[0] == 0:
-        raise Exception("No holdout data.")
-
-    g_tickers, group_preds = group_and_mean_preds_buy_sell(df_val_raw, model, train_cols, is_model_torch=is_model_torch, standard_scaler=standard_scaler)
-
-    df_splitted = twitter_service.join_with_stock_splits(df=df_val_raw)
-
-    _, sac_roi_list, trade_history = get_roi_matrix(df=df_splitted, group_preds=group_preds, target_roi_frac=target_roi_frac, zero_in=zero_in)
-
-    mean_sac = None
-    if len(sac_roi_list) > 0:
-        persist_trade_history(twitter_trades=trade_history, overwrite_existing=False)
-        mean_sac = mean(sac_roi_list)
-        logger.info(f"Mean sac_roi: {mean_sac}")
-
-    return mean_sac
+# def calc_nn_roi(
+#     df_val_raw: pd.DataFrame,
+#     model: object,
+#     train_cols: List[str],
+#     target_roi_frac: float,
+#     zero_in: bool,
+#     standard_scaler: StandardScaler,
+#     is_model_torch: bool = True
+# ):
+#     if df_val_raw.shape[0] == 0:
+#         raise Exception("No holdout data.")
+#
+#     g_tickers, group_preds = group_and_mean_preds_buy_sell(df_val_raw, model, train_cols, is_model_torch=is_model_torch, standard_scaler=standard_scaler)
+#
+#     _, sac_roi_list, trade_history = get_roi_matrix(df=df_val_raw, group_preds=group_preds, target_roi_frac=target_roi_frac, zero_in=zero_in)
+#
+#     mean_sac = None
+#     if len(sac_roi_list) > 0:
+#         persist_trade_history(twitter_trades=trade_history, overwrite_existing=False)
+#         mean_sac = mean(sac_roi_list)
+#         logger.info(f"Mean sac_roi: {mean_sac}")
+#
+#     return mean_sac
 
 
 def save_twitter_stock_join(df: pd.DataFrame):
@@ -549,8 +540,8 @@ def add_nasdaq_roi_new(df: pd.DataFrame, num_hold_days: int = 1):
     return df.drop_duplicates(subset=["f22_ticker", "date"])
 
 
-def add_sma_stuff(df: pd.DataFrame, predict_date_str: str, sma_day_before: bool = False):
-    df = ticker_utils.add_sma_history(df=df, target_column="close", windows=[15, 20, 50, 100, 200], predict_date_str=predict_date_str, sma_day_before=sma_day_before)
+def add_sma_stuff(df: pd.DataFrame, tweet_date_str: str, sma_day_before: bool = False):
+    df = ticker_utils.add_sma_history(df=df, target_column="close", windows=[15, 20, 50, 100, 200], tweet_date_str=tweet_date_str, sma_day_before=sma_day_before)
 
     df = ticker_utils.add_days_since_under_sma_many_tickers(df=df, col_sma="close_SMA_200", close_col="close")
     df = ticker_utils.add_days_since_under_sma_many_tickers(df=df, col_sma="close_SMA_15", close_col="close")
@@ -569,82 +560,6 @@ def get_data_for_predictions(df: pd.DataFrame,
 
     X_array_raw = np.array(df_features)
     return standard_scaler.transform(X_array_raw)
-
-
-def xgb_learning_predicting(df_train: pd.DataFrame, df_predict: pd.DataFrame, narrow_cols: List[str]) -> bool:
-    X_train, y_train, standard_scaler = transform_to_numpy(df=df_train, narrow_cols=narrow_cols)
-
-    if X_train is None:
-        return False
-
-    model = xgb.XGBClassifier(max_depth=4)
-    model.fit(X_train, y_train)
-
-    prediction = get_data_for_predictions(df=df_predict, narrow_cols=narrow_cols, standard_scaler=standard_scaler)
-
-    df_predict["prediction"] = prediction
-
-    return True
-
-
-def xgb_learning(df: pd.DataFrame,
-                 narrow_cols: List[str]) -> (List[float], bool):
-    min_train_rows = 10
-    num_iterations = 1
-    best_model = None
-
-    zero_in = True
-    if zero_in:
-        target_roi_frac = 0.07
-    else:
-        target_roi_frac = 0.001
-
-    sac_list = []
-    for i in range(num_iterations):
-        sd = split_off_data(df=df, narrow_cols=narrow_cols, split_off_test=False)
-
-        if sd and sd.has_enough_data:
-            X_train = sd.X_train
-            y_train = sd.y_train
-            df_val_raw = sd.df_val_raw
-            train_cols = sd.train_cols
-            has_enough_data = sd.has_enough_data
-
-            if df_val_raw.shape[0] > min_train_rows and has_enough_data:
-                model = xgb.XGBClassifier(max_depth=4)
-                model.fit(X_train, y_train)
-
-                if i == 0:
-                    twit_model_package = TwitterModelPackage(model=model, scaler=sd.standard_scaler)
-                    pickle_service.save(twit_model_package, str(constants.TWITTER_XGB_MODEL_PATH))
-
-                best_model = model
-
-                sac_mean = calc_nn_roi(df_val_raw=df_val_raw,
-                                       model=best_model,
-                                       train_cols=train_cols,
-                                       target_roi_frac=target_roi_frac,
-                                       zero_in=zero_in,
-                                       is_model_torch=False,
-                                       standard_scaler=sd.standard_scaler)
-
-                if sac_mean is not None:
-                    sac_list.append(sac_mean)
-
-                if len(sac_list) > 0:
-                    mean_sac_list = mean(sac_list)
-                    logger.info(f"\nBatch mean s@close: {mean_sac_list}\n")
-            else:
-                logger.info("No data from split_off_data.")
-
-        df, has_remaining_days = twitter_service.remove_last_days(df=df, num_days=1)
-
-        if not has_remaining_days:
-            logger.info("No more remaining days to test.")
-
-    did_train = best_model is not None
-
-    return sac_list, did_train
 
 
 def get_next_market_date(date_str: str, num_days: int):
@@ -673,7 +588,7 @@ def load_model_for_prediction():
     return model_xgb
 
 
-def get_twitter_stock_data(df_tweets: pd.DataFrame, num_hold_days: int, num_days_until_purchase: int):
+def get_twitter_stock_data(df_tweets: pd.DataFrame, num_hold_days: int):
     df_stock_data = twitter_service.get_stock_data_for_twitter_companies(df_tweets=df_tweets,
                                                                          num_days_in_future=num_hold_days)
 
@@ -686,21 +601,27 @@ def get_twitter_stock_data_2(df_tweets: pd.DataFrame, num_hold_days: int, num_da
     df_stock_data = twitter_service.get_stock_data_for_twitter_companies_2(df_tweets=df_tweets,
                                                                            num_hold_days=num_hold_days,
                                                                            num_days_until_purchase=num_days_until_purchase)
-
-    df_stock_data = add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_hold_days + num_days_until_purchase)
+    num_days_in_future = num_hold_days + num_days_until_purchase
+    df_stock_data = add_future_date_for_nan(df=df_stock_data, num_days_in_future=num_days_in_future)
 
     return df_stock_data
 
 
-def split_train_predict(df: pd.DataFrame, predict_date_str: str) -> Tuple[Union[None, pd.DataFrame], Union[None, pd.DataFrame]]:
-    df_th_train = df[df["date"] < predict_date_str].copy()
+def split_train_predict(df: pd.DataFrame, tweet_date_str: str, num_days_until_purchase: int, num_hold_days: int) -> Tuple[
+    Union[None, pd.DataFrame], Union[None, pd.DataFrame]]:
+    df_th_train = df[df["date"] < tweet_date_str].copy()
 
     if df_th_train is None or df_th_train.shape[0] == 0:
         return None, None
 
     df_train = twitter_service.add_buy_sell(df=df_th_train)
 
-    df_predict = df[df["date"] == predict_date_str].copy()
+    # FIXME: 2021-02-19: chris.flesche: Find out why I need this.
+    # num_days_in_future = num_hold_days + num_days_until_purchase
+    # future_date_limit = get_next_market_date(tweet_date_str, num_days_in_future)
+    # df_predict = df[(df["date"] == tweet_date_str) & (df["future_date"] <= future_date_limit)].copy()
+
+    df_predict = df[df["date"] == tweet_date_str].copy()
 
     df_train = twitter_service.omit_columns(df=df_train)
     df_predict = twitter_service.omit_columns(df=df_predict)
@@ -728,8 +649,8 @@ def easy_convert_columns(df):
     return convert_twitter_to_numeric(df=df_booled)
 
 
-def get_stocks_based_on_tweets(df_tweets: pd.DataFrame, predict_date_str: str, num_hold_days: int):
-    df_tweets = df_tweets[df_tweets["date"] <= predict_date_str].copy()
+def get_stocks_based_on_tweets(df_tweets: pd.DataFrame, tweet_date_str: str, num_hold_days: int):
+    df_tweets = df_tweets[df_tweets["date"] <= tweet_date_str].copy()
 
     if df_tweets.shape[0] == 0:
         logger.info("No data before prediction date.")
@@ -843,7 +764,7 @@ def add_calendar_info(df: pd.DataFrame, columns_fundy: List[str], predict_date_s
 
     df = ticker_service.add_days_until_sale(df=df)
 
-    df = add_sma_stuff(df=df, predict_date_str=predict_date_str)
+    df = add_sma_stuff(df=df, tweet_date_str=predict_date_str)
 
     return df
 
@@ -860,7 +781,7 @@ def add_calendar_info_2(df: pd.DataFrame, columns_fundy: List[str], tweet_date_s
 
     df = ticker_service.add_days_until_sale(df=df)
 
-    df = add_sma_stuff(df=df, predict_date_str=tweet_date_str)
+    df = add_sma_stuff(df=df, tweet_date_str=tweet_date_str)
 
     return df
 
@@ -873,33 +794,17 @@ def one_hot(df):
     return df_ticker_hotted, narrow_cols
 
 
-def prep_predict(df, predict_date_str: str):
-    df_train = df[df["date"] < predict_date_str].copy()
-    df_pred = df[df["date"] == predict_date_str].copy()
+def prep_predict(df, tweet_date_str: str):
+    df_train = df[df["date"] < tweet_date_str].copy()
+    df_pred = df[df["date"] == tweet_date_str].copy()
 
     if df_pred.shape[0] == 0:
         logger.info("Not enough prediction data.")
         return None
 
-    def get_recent_stock_vals(row, predict_date_str):
-        attributes = ("volume", "open", "low", "high", "close", "date")
-        ticker = row["f22_ticker"]
-        prev_volume, prev_open, prev_low, prev_high, prev_close, prev_date = \
-            ticker_service.get_most_recent_stock_values(ticker=ticker,
-                                                        attributes=attributes,
-                                                        before_date_str=predict_date_str)
-
-        return list((prev_volume, prev_open, prev_low, prev_high, prev_close, prev_date))
-
-    df_pred[['prev_volume', 'prev_open', "prev_low", "prev_high", "prev_close", "prev_date"]] = \
-        df_pred.apply(lambda x: pd.Series(get_recent_stock_vals(row=x, predict_date_str=predict_date_str)), axis=1).copy()
-
-    df_pred[['volume', 'open', "low", "high", "close", "original_close_price"]] = \
-        df_pred[['prev_volume', 'prev_open', "prev_low", "prev_high", "prev_close", "prev_close"]].copy()
-
     df_pred = df_pred.drop(columns=[c for c in df_pred.columns if "_SMA_" in c]).copy()
 
-    df_pred = add_sma_stuff(df=df_pred, predict_date_str=predict_date_str, sma_day_before=True)
+    df_pred = add_sma_stuff(df=df_pred, tweet_date_str=tweet_date_str, sma_day_before=True)
 
     return pd.concat([df_pred, df_train], axis=0)
 
@@ -938,7 +843,8 @@ def train_predict(df_train, df_predict, narrow_cols):
             return None
 
         if require_balance:
-            model = xgb.XGBClassifier(max_depth=4)
+            logger.info(f"XGB Max depth: {constants.xgb.defaults.max_depth}")
+            model = xgb.XGBClassifier(max_depth=constants.xgb.defaults.max_depth)
         else:
             num_buy = df_train[df_train["buy_sell"] == 1].shape[0]
             num_sell = df_train[df_train["buy_sell"] != 1].shape[0]
@@ -961,11 +867,15 @@ def train_predict(df_train, df_predict, narrow_cols):
     return df_predict
 
 
+def remove_purchase_cols(cols: Set[str]) -> List[str]:
+    p_cols = {"purchase_open", "purchase_low", "purchase_high", "purchase_close", "closeunadj"}
+
+    return list(cols - p_cols)
+
+
 def get_train_columns(all_columns: List):
-    return all_columns
+    return remove_purchase_cols(cols=set(all_columns))
     # clean_cols = remove_fundy_category_cols(all_columns)
-
-
 #     misc_1 = set(['f22_num_other_tickers_in_tweet', 'high', 'days_util_sale', 'evebitda', 'user_screen_name', 'close_SMA_200_days_since_under', 'days_since', 'debtc', 'shareswa', 'debtnc', 'ebitdausd', 'receivables', 'currentratio', 'ebitda', 'future_date', 'de', 'date', 'netincdis', 'price', 'investmentsnc', 'shareswadil', 'closeunadj', 'assetsavg', 'ppnenet', 'f22_sentiment_neg', 'f22_has_cashtag', 'inventory', 'depamor', 'table_SFP', 'epsusd', 'fd_day_of_year', 'siccode', 'fcfps', 'f22_sentiment_pos', 'close_SMA_50_days_since_under', 'tbvps', 'dps', 'taxliabilities', 'ebitusd', 'evebit', 'liabilitiesc', 'pe', 'eps', 'fxusd', 'sbcomp', 'sps', 'ebit', 'close_SMA_20', 'user_listed_count', 'pe1', 'revenueusd', 'close_SMA_15', 'tangibles', 'ncfdebt', 'investments', 'equityavg', 'netinccmn'])
 #     misc_2 = set(['ncf', 'ps', 'opex', 'intangibles', 'ros', 'liabilitiesnc', 'fd_day_of_week', 'prev_volume', 'rnd', 'ebt', 'user_verified', 'buy_sell', 'nasdaq_day_roi', 'stock_val_change_ex', 'capex', 'original_close_price', 'deposits', 'favorite_count', 'ncfi', 'investmentsc', 'ps1', 'f22_sentiment_compound', 'sgna', 'grossmargin', 'rank_roi', 'invcap', 'ncfdiv', 'close_SMA_100_days_since_under', 'ebitdamargin', 'fd_day_of_month', 'volume', 'user_friends_count', 'f22_sentiment_neu', 'accoci', 'sharefactor', 'assets', 'low', 'deferredrev', 'ncfinv', 'cashneq', 'assetsc', 'prev_high'])
 #     add_back = ['f22_id', 'dimension', 'in_reply_to_status_id', 'created_at', 'calendardate', 'prev_date', 'datekey', 'place_country', 'user_location', 'lastupdated', 'user_time_zone', 'famasector', 'place_name', 'reportperiod', 'lang', 'created_at_timestamp', 'metadata_result_type', 'in_reply_to_screen_name']
@@ -973,23 +883,48 @@ def get_train_columns(all_columns: List):
 #     return clean_cols
 
 
-def seal_label_leak(df: pd.DataFrame, num_hold_days):
+def seal_label_leak(df: pd.DataFrame, purchase_date_str: str, num_hold_days: int, num_days_until_purchase: int):
     df.sort_values(by=["date"], ascending=False, inplace=True)
 
-    # # NOTE: 2021-02-03: chris.flesche: This neatly erases any prediction day could possibly fall on or after our prediction date.
-    df.iloc[:num_hold_days + 1, df.columns.get_loc("buy_sell")] = -1
+    # NOTE: 2021-02-03: chris.flesche: This neatly erases any prediction day that could possibly fall on or after our prediction date.
+    df.loc[df["future_date"] >= purchase_date_str, "buy_sell"] = -1
 
     return df
 
+def seal_label_leak_2(df: pd.DataFrame, purchase_date_str: str, num_hold_days: int, num_days_until_purchase: int):
+    df_grouped = df.groupby(by=["f22_ticker"])
 
-def has_pred_rows_on_date(df: pd.DataFrame, market_date_str: str, tag: str):
+    df_all = []
+    for ticker, df_g in df_grouped:
+        df_ticker = get_ticker_eod_data(ticker)
+
+        df_dated = df_ticker[df_ticker["date"] < purchase_date_str].copy()
+        df_dated.sort_values(by=["date"], inplace=True)
+        if df_dated.shape[0] > 0:
+            row = df_dated.iloc[-1]
+            df_g.loc[df_g["future_date"] >= purchase_date_str, "future_open"] = row["open"]
+            df_g.loc[df_g["future_date"] >= purchase_date_str, "future_low"] = row["low"]
+            df_g.loc[df_g["future_date"] >= purchase_date_str, "future_high"] = row["high"]
+            df_g.loc[df_g["future_date"] >= purchase_date_str, "future_close"] = row["close"]
+            df_g.loc[df_g["future_date"] >= purchase_date_str, "future_date"] = row["date"]
+        else:
+            df_g.loc[df_g["future_date"] >= purchase_date_str, "buy_sell"] = -1
+
+        df_all.append(df_g)
+
+    df_concatted = pd.concat(df_all, axis=0)
+
+    return df_concatted
+
+
+def has_pred_rows_on_date(df: pd.DataFrame, date_str: str, tag: str):
     result = True
     if not has_rows_on_date(df=df, tag=tag):
         result = False
     else:
-        df_predict = df[df["date"] == market_date_str]
+        df_predict = df[df["date"] == date_str]
         if df_predict is None or df_predict.shape[0] == 0:
-            logger.info(f"Not enough prediction data on {market_date_str} after '{tag}'.")
+            logger.info(f"Not enough prediction data on {date_str} after '{tag}'.")
             result = False
 
     return result
@@ -1009,29 +944,30 @@ def predict_day(pp: PredictionParams):
 
     df_twitter = easy_convert_columns(df=df)
 
-    df_sd_futured = get_stocks_based_on_tweets(df_tweets=df_twitter, predict_date_str=pp.predict_date_str, num_hold_days=pp.num_hold_days)
+    df_sd_futured = get_stocks_based_on_tweets_2(df_tweets=df_twitter, tweet_date_str=pp.tweet_date_str,
+                                                 num_hold_days=pp.num_hold_days, num_days_until_purchase=pp.num_days_until_purchase)
 
     # dt_prev_str = get_next_market_date(date_str=pp.predict_date_str, num_days=-1)
-    if not has_pred_rows_on_date(df=df_sd_futured, market_date_str=pp.predict_date_str, tag="get_stocks_based_on_tweets"):
+    if not has_pred_rows_on_date(df=df_sd_futured, date_str=pp.tweet_date_str, tag="get_stocks_based_on_tweets"):
         return False, rois
 
     df_stock_and_quarter, columns_fundy = combine_with_quarterly_stock_data(df=df_sd_futured)
 
-    if not has_pred_rows_on_date(df=df_stock_and_quarter, market_date_str=pp.predict_date_str, tag="combine_with_quarterly_stock_data"):
+    if not has_pred_rows_on_date(df=df_stock_and_quarter, date_str=pp.tweet_date_str, tag="combine_with_quarterly_stock_data"):
         return False, rois
 
-    df_merged = merge_tweets_with_stock_data(df_twitter=df_twitter, df_stock_and_quarter=df_stock_and_quarter)
+    df_merged = merge_tweets_with_stock_data_2(df_twitter=df_twitter, df_stock_and_quarter=df_stock_and_quarter)
 
-    if not has_pred_rows_on_date(df=df_merged, market_date_str=pp.predict_date_str, tag="merge_tweets_with_stock_data"):
+    if not has_pred_rows_on_date(df=df_merged, date_str=pp.tweet_date_str, tag="merge_tweets_with_stock_data"):
         return False, rois
 
-    df_days_until = add_calendar_info(df=df_merged,
-                                      predict_date_str=pp.predict_date_str,
-                                      columns_fundy=columns_fundy,
-                                      num_hold_days=pp.num_hold_days,
-                                      oldest_tweet_date=pp.oldest_tweet_date)
+    df_days_until = add_calendar_info_2(df=df_merged,
+                                        tweet_date_str=pp.tweet_date_str,
+                                        columns_fundy=columns_fundy,
+                                        num_hold_days=pp.num_hold_days,
+                                        oldest_tweet_date=pp.oldest_tweet_date)
 
-    if not has_pred_rows_on_date(df=df_days_until, market_date_str=pp.predict_date_str, tag="add_calendar_info"):
+    if not has_pred_rows_on_date(df=df_days_until, date_str=pp.tweet_date_str, tag="add_calendar_info"):
         return False, rois
     else:
         df_refined = twitter_service.refine_pool(df=df_days_until, min_volume=None, min_price=None, max_price=None)
@@ -1043,26 +979,31 @@ def predict_day(pp: PredictionParams):
         if not has_rows_on_date(df=df_ticker_hotted, tag="one_hot"):
             return False, rois
 
-    while pp.validate_prediction_date_str():
+    while True:
 
-        df_ready = df_ticker_hotted[df_ticker_hotted["date"] <= pp.predict_date_str].copy()
-        df_prepped = prep_predict(df=df_ready, predict_date_str=pp.predict_date_str)
+        df_ready = df_ticker_hotted[df_ticker_hotted["date"] <= pp.tweet_date_str].copy()
+        # df_prepped = prep_predict(df=df_ready, tweet_date_str=pp.tweet_date_str)
+        df_prepped = df_ready
 
         if df_prepped is not None and df_prepped.shape[0] > 0:
 
-            df_predict = df_prepped[df_prepped["date"] == pp.predict_date_str].copy()
+            df_predict = df_prepped[df_prepped["date"] == pp.tweet_date_str].copy()
             if df_predict is not None and df_predict.shape[0] > 0:
 
                 logger.info(f"df_predict after prep_predict: {df_predict.shape[0]}")
 
-                df_train, df_predict = split_train_predict(df=df_prepped, predict_date_str=pp.predict_date_str)
+                df_sealed = seal_label_leak_2(df=df_prepped, purchase_date_str=pp.purchase_date_str, num_hold_days=pp.num_hold_days,
+                                           num_days_until_purchase=pp.num_days_until_purchase)
+
+                df_train, df_predict = split_train_predict(df=df_sealed, tweet_date_str=pp.tweet_date_str, num_days_until_purchase=pp.num_days_until_purchase,
+                                                           num_hold_days=pp.num_hold_days)
 
                 if df_train is not None and df_predict is not None and df_predict.shape[0] > 0 and df_train.shape[0] > 0:
                     logger.info(f"df_predict after split_train_predict: {df_predict.shape[0]}")
 
                     narrow_cols = get_train_columns(all_columns=list(df_train.columns))
 
-                    df_train = seal_label_leak(df=df_train, num_hold_days=pp.num_hold_days)
+                    # df_train = seal_label_leak(df=df_train, purchase_date_str=pp.purchase_date_str, num_hold_days=pp.num_hold_days, num_days_until_purchase=pp.num_days_until_purchase)
 
                     df_predict = train_predict(df_train=df_train,
                                                df_predict=df_predict,
@@ -1074,10 +1015,11 @@ def predict_day(pp: PredictionParams):
                         df_buy = save_predictions(df_predict=df_predict, pp=pp)
 
                         if df_buy is not None and df_buy.shape[0] > 0 and pp.prediction_mode == PredictionMode.DevelopmentAndTraining:
-                            days_roi_1 = pred_perf_testing.get_days_roi_from_prediction_table(df_preds=df_buy, date_str=pp.predict_date_str, num_hold_days=pp.num_hold_days)
-                            days_roi_5 = pred_perf_testing.get_days_roi_from_prediction_table(df_preds=df_buy, date_str=pp.predict_date_str, num_hold_days=5)
+                            days_roi_1 = pred_perf_testing.get_days_roi_from_prediction_table(df_preds=df_buy, purchase_date_str=pp.purchase_date_str,
+                                                                                              num_hold_days=pp.num_hold_days)
+                            days_roi_5 = pred_perf_testing.get_days_roi_from_prediction_table(df_preds=df_buy, purchase_date_str=pp.purchase_date_str, num_hold_days=5)
 
-                            logger.info(f"{pp.predict_date_str}: roi {pp.num_hold_days} day: {days_roi_1}: 5: {days_roi_5}")
+                            logger.info(f"Tweet: {pp.tweet_date_str}; Purchase: {pp.purchase_date_str}: roi {pp.num_hold_days} day: {days_roi_1}: 5: {days_roi_5}")
 
                             if days_roi_1 is not None:
                                 rois.append(days_roi_1)
@@ -1098,8 +1040,8 @@ def predict_day(pp: PredictionParams):
         if pp.clean_pure_run:
             return False, rois
 
-        is_valid = pp.subtract_day()
-        if not is_valid:
+        is_at_end = pp.subtract_day()
+        if is_at_end:
             break
 
     if len(rois) > 0:
@@ -1111,6 +1053,8 @@ def predict_day(pp: PredictionParams):
 def get_real_predictions(sample_size: int, num_hold_days: int, purchase_date_str: str, min_price: float = 0):
     file_path = constants.TWITTER_REAL_MONEY_PREDICTIONS_FILE_PATH
     df = pd.read_csv(str(file_path))
+
+    logger.info(f"Searching for real predictions on {purchase_date_str} ...")
 
     df = df[(df["purchase_date"] == purchase_date_str) & (df["num_hold_days"] == num_hold_days)].copy()
 

@@ -16,12 +16,15 @@ from pyspark.sql.types import StructType, StructField, BooleanType, ArrayType, R
 from retry import retry
 
 from ams.config import constants
+from ams.config import logger_factory
 from ams.config.constants import ensure_dir
 from ams.pipes import batchy_bae
 from ams.services import dataframe_services
 from ams.services import spark_service
 from ams.services import twitter_service, file_services
 from ams.services.dataframe_services import PersistedDataFrameTypes
+
+logger = logger_factory.create(__name__)
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -274,8 +277,7 @@ def clean_place(df: DataFrame):
 
 
 def process(source_dir_path: Path, output_dir_path: Path):
-    findspark.init()
-    spark = spark_service.get_or_create(app_name='twitter_flatten')
+    spark = spark_service.get_or_create(app_name='twitter')
     sc = spark.sparkContext
     log4jLogger = sc._jvm.org.apache.log4j
     LOGGER = log4jLogger.LogManager.getLogger(__name__)
@@ -285,19 +287,19 @@ def process(source_dir_path: Path, output_dir_path: Path):
     files = [f for f in files if f.stat().st_size > 0]
     files = [str(f) for f in files]
 
-    print(f"Number of files: {len(files)}")
+    logger.info(f"Number of files: {len(files)}")
 
     num_files = 4
     chunked_list = list(chunk_it(files, num_files))
     tot_chunks = len(chunked_list)
 
-    print(f"Files chunked: {tot_chunks}")
+    logger.info(f"Files chunked: {tot_chunks}")
 
     total_count = 0
     for ndx, chunk in enumerate(chunked_list):
-        print(f"Processing {ndx + 1} of {tot_chunks}.")
+        logger.info(f"Processing {ndx + 1} of {tot_chunks}.")
 
-        print(f"Processing files: {chunk}")
+        logger.info(f"Processing files: {chunk}")
 
         df_init = spark.read.json(chunk)
 
@@ -315,9 +317,7 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
         persist(df=df_tickered, output_drop_folder_path=output_dir_path)
 
-    print(f"Total records processed: {total_count}")
-
-
+    logger.info(f"Total records processed: {total_count}")
 
 
 def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool):

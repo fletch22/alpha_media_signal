@@ -3,8 +3,10 @@ from pathlib import Path
 
 from pyspark.sql import DataFrame
 
+from ams.config import logger_factory
 from ams.services import file_services
 
+logger = logger_factory.create(__name__)
 
 class PersistedDataFrameTypes(Enum):
     CSV = "CSV"
@@ -26,6 +28,6 @@ def persist_dataframe(df: DataFrame, output_drop_folder_path: Path, prefix: str,
     elif file_type == PersistedDataFrameTypes.CSV:
         df.write.save(str(output_folder_path), format="csv")
 
-    print(str(output_folder_path))
+    logger.info(f" Output: {str(output_folder_path)}")
 
     return output_folder_path

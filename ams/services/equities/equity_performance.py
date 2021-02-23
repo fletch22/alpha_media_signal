@@ -4,21 +4,17 @@ from typing import List
 import pandas as pd
 from datetime import datetime
 
+from ams.config import logger_factory
 from ams.services import ticker_service
 from ams.services.ticker_service import get_nasdaq_info
 from ams.utils import date_utils
 
+logger = logger_factory.create(__name__)
 
 def calc_and_persist_nasdaq_roi(date_from: datetime, date_to: datetime, days_hold_stock: int, min_price: float=None) -> (pd.DataFrame, List[str]):
     df_tickers = get_nasdaq_info()
     tickers = df_tickers["ticker"].to_list()
     tickers = sorted(tickers)
-
-    # tickers = tickers[:100]
-
-    # tickers = tickers[:math.ceil(len(tickers) / 2)]
-    # tickers = [t for t in tickers if t.startswith("A") or t.startswith("B")]
-    # tickers = ['AAPL', 'NVDA', 'GOOG', "MSFT", "FB", "GOOGL"]
 
     # Act
     df, tickers_gathered = ticker_service.calc_and_persist_equity_daily_roi(date_from=date_from,
@@ -41,13 +37,13 @@ def start():
 
     df, _ = calc_and_persist_nasdaq_roi(date_from=date_from, date_to=date_to, days_hold_stock=days_hold_stock)
 
-    print(df.head())
+    logger.info(df.head())
 
     df = df[df["date"] >= "2020-08-10"].copy()
     # df.sort_values(by=["date"], inplace=True)
     roi_mean = df["roi"].mean()
 
-    print(roi_mean)
+    logger.info(roi_mean)
 
 
 if __name__ == '__main__':

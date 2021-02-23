@@ -1,4 +1,7 @@
+from ams.config import logger_factory
 from ams.twitter import twitter_ml_utils as tmu
+
+logger = logger_factory.create(__name__)
 
 
 def test_get_real_predictions():
@@ -14,4 +17,3 @@ def test_get_real_predictions():
 
     # Assert
     assert (len(tickers) == sample_size)
-    print(tickers)

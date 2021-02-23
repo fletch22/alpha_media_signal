@@ -48,7 +48,7 @@ def add_ts(date_string: str):
 
 
 def add_timestamp(df):
-    print(f'Count: {df.shape[0]}')
+    logger.info(f'Count: {df.shape[0]}')
 
     df = df[df['created_at'].notnull()]
 
@@ -101,7 +101,7 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
     total_count = 0
     for f_ndx, f in enumerate(file_paths):
-        print(f"Processing {f_ndx + 1} of {tot_files}: {f}")
+        logger.info(f"Processing {f_ndx + 1} of {tot_files}: {f}")
         df = pd.read_parquet(f)
 
         df = get_fave_cols(df)
@@ -127,11 +127,11 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
         total_count += df.shape[0]
 
-        print(f"Columns: {df.columns}")
+        logger.info(f"Columns: {df.columns}")
 
         persist_parquet(df=df, parent_dir=str(output_dir_path))
 
-    print(f"Total records processed: {total_count}")
+    logger.info(f"Total records processed: {total_count}")
 
 
 def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool):

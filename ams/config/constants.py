@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import yaml
 
@@ -160,3 +161,6 @@ TESTS_RESOURCES = Path(TESTS_ROOT, "resources")
 TEST_TEMP_PATH  = Path("e:\\tmp")
 
 TWITTER_END_DROP = Path(TWITTER_OUTPUT_RAW_PATH, "end_drop")
+
+xgb = SimpleNamespace(defaults=SimpleNamespace(max_depth=20))
+

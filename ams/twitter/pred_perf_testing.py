@@ -8,11 +8,6 @@ from ams.config import constants, logger_factory
 from ams.services import ticker_service
 from ams.utils import date_utils
 
-# import matplotlib
-# # matplotlib.use("TkAgg")  # Do this before importing pyplot!
-# import matplotlib.pyplot as plt
-
-
 logger = logger_factory.create(__name__)
 
 
@@ -29,7 +24,7 @@ def start(start_dt: datetime, num_hold_days: int, num_days_perf: int,
         if end_date_str is not None and date_str > end_date_str:
             break
         roi = get_days_roi_from_prediction_table(df_preds=df_preds,
-                                                 date_str=date_str,
+                                                 purchase_date_str=date_str,
                                                  num_hold_days=num_hold_days,
                                                  min_price=min_price,
                                                  size_buy_lot=size_buy_lot,
@@ -38,17 +33,17 @@ def start(start_dt: datetime, num_hold_days: int, num_days_perf: int,
             all_days_rois.append(roi)
 
     if len(all_days_rois) > 0:
-        print(f"Overall roi: {mean(all_days_rois):.4f}")
+        logger.info(f"Overall roi: {mean(all_days_rois):.4f}")
 
 
 def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
-                                       date_str: str,
+                                       purchase_date_str: str,
                                        num_hold_days: int,
                                        min_price: float = None,
                                        size_buy_lot: int = None,
                                        verbose: bool = False,
                                        addtl_hold_days: int = 0):
-    df = df_preds[(df_preds["purchase_date"] == date_str) & (df_preds["num_hold_days"] == num_hold_days)]
+    df = df_preds[(df_preds["purchase_date"] == purchase_date_str) & (df_preds["num_hold_days"] == num_hold_days)]
 
     tickers = df["f22_ticker"].to_list()
     shuffle(tickers)
@@ -56,7 +51,7 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
 
     for t in tickers:
         df_tick = ticker_service.get_ticker_eod_data(t)
-        df_tick = df_tick[df_tick["date"] >= date_str]
+        df_tick = df_tick[df_tick["date"] >= purchase_date_str]
         df_tick.sort_values(by=["date"], ascending=True, inplace=True)
 
         if df_tick.shape[0] > 0:
@@ -64,7 +59,7 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
             purchase_price = row_tick["close"]
             if min_price is None or purchase_price > min_price:
                 if df_tick.shape[0] == 0:
-                    logger.info(f"No EOD stock data for {date_str}.")
+                    logger.info(f"No EOD stock data for {purchase_date_str}.")
                     continue
 
                 num_days = df_tick.shape[0]
@@ -92,9 +87,9 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
         suffix = ""
         if verbose:
             suffix = f": {sorted(tickers)}"
-        logger.info(f"{date_str}: roi: {result}: {len(rois)} tickers{suffix}")
+        logger.info(f"{purchase_date_str}: roi: {result}: {len(rois)} tickers{suffix}")
     else:
-        logger.info(f"No data found on {date_str}.")
+        logger.info(f"No data found on {purchase_date_str}.")
 
     return result
 
@@ -102,14 +97,16 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
 # Assert
 
 if __name__ == '__main__':
+    # start_date_str = "2020-08-10"
+    # end_date_str = "2021-02-16"
     start_date_str = "2020-08-10"
-    end_date_str = "2021-01-27"
+    end_date_str = "2021-02-16"
     min_price = 5
-    num_hold_days = 2
+    num_hold_days = 1
     addtl_hold_days = 0
     start_dt = date_utils.parse_std_datestring(start_date_str)
 
-    start(start_dt=start_dt, num_hold_days=num_hold_days, num_days_perf=191,
+    start(start_dt=start_dt, num_hold_days=num_hold_days, num_days_perf=255,
           end_date_str=end_date_str, min_price=min_price, size_buy_lot=None,
           verbose=True,
           addtl_hold_days=addtl_hold_days)

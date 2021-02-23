@@ -29,7 +29,7 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
     num_files = len(files)
 
-    print(f"Num files: {num_files}")
+    logger.info(f"Num files: {num_files}")
     client = Client()
 
     total_count = 0
@@ -39,7 +39,7 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
         total_count += pdf.shape[0]
 
-        print(f"Converting Pandas dataframe ({pdf.shape[0]} rows) to Dask DF ...")
+        logger.info(f"Converting Pandas dataframe ({pdf.shape[0]} rows) to Dask DF ...")
         ddf = from_pandas(pdf, npartitions=20)
         ddf.persist()
 
@@ -56,7 +56,7 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
         client.compute(ddf)
 
-    print(f"Total records processed: {total_count}")
+    logger.info(f"Total records processed: {total_count}")
 
     client.close()
 

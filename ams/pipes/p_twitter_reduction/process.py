@@ -4,11 +4,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.config.constants import ensure_dir
 from ams.pipes import batchy_bae
 from ams.services import file_services, twitter_service
 from ams.utils import date_utils
+
+logger = logger_factory.create(__name__)
 
 ORG_COLS = ["f22_ticker", "date"]
 fraction = 1.
@@ -66,7 +68,7 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
     num_files = len(file_paths)
     for ndx, f in enumerate(file_paths):
-        print(f"Processing {ndx + 1} of {num_files}: '{f}'.")
+        logger.info(f"Processing {ndx + 1} of {num_files}: '{f}'.")
         df = pd.read_parquet(f)
 
         df_reduced = group_and_reduce(df=df)
@@ -79,7 +81,7 @@ def process(source_dir_path: Path, output_dir_path: Path):
     output_path = file_services.create_unique_filename(parent_dir=str(output_dir_path), prefix="twitter_reduce", extension="parquet")
     df_twitter_raw.to_parquet(str(output_path))
 
-    print(f"Total records processed: {df_twitter_raw.shape[0]}")
+    logger.info(f"Total records processed: {df_twitter_raw.shape[0]}")
 
 
 def get_output_dir(twitter_root_path: Path):

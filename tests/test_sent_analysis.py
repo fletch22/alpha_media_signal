@@ -6,14 +6,14 @@ from pathlib import Path
 from typing import Dict, List
 
 import pandas as pd
-from pyspark.sql import DataFrame
-
-from ams.config import constants
-from ams.services import file_services
-from ams.utils import sentiment
 from pyspark.sql.types import StructType
 
+from ams.config import constants, logger_factory
+from ams.services import file_services
+from ams.utils import sentiment
 from tests.test_tweets import test_multithreads
+
+logger = logger_factory.create(__name__)
 
 
 def test_load():
@@ -25,8 +25,8 @@ def test_load():
     csv_path_str = str(csv_list[0])
     df = pd.read_csv(csv_path_str, dialect=csv.unix_dialect(), error_bad_lines=False, index_col=False, dtype='unicode')
 
-    print(df.shape[0])
-    print(df.columns)
+    logger.info(df.shape[0])
+    logger.info(df.columns)
 
 
 def test_replace_newlines():
@@ -34,7 +34,7 @@ def test_replace_newlines():
     pattern = re.compile('\n')
     result = re.sub(pattern, '', sample)
 
-    print(result)
+    logger.info(result)
 
     import csv
 
@@ -45,7 +45,7 @@ def test_schema():
     test = {'ticker': 'foo', 'has_cashtag': True, 'ticker_in_text': False}
     test_schema = StructType.fromJson(test)
 
-    print(test_schema)
+    logger.info(test_schema)
 
 
 def get_cashtag_info(ticker: str, has_cashtag: bool, ticker_in_text: bool) -> Dict:
@@ -55,8 +55,6 @@ def get_cashtag_info(ticker: str, has_cashtag: bool, ticker_in_text: bool) -> Di
 def get_cashtags_row_wise(raw_line: str, search_tuples: List):
     tweet = json.loads(raw_line)
     text = tweet['text']
-    #     print(text[:10])
-    #     return [{'ticker': 'foo', 'is_cashtag': True, 'ticker_in_text': False}]
 
     cashtags_stock = []
     for s in search_tuples:
@@ -82,7 +80,7 @@ def get_cashtags_row_wise(raw_line: str, search_tuples: List):
             if re.search(ticker, raw_line) and re.search(name, raw_line, re.IGNORECASE):
                 cashtags_stock.append(get_cashtag_info(ticker=ticker, has_cashtag=True, ticker_in_text=True))
 
-    print(f'Tweet associate with: {cashtags_stock}')
+    logger.info(f'Tweet associate with: {cashtags_stock}')
 
     return cashtags_stock
 
@@ -96,7 +94,7 @@ def test_fast_search():
             search_dict = retained
             ticker = s["ticker"]
             for char in ticker:
-                print(char)
+                logger.info(char)
                 if char not in list(search_dict.keys()):
                     current = {}
                     search_dict[char] = current
@@ -129,7 +127,7 @@ def test_fast_search():
     for c in companies:
         search_and_pop(text=text, current_node=magazine, ticker=c['ticker'])
 
-    print(f'{magazine}')
+    logger.info(f'{magazine}')
 
     # Act+
 
@@ -155,7 +153,7 @@ eNone"""
     end = time.time()
 
     elapsed_time = end - start
-    print(f'Elapsed time: {elapsed_time} seconds')
+    logger.info(f'Elapsed time: {elapsed_time} seconds')
 
 
 def test_sent_analysis():
@@ -164,7 +162,7 @@ def test_sent_analysis():
     text_3 = ""
 
     sent_1 = sentiment.get_sentiment_intensity_score(text_3)
-    print(sent_1)
+    logger.info(sent_1)
 
     num_analysis = 10000
     start = time.time()
@@ -173,7 +171,7 @@ def test_sent_analysis():
     end = time.time()
 
     sent_per_sec = num_analysis / (end - start)
-    print(f'{sent_per_sec} SA per second')
+    logger.info(f'{sent_per_sec} SA per second')
 
 
 if __name__ == '__main__':

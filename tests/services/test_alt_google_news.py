@@ -1,12 +1,16 @@
 import pandas as pd
 from GoogleNews import GoogleNews
+from ams.config import logger_factory
+
+logger = logger_factory.create(__name__)
+
 
 def test_google_news_alt():
     googlenews = GoogleNews(start='05/01/2020', end='05/31/2020')
     googlenews.search('Coronavirus')
     result = googlenews.result()
     df = pd.DataFrame(result)
-    print(df.head())
+    logger.info(df.head())
 
 
 import requests
@@ -25,24 +29,5 @@ def test_send_request():
             "custom_google": "true"
     }
     )
-    print('Response HTTP Status Code: ', response.status_code)
-    print('Response HTTP Response Body: ', response.content)
-
-
-#  Install the Python Requests library:
-# `pip install requests`
-# import requests
-# def send_request():
-#     response = requests.get(
-#         url="https://app.scrapingbee.com/api/v1/",
-#         params={
-#             "api_key": "5ZD9C416DHWKXNEJ47R0186TJM5CZX1BPDW9MBT64P7D8QGCXPZSNKRY7X4E9EO06EWDK6DBLSYVFGKM",
-#             "url": "http://httpbin.org/headers?json",
-#         },
-#
-#     )
-#     print('Response HTTP Status Code: ', response.status_code)
-#     print('Response HTTP Response Body: ', response.content)
-
-
-# send_request()
+    logger.info('Response HTTP Status Code: ', response.status_code)
+    logger.info('Response HTTP Response Body: ', response.content)

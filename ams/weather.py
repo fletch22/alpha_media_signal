@@ -25,6 +25,10 @@ from matplotlib import dates as mPlotDATEs
 # http://stackoverflow.com/questions/8409095/matplotlib-set-markers-for-individual-points-on-a-line
 from ams.config import constants
 
+from ams.config import logger_factory
+
+logger = logger_factory.create(__name__)
+
 rt_start = timeit.default_timer()
 
 # clean log.txt first
@@ -44,8 +48,8 @@ with open("logs/log_" + log_timestr + ".txt", "w") as logfile:
 ### functions definition ###
 def print_data_type(x):
     for f in x.columns:
-        print("f = {}".format(f))
-        print(x[f].dtype)
+        logger.info("f = {}".format(f))
+        logger.info(x[f].dtype)
 
 
 def RepresentsInt(s):
@@ -95,25 +99,23 @@ def DateToMinute(s, option):
 def interpolate_df(df, features):
     df_re = df
 
-    print("len(df.index) = {}".format(len(df.index)))
+    logger.info("len(df.index) = {}".format(len(df.index)))
 
     # check all the data are float data and change data type to float64
     for col in features:
         # df[col] = df[col].astype(float)
         temp = df[df[col].isnull()]
-        # print(test.head)
-        print("===")
-        # print(test.head(n=1))
-        print("{} type is {}".format(col, df[col].dtype))
-        print("{} type contain {} np.NaN".format(col, len(temp.index)))
-        print("===")
+        logger.info("===")
+        logger.info("{} type is {}".format(col, df[col].dtype))
+        logger.info("{} type contain {} np.NaN".format(col, len(temp.index)))
+        logger.info("===")
 
     df_nan = df[df.isnull().any(axis=1)]
-    print("len(df_nan.index) = {}".format(len(df_nan.index)))
+    logger.info("len(df_nan.index) = {}".format(len(df_nan.index)))
     # df_nan.to_csv("df_nan.csv")
     df_nan.head(n=1)
 
-    print("len(df.index) = {}".format(len(df.index)))
+    logger.info("len(df.index) = {}".format(len(df.index)))
     # it could be use time as index and set method = 'time'
     # df.to_csv("df_before_interpolate.csv")
     # df[features] = df[features].interpolate(method='time')
@@ -121,16 +123,14 @@ def interpolate_df(df, features):
     # somehow, df(input) will get updated even use inplace=False
     df_re.loc[:, features] = df[features].interpolate(method='time', inplace=False)
     # df.to_csv("df_after_interpolate.csv")
-    # print("df = ")
-    # print(df)
 
     # grab original nan values
     df_nan_interpolate = df.loc[df_nan.index.values]
-    print("len(df_nan_interpolate.index) = {}".format(len(df_nan_interpolate.index)))
+    logger.info("len(df_nan_interpolate.index) = {}".format(len(df_nan_interpolate.index)))
     df_nan_interpolate.to_csv("df_nan_interpolate.csv")
 
     if (df_re.notnull().all(axis=1).all(axis=0)):
-        print("CHECK: There is no null value in df_re.")
+        logger.info("CHECK: There is no null value in df_re.")
 
     return df_re
 
@@ -159,11 +159,11 @@ def data_gen(df, targets, features, data_tr_yr_start, data_tr_yr_end, data_test_
 
     # drop NaN number rows of test set
     (row_old, col_old) = df_test.shape
-    print("Before drop NaN number of test set, df_test.shape = {}".format(df_test.shape))
+    logger.info("Before drop NaN number of test set, df_test.shape = {}".format(df_test.shape))
     df_test = df_test[df_test.notnull().all(axis=1)]
     (row, col) = df_test.shape
-    print("After drop NaN number of test set, df_test.shape = {}".format(df_test.shape))
-    print("Drop rate = {0:.2f} ".format(float(1 - (row / row_old))))
+    logger.info("After drop NaN number of test set, df_test.shape = {}".format(df_test.shape))
+    logger.info("Drop rate = {0:.2f} ".format(float(1 - (row / row_old))))
 
     df_test.to_csv('df_test_clean.csv')
     X_test = df_test[features]
@@ -201,23 +201,11 @@ def normalization(df_train, df_test, targets, features):
     return (X_train, y_train, X_test, y_test)
 
 
-# plot y_test
 def plot_y_test(regr, X_test, y_test, ask_user):
     (r_test, c_test) = X_test.shape
 
-    # for i in range(c_test):
-    #     plt.scatter(X_test[:, i], y_test)
-    #     plt.plot(X_test[:, i], regr.predict(X_test), color='blue', linewidth=3)
-
     y_predict = regr.predict(X_test)
-    # print("==> y_test type = {}".format(type(y_test)) )
-    # print("y_test.index = {}".format(y_test.index))
-    # print("y_test = {}".format(y_test) )
-    # print("y_predict = {}".format(y_predict) )
     df_plot = y_test
-    # print(df_plot)
-    # print("DATE")
-    # print("#########################")
     df_plot = df_plot.reset_index(level=['DATE'])
     df_plot.loc[:, 'predict_temp_C'] = y_predict
     # shift back to raw DATE time 1day_later
@@ -225,8 +213,6 @@ def plot_y_test(regr, X_test, y_test, ask_user):
     df_plot.rename(columns={'1days_later_temp_C': 'raw_temp_C', 'DATE': 'label_DATE'}, inplace=True)
 
     df_plot = df_plot.set_index("raw_DATE")
-    # print(df_plot)
-    # print("#########################")
 
     # default plot time range
     plot_yr = 2016
@@ -240,19 +226,19 @@ def plot_y_test(regr, X_test, y_test, ask_user):
     if (range_start < datetime(2016, 1, 2, 0, 0, 0) or range_end > datetime(2017, 1, 1, 0, 0, 0)):
         raise SystemExit("Input date is out of range! Please try again!")
     else:
-        print("Correct format and time range!")
+        logger.info("Correct format and time range!")
 
     if (ask_user == True):
-        print("Ready to plot! \n")
-        print("Time range: 2016/1/2 - 2016/12/31 (duration included) \n")
-        print("Please enter the following format (split by comma): \n")
-        print("years, month, day, ploting duration(days) \n")
-        print("For example, enter: {}, {}, {}, {}".format(plot_yr, plot_month, plot_day, duration))
+        logger.info("Ready to plot! \n")
+        logger.info("Time range: 2016/1/2 - 2016/12/31 (duration included) \n")
+        logger.info("Please enter the following format (split by comma): \n")
+        logger.info("years, month, day, ploting duration(days) \n")
+        logger.info("For example, enter: {}, {}, {}, {}".format(plot_yr, plot_month, plot_day, duration))
 
         input_format_ok = False
         while (input_format_ok == False):
             user_input = input()
-            print("Your input is {}".format(user_input))
+            logger.info("Your input is {}".format(user_input))
             try:
                 plot_yr = int(user_input[0])
                 plot_month = int(user_input[1])
@@ -263,43 +249,31 @@ def plot_y_test(regr, X_test, y_test, ask_user):
                 range_end = datetime(plot_yr, plot_month, plot_day, 0, 0, 0) + relativedelta(days=duration)
 
                 if (range_start < datetime(2016, 1, 2, 0, 0, 0) or range_end > datetime(2017, 1, 1, 0, 0, 0)):
-                    print("Input date is out of range! Please try again!")
+                    logger.info("Input date is out of range! Please try again!")
                 else:
-                    print("Correct format and time range!")
+                    logger.info("Correct format and time range!")
                     input_format_ok = True
             except:
-                print("Incorrect format, please try again!")
+                logger.info("Incorrect format, please try again!")
 
     df_plot = df_plot[range_start.strftime('%Y-%m-%d %H:%M:%S'): range_end.strftime('%Y-%m-%d %H:%M:%S')]
     # write to csv file
     df_plot_csv_file_name = "df_plot.csv"
     df_plot.to_csv(df_plot_csv_file_name)
-    print("Prediction start from {} \n".format(range_start))
-    print("Prediction end at {} \n".format(range_end))
-    print("Detail in {}: \n".format(df_plot_csv_file_name))
-    # print(df_plot)
-    # dates = [datetime.fromtimestamp(ts) for ts in df_plot.index ]
+    logger.info("Prediction start from {} \n".format(range_start))
+    logger.info("Prediction end at {} \n".format(range_end))
+    logger.info("Detail in {}: \n".format(df_plot_csv_file_name))
     datenums = [mPlotDATEs.date2num(ts) for ts in df_plot.index]
-    # print(datenums)
-    # print(mPlotDATEs.num2date(datenums) )
-    # datenums = mPlotDATEs.date2num(dates)
     value_raw = np.array(df_plot['raw_temp_C'])
     value_predict = np.array(df_plot['predict_temp_C'])
 
     plt.figure()
     plt.subplots_adjust(bottom=0.2)
-    # plt.xticks( rotation=25 )
     plt.xticks(rotation=60)
     ax = plt.gca()
     xfmt = mPlotDATEs.DateFormatter('%Y-%m-%d %H:%M:%S')
     ax.xaxis.set_major_formatter(xfmt)
     ax.xaxis_date()
-    # plt.scatter(y_test.index, y_test)
-    # plt.plot(y_test.index, y_predict, color='blue', linewidth=3)
-    # plt.scatter(y_test.index[0:25], y_test[0:25])
-    # plt.plot(y_test.index[0:25], y_test[0:25], color='red', linewidth=3)
-    # plt.plot(y_test.index[0:25], y_predict[0:25], color='blue', linewidth=3)
-    # plt.subplot(121)
     plt.xlabel("time range")
     plt.ylabel("degree C")
     plt.title("raw data (red) v.s. predict data (blue)")
@@ -311,14 +285,12 @@ def plot_y_test(regr, X_test, y_test, ask_user):
     plt.show()
 
     plt.figure()
-    # plt.subplot(122)
     plt.xlabel("raw data (degree C)")
     plt.ylabel("predict data (degree C)")
     plt.title("perfect match (red) v.s. model (blue)")
     plt.grid()
     plt.plot(value_raw, value_raw, linestyle='--', marker='o', markersize=5, color='r', linewidth=1, label="perfect match line")
     plt.scatter(value_raw, value_predict, marker='o', s=10, color='b', label="predict temp C")
-    # plt.plot(value_predict, marker='o', markersize=3, color='b', label="predict temp C")
     plt.legend(loc="best")
 
     plt.show()
@@ -334,14 +306,14 @@ def linear_regr(X_train, y_train, X_test, y_test, poly_degree, interaction_only,
     (s_n, f_n) = X_train.shape
     # l_n = int(math.ceil(1.5*f_n))
     l_n = int(math.ceil(1.2 * f_n))
-    print("@@@ s_n = {}, f_n = {}, l_n = {}".format(s_n, f_n, l_n))
+    logger.info("@@@ s_n = {}, f_n = {}, l_n = {}".format(s_n, f_n, l_n))
 
     np.savetxt("x_train.csv", X_train, delimiter=",")
     np.savetxt("y_train.csv", y_train, delimiter=",")
     np.savetxt("x_test.csv", X_test, delimiter=",")
     np.savetxt("y_test.csv", y_test, delimiter=",")
 
-    print("### type of X_train = {}".format(type(X_train)))
+    logger.info("### type of X_train = {}".format(type(X_train)))
 
     # debug
     for model in [2]:
@@ -445,31 +417,31 @@ def linear_regr(X_train, y_train, X_test, y_test, poly_degree, interaction_only,
 
 
 def evaluation(X_train, y_train, X_test, y_test, poly_degree, interaction_only, print_coef, plot, ask_user, model_result, model_name, model_runtime, regr, alpha):
-    print("poly_degree = {}, interaction_only = {}".format(poly_degree, interaction_only))
+    logger.info("poly_degree = {}, interaction_only = {}".format(poly_degree, interaction_only))
     with open("logs/log_" + log_timestr + ".txt", "a") as logfile:
         logfile.write("====================\n")
         logfile.write("poly_degree = {}, interaction_only = {}\n".format(poly_degree, interaction_only))
 
-    print("Model: {} \n".format(model_name))
-    print("Alpha (Regularization strength): {} \n".format(alpha))
-    print("X_train.shape = {}".format(X_train.shape))
-    print("y_train.shape = {}".format(y_train.shape))
-    print("X_test.shape = {}".format(X_test.shape))
-    print("y_test.shape = {}".format(y_test.shape))
+    logger.info("Model: {} \n".format(model_name))
+    logger.info("Alpha (Regularization strength): {} \n".format(alpha))
+    logger.info("X_train.shape = {}".format(X_train.shape))
+    logger.info("y_train.shape = {}".format(y_train.shape))
+    logger.info("X_test.shape = {}".format(X_test.shape))
+    logger.info("y_test.shape = {}".format(y_test.shape))
 
     if (print_coef):
         # The coefficients
         if hasattr(regr, 'coef_'):
-            print("Coefficients: {}\n", regr.coef_)
+            logger.info("Coefficients: {}\n", regr.coef_)
             with open("logs/log_" + log_timestr + ".txt", "a") as logfile:
                 logfile.write("Coefficients: {}\n".format(regr.coef_))
         # for neural_network.MLPRegressor
         if hasattr(regr, 'coefs_'):
-            print("Coefficients: {}\n", regr.coefs_)
+            logger.info("Coefficients: {}\n", regr.coefs_)
             with open("logs/log_" + log_timestr + ".txt", "a") as logfile:
                 logfile.write("Coefficients: {}\n".format(regr.coefs_))
 
-    print("For training set:")
+    logger.info("For training set:")
     (mse_train, score_train) = (0, 0)
     # mse_train = float(np.mean( (regr.predict(X_train) - y_train) ** 2) )
     # need to use column_or_1d instead of np.array
@@ -480,13 +452,13 @@ def evaluation(X_train, y_train, X_test, y_test, poly_degree, interaction_only, 
     mse_train = float(np.mean((predict_train - column_or_1d(y_train)) ** 2))
     score_train = regr.score(X_train, y_train)
     # The mean squared error
-    print("Mean squared error (train): {0:.3f} \n".format(mse_train))
+    logger.info("Mean squared error (train): {0:.3f} \n".format(mse_train))
     # Explained variance score: 1 is perfect prediction
-    print("Variance score (train): {0:.3f} \n".format(score_train))
-    print("model_runtime (training) = {0:.3f} (seconds) \n".format(model_runtime))
-    print("model_runtime (predict train set) = {0:.3f} (seconds) \n".format(model_runtime_predict_train))
+    logger.info("Variance score (train): {0:.3f} \n".format(score_train))
+    logger.info("model_runtime (training) = {0:.3f} (seconds) \n".format(model_runtime))
+    logger.info("model_runtime (predict train set) = {0:.3f} (seconds) \n".format(model_runtime_predict_train))
 
-    print("For test set:")
+    logger.info("For test set:")
     (mse_test, score_test) = (0, 0)
     model_rt_predict_test_start = timeit.default_timer()
     predict_test = regr.predict(X_test)
@@ -495,10 +467,10 @@ def evaluation(X_train, y_train, X_test, y_test, poly_degree, interaction_only, 
     mse_test = float(np.mean((predict_test - column_or_1d(y_test)) ** 2))
     score_test = regr.score(X_test, y_test)
     # The mean squared error
-    print("Mean squared error (test): {0:.3f} \n".format(mse_test))
+    logger.info("Mean squared error (test): {0:.3f} \n".format(mse_test))
     # Explained variance score: 1 is perfect prediction
-    print("Variance score (test): {0:.3f} \n".format(score_test))
-    print("model_runtime (predict test set) = {0:.3f} (seconds) \n".format(model_runtime_predict_test))
+    logger.info("Variance score (test): {0:.3f} \n".format(score_test))
+    logger.info("model_runtime (predict test set) = {0:.3f} (seconds) \n".format(model_runtime_predict_test))
 
     with open("logs/log_" + log_timestr + ".txt", "a") as logfile:
         logfile.write("====================\n")
@@ -530,7 +502,7 @@ def evaluation(X_train, y_train, X_test, y_test, poly_degree, interaction_only, 
                                                                 round(mse_test, 3), round(score_test, 3),
                                                                 round(model_runtime, 3), round(model_runtime_predict_train, 3), round(model_runtime_predict_test, 3))
 
-    # print shape
+    # logger.info shape
     if (plot == True):
         plot_y_test(regr, X_test, y_test, ask_user)
 
@@ -540,18 +512,18 @@ def evaluation(X_train, y_train, X_test, y_test, poly_degree, interaction_only, 
 # def run_fit(postfix, df_run, targets_run, features_run, poly_d_max, inter_only, print_coef, plot):
 def run_fit(postfix, df_run_train, df_run_test, targets_run, features_run, poly_d_max, inter_only, print_coef, plot, ask_user):
     text = "RUNNING... df" + postfix
-    print("{0:{fill}{align}16}".format(text, fill='=', align='^'))
+    logger.info("{0:{fill}{align}16}".format(text, fill='=', align='^'))
     (X_train, y_train, X_test, y_test) = (0, 0, 0, 0)
     # (X_train, y_train, X_test, y_test) = data_gen(df_run, targets_run, features_run, 2006, 2015, 2016, 2016)
     (X_train, y_train, X_test, y_test) = normalization(df_run_train, df_run_test, targets_run, features_run)
     # data = []
     # (data[0], data[1], data[2], data[3]) = data_gen(df_run, features_run)
-    print("df{} X_train.shape = {}".format(postfix, X_train.shape))
-    print("df{} y_train.shape = {}".format(postfix, y_train.shape))
-    print("df{} X_test.shape = {}".format(postfix, X_test.shape))
-    print("df{} y_test.shape = {}".format(postfix, y_test.shape))
-    print("df_run_train target + features = {}".format(df_run_train.columns.values))
-    print("=====")
+    logger.info("df{} X_train.shape = {}".format(postfix, X_train.shape))
+    logger.info("df{} y_train.shape = {}".format(postfix, y_train.shape))
+    logger.info("df{} X_test.shape = {}".format(postfix, X_test.shape))
+    logger.info("df{} y_test.shape = {}".format(postfix, y_test.shape))
+    logger.info("df_run_train target + features = {}".format(df_run_train.columns.values))
+    logger.info("=====")
 
     model_re = {}
 
@@ -652,7 +624,7 @@ for experiment in [3]:
     else:
         raise sys.SystemExit("new_features is out of range!!!")
 
-    print("len(df.index) = {}".format(len(df.index)))
+    logger.info("len(df.index) = {}".format(len(df.index)))
 
     # default training yr
     # HOURLYStationPressure data start at 2005 for station, WBAN:23293
@@ -714,7 +686,7 @@ for experiment in [3]:
     range_end = datetime(train_yr_start, 1, 1, 0, 0, 0) + relativedelta(years=train_years)
 
     df_time_train = t3[range_start.strftime('%Y-%m-%d %H:%M:%S'): range_end.strftime('%Y-%m-%d %H:%M:%S')]
-    print("df_time_train.shape = {}".format(df_time_train.shape))
+    logger.info("df_time_train.shape = {}".format(df_time_train.shape))
     df_time_train.loc[:, new_target] = df_time_train[new_target].interpolate(method='time')
 
     # df_time_test = t3['2015']
@@ -724,20 +696,20 @@ for experiment in [3]:
     # range_end   = datetime(2017, 3, 05, 0, 0, 0)
 
     df_time_test = t3[range_start.strftime('%Y-%m-%d %H:%M:%S'): range_end.strftime('%Y-%m-%d %H:%M:%S')]
-    print("df_time_test.shape = {}".format(df_time_train.shape))
+    logger.info("df_time_test.shape = {}".format(df_time_train.shape))
 
     # drop NaN number rows of test set
     (row_old, col_old) = df_time_test.shape
-    print("Before drop NaN number of test set, df_time_test.shape = {}".format(df_time_test.shape))
+    logger.info("Before drop NaN number of test set, df_time_test.shape = {}".format(df_time_test.shape))
     df_time_test = df_time_test[df_time_test.notnull().all(axis=1)]
     (row, col) = df_time_test.shape
-    print("After drop NaN number of test set, df_time_test.shape = {}".format(df_time_test.shape))
-    print("Drop rate = {0:.2f} ".format(float(1 - (row / row_old))))
+    logger.info("After drop NaN number of test set, df_time_test.shape = {}".format(df_time_test.shape))
+    logger.info("Drop rate = {0:.2f} ".format(float(1 - (row / row_old))))
 
-    print("===================== \n")
-    print("### Experiment = {} \n".format(experiment))
-    print("new_target = {} \n".format(new_target))
-    print("new_features = {} \n".format(new_features))
+    logger.info("===================== \n")
+    logger.info("### Experiment = {} \n".format(experiment))
+    logger.info("new_target = {} \n".format(new_target))
+    logger.info("new_features = {} \n".format(new_features))
     with open("logs/log_" + log_timestr + ".txt", "a") as logfile:
         logfile.write("===================== \n")
         logfile.write("### Experiment = {} \n".format(experiment))
@@ -755,12 +727,12 @@ for experiment in [3]:
     # debug
     # run_fit("_predict_", df_time_train, df_time_test, new_target, new_features, poly_d_max=1, inter_only=False, print_coef=True, plot=False, ask_user=False)
 
-    print("### Experiment = {} \n".format(experiment))
-    # print("model_re = {}".format(model_re))
+    logger.info("### Experiment = {} \n".format(experiment))
+    # logger.info("model_re = {}".format(model_re))
 
     rt_stop = timeit.default_timer()
     total_runtime = rt_stop - rt_start
-    print("runtime = {} (seconds) \n".format(total_runtime))
+    logger.info("runtime = {} (seconds) \n".format(total_runtime))
     with open("logs/log_" + log_timestr + ".txt", "a") as logfile:
         logfile.write("total runtime = {} (seconds) \n".format(total_runtime))
         logfile.write("### Experiment = {} \n".format(experiment))

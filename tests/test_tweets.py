@@ -20,7 +20,7 @@ logger = logger_factory.create(__name__)
 def test_tweets():
     # Arrange
     def callback(tweet: Dict):
-        print('got one.')
+        logger.info('got one.')
         return 'foo'
 
     query = "$VOD"
@@ -28,7 +28,7 @@ def test_tweets():
     tweets = twitter_service.search(query=query)
 
     json_thing = json.dumps(tweets)
-    print(json_thing)
+    logger.info(json_thing)
 
     # Assert
     assert (len(tweets) > 0)
@@ -39,8 +39,8 @@ def test_explore_json():
 
     thing = json.loads(json_thing)
 
-    print(len(thing))
-    print(f'{list(thing[0].keys())}')
+    logger.info(len(thing))
+    logger.info(f'{list(thing[0].keys())}')
 
 
 def test_clean_name():
@@ -51,7 +51,7 @@ def test_clean_name():
     # Act
     for t in ticker_tuples:
         name = t[1]
-        print(equity_utils.convert_equity_name_to_common(name))
+        logger.info(equity_utils.convert_equity_name_to_common(name))
     # Assert
 
 
@@ -61,7 +61,7 @@ def test_get_ticker_name():
 
     company_name_orig = msft.info['longName']
 
-    print(company_name_orig)
+    logger.info(company_name_orig)
 
     pickle_path = Path(config.YAHOO_COMPANY_INFO, f'{ticker}.pkl')
     pickle_service.save(msft, pickle_path)
@@ -81,7 +81,7 @@ def test_get_nasdaq():
     df = TickerService.get_tickers_as_df()
     df = TickerService.filter_by_exchanges(df=df, exchange_types=[ExchangeType.NASDAQ])
 
-    print(f'Cols: {df.columns}')
+    logger.info(f'Cols: {df.columns}')
     ticker_tuples_list = list(map(tuple, df[['ticker', 'name']].to_numpy()))
 
     # Assert
@@ -93,12 +93,12 @@ def test_re():
     name = 'Autolus'
     text_orig = r'{"created_at": "Tue Aug 11 06:25:49 +0000 2020", "id": 1293071101543817216, "id_str": "1293071101543817216", "text": "RT @Skd884: #AVCT NASDAQ - \"Most recently, Neil held the role of Senior Vice President, Head of Global Clinical Operations at Autolus,\u2026", "truncated": false, "entities": {"hashtags": [{"text": "AVCT", "indices": [12, 17]}], "symbols": [], "user_mentions": [{"screen_name": "Skd884", "name": "Me", "id": 539139469, "id_str": "539139469", "indices": [3, 10]}], "urls": []}, "metadata": {"iso_language_code": "en", "result_type": "recent"}, "source": "<a href=\"http://twitter.com/download/iphone\" rel=\"nofollow\">Twitter for iPhone</a>", "in_reply_to_status_id": null, "in_reply_to_status_id_str": null, "in_reply_to_user_id": null, "in_reply_to_user_id_str": null, "in_reply_to_screen_name": null, "user": {"id": 827192581079650305, "id_str": "827192581079650305", "name": "7Trading", "screen_name": "S7VENTrading", "location": "", "description": "AIM Stock Trader -- Current Investments -- #LION -- #EVRH -- #RGM -- -- #SAR --", "url": null, "entities": {"description": {"urls": []}}, "protected": false, "followers_count": 512, "friends_count": 466, "listed_count": 2, "created_at": "Thu Feb 02 16:30:54 +0000 2017", "favourites_count": 16615, "utc_offset": null, "time_zone": null, "geo_enabled": false, "verified": false, "statuses_count": 9930, "lang": null, "contributors_enabled": false, "is_translator": false, "is_translation_enabled": false, "profile_background_color": "F5F8FA", "profile_background_image_url": null, "profile_background_image_url_https": null, "profile_background_tile": false, "profile_image_url": "http://pbs.twimg.com/profile_images/1169266854570975233/Z2CFrToe_normal.jpg", "profile_image_url_https": "https://pbs.twimg.com/profile_images/1169266854570975233/Z2CFrToe_normal.jpg", "profile_link_color": "1DA1F2", "profile_sidebar_border_color": "C0DEED", "profile_sidebar_fill_color": "DDEEF6", "profile_text_color": "333333", "profile_use_background_image": true, "has_extended_profile": false, "default_profile": true, "default_profile_image": false, "following": null, "follow_request_sent": null, "notifications": null, "translator_type": "none"}, "geo": null, "coordinates": null, "place": null, "contributors": null, "retweeted_status": {"created_at": "Tue Aug 11 06:15:52 +0000 2020", "id": 1293068598370611201, "id_str": "1293068598370611201", "text": "#AVCT NASDAQ - \"Most recently, Neil held the role of Senior Vice President, Head of Global Clinical Operations\u2026 https://t.co/Wqi335qhsh", "truncated": true, "entities": {"hashtags": [{"text": "AVCT", "indices": [0, 5]}], "symbols": [], "user_mentions": [], "urls": [{"url": "https://t.co/Wqi335qhsh", "expanded_url": "https://twitter.com/i/web/status/1293068598370611201", "display_url": "twitter.com/i/web/status/1\u2026", "indices": [116, 139]}]}, "metadata": {"iso_language_code": "en", "result_type": "recent"}, "source": "<a href=\"https://mobile.twitter.com\" rel=\"nofollow\">Twitter Web App</a>", "in_reply_to_status_id": null, "in_reply_to_status_id_str": null, "in_reply_to_user_id": null, "in_reply_to_user_id_str": null, "in_reply_to_screen_name": null, "user": {"id": 539139469, "id_str": "539139469", "name": "Me", "screen_name": "Skd884", "location": "", "description": "", "url": null, "entities": {"description": {"urls": []}}, "protected": false, "followers_count": 283, "friends_count": 754, "listed_count": 4, "created_at": "Wed Mar 28 15:32:45 +0000 2012", "favourites_count": 19, "utc_offset": null, "time_zone": null, "geo_enabled": false, "verified": false, "statuses_count": 1301, "lang": null, "contributors_enabled": false, "is_translator": false, "is_translation_enabled": false, "profile_background_color": "C0DEED", "profile_background_image_url": "http://abs.twimg.com/images/themes/theme1/bg.png", "profile_background_image_url_https": "https://abs.twimg.com/images/themes/theme1/bg.png", "profile_background_tile": false, "profile_image_url": "http://pbs.twimg.com/profile_images/420699417042509824/B2KNSyfl_normal.jpeg", "profile_image_url_https": "https://pbs.twimg.com/profile_images/420699417042509824/B2KNSyfl_normal.jpeg", "profile_link_color": "1DA1F2", "profile_sidebar_border_color": "C0DEED", "profile_sidebar_fill_color": "DDEEF6", "profile_text_color": "333333", "profile_use_background_image": true, "has_extended_profile": false, "default_profile": true, "default_profile_image": false, "following": null, "follow_request_sent": null, "notifications": null, "translator_type": "none"}, "geo": null, "coordinates": null, "place": null, "contributors": null, "is_quote_status": false, "retweet_count": 2, "favorite_count": 20, "favorited": false, "retweeted": false, "lang": "en"}, "is_quote_status": false, "retweet_count": 2, "favorite_count": 0, "favorited": false, "retweeted": false, "lang": "en"}'
     # text = re.sub(r'\\n', '', text_orig)
-    print(f'\n{text_orig}')
+    logger.info(f'\n{text_orig}')
 
     tweet = json.loads(text_orig)
     text = tweet['text']
     result = re.search(ticker, text) and re.search(name, text, re.IGNORECASE)
-    print(result is not None)
+    logger.info(result is not None)
 
 
 def test_multithreads():
@@ -124,7 +124,7 @@ def test_json():
     obj = json.loads(json_str)
     json_str_alt = json.dumps(obj)
 
-    print(json_str_alt)
+    logger.info(json_str_alt)
     # Assert
 
 
@@ -261,7 +261,7 @@ def test_foo():
                              'ncfbus', 'equityavg', 'dividends', 'cor', 'grossmargin', 'ncff', 'intangibles', 'debtusd', 'bvps', 'pe1',
                              'intexp', 'ncf'
                              })
-    print(f"Cols: {cols}")
+    logger.info(f"Cols: {cols}")
 
     # 'buy_sell', 'date', 'purchase_date', "future_open", 'future_low', "future_high",
     # "future_close", "stock_val_change_ex",

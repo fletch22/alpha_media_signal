@@ -16,7 +16,7 @@ def backup_project():
     backup_dest_dirname = os.path.join(backup_root, date_utils.format_file_system_friendly_date(datetime.now()))
     os.makedirs(backup_dest_dirname, exist_ok=True)
 
-    print(f"Will back up to: {backup_dest_dirname}")
+    logger.info(f"Will back up to: {backup_dest_dirname}")
 
     volume = file_services.get_windows_drive_volume_label(backup_root[0])
     logger.info(f"Volume Name: '{volume}'.")

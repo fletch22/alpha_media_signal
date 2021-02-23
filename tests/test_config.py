@@ -1,14 +1,15 @@
 from ams.config import constants
 
 from ams.utils import pandas_utils
+from ams.config import logger_factory
+
+logger = logger_factory.create(__name__)
 
 
 def test_config():
   # Arrange
   # Act
   creds = constants.FLETCH22_CREDS
-
-  print(creds.api_key)
 
   # Assert
   assert (len(creds.api_key) > 10)
@@ -249,10 +250,10 @@ def test_foo():
           and not c.startswith("scalerevenue_")
           ]
 
-  print(len(cols))
-  print(cols)
+  logger.info(len(cols))
+  logger.info(cols)
 
   import pandas as pd
   df = pd.DataFrame([{"foo": "abc", "bar": "def"}])
 
-  print(f"Columns matched: {pandas_utils.find_columns_with_value(df=df, value_to_find='abc')}")
+  logger.info(f"Columns matched: {pandas_utils.find_columns_with_value(df=df, value_to_find='abc')}")

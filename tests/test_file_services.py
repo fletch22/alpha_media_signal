@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 from ams.services import file_services
 
+logger = logger_factory.create(__name__)
 
 def test_file_walk():
     # Arrange
@@ -10,7 +11,7 @@ def test_file_walk():
     files = file_services.walk(parent)
 
     # Act
-    print(files)
+    logger.info(files)
 
     # Assert
     assert (len(files) > 0)
@@ -23,5 +24,5 @@ def test_list_folders():
     # Act
     dirs = file_services.list_child_folders(parent_path=source)
 
-    print(dirs)
+    logger.info(dirs)
     # Assert
