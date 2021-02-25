@@ -1,3 +1,30 @@
+Feb 22 2021:
+	
+	Fix tweet date attribution.
+	Get list of tweets dates. divide in list of 2.
+	Take the 1st of list.
+	Get all market dates in range.
+	Get tweet date + purchase_dt + sell_dt - add to used dates until get to recent.
+	Remove sell dates from market dates
+
+	Todo: Remove increment_day_if_tweet_after_hours when re-processing.
+
+
+
+Feb 18th 2021:
+
+	0.06065112554627501
+	0.08109058192982933
+	0.0549
+	0.055048567929930514
+
+	0.075
+	0.07534162094891027
+	0.0691
+	0.072
+	0.07569
+	2021-01-13: roi: 0.20024690494658443: 174 tickers
+
 Feb 17th 2021:
 
     ToDo: Add Zip_Service; add step to pipe_fitter to zip up raw files.

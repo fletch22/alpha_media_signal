@@ -75,6 +75,6 @@ def make_historical_prediction(num_hold_days: int, max_date_str: str = None, min
 
 
 if __name__ == '__main__':
-    constants.xgb.defaults.max_depth = 20
-    for i in [1, 2]:
+    constants.xgb.defaults.max_depth = 10
+    for i in [2]:
         make_historical_prediction(num_hold_days=i)

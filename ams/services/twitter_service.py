@@ -561,7 +561,7 @@ def omit_columns(df: pd.DataFrame):
     omit_cols = ['created_at_timestamp', 'in_reply_to_status_id', 'place_country', 'user_time_zone',
                  'place_name', "famasector", "f22_id",
                  'user_location', 'metadata_result_type', 'place_name', 'place_country',
-                 'lang', 'in_reply_to_screen_name', 'lastupdated', 'created_at', "prev_date", "future_open", "future_close",
+                 'lang', 'in_reply_to_screen_name', 'lastupdated', 'created_at', "future_open", "future_close",
                  "future_low", "future_high", "calendardate", "reportperiod", "dimension", "datekey"]
 
     narrow_cols = list(set(df.columns) - set(omit_cols))

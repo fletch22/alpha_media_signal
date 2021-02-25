@@ -13,7 +13,7 @@ def add_simple_moving_averages(df: pd.DataFrame, target_column: str, windows: Li
     return df_copy
 
 
-def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], tweet_date_str: str, sma_day_before: bool):
+def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], tweet_date_str: str):
     max_window = max(windows)
 
     all_dataframes = []
@@ -54,12 +54,8 @@ def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], tw
 
     df_all = pd.concat(all_dataframes, axis=0)
 
-    if sma_day_before:
-        df_all = df_all.rename(columns={date_col: "prev_date", "ticker": "f22_ticker"})
-        df_merged = pd.merge(df, df_all, how='inner', on=["f22_ticker", "prev_date"], suffixes=[None, "_drop"])
-    else:
-        df_all = df_all.rename(columns={"ticker": "f22_ticker"})
-        df_merged = pd.merge(df, df_all, how='inner', left_on=["f22_ticker", "date"], right_on=["f22_ticker", date_col], suffixes=[None, "_drop"])
+    df_all = df_all.rename(columns={"ticker": "f22_ticker"})
+    df_merged = pd.merge(df, df_all, how='inner', left_on=["f22_ticker", "date"], right_on=["f22_ticker", date_col], suffixes=[None, "_drop"])
 
     df_dropped = df_merged.drop(columns=[c for c in df_merged.columns if c.endswith("_drop")])
 

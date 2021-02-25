@@ -1,4 +1,5 @@
 from datetime import timedelta, datetime
+from enum import Enum
 from random import shuffle
 from statistics import mean
 
@@ -11,10 +12,20 @@ from ams.utils import date_utils
 logger = logger_factory.create(__name__)
 
 
+class TrainingOrReal(Enum):
+    Training = "training"
+    Real = "real"
+
+
 def start(start_dt: datetime, num_hold_days: int, num_days_perf: int,
           end_date_str: str = None, min_price: float = 0, size_buy_lot: int = None,
-          verbose: bool = False, addtl_hold_days: int = 0):
-    df_preds = pd.read_csv(constants.TWITTER_TRAINING_PREDICTIONS_FILE_PATH)
+          verbose: bool = False, addtl_hold_days: int = 0, training_or_real: TrainingOrReal = TrainingOrReal.Training):
+
+    file_path = constants.TWITTER_TRAINING_PREDICTIONS_FILE_PATH
+    if training_or_real == TrainingOrReal.Real:
+        file_path = constants.TWITTER_REAL_MONEY_PREDICTIONS_FILE_PATH
+
+    df_preds = pd.read_csv(file_path)
 
     all_days_rois = []
 
@@ -99,14 +110,16 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
 if __name__ == '__main__':
     # start_date_str = "2020-08-10"
     # end_date_str = "2021-02-16"
-    start_date_str = "2020-08-10"
+    start_date_str = "2021-02-03" # "2020-08-10"
     end_date_str = "2021-02-16"
     min_price = 5
-    num_hold_days = 1
+    num_hold_days = 5
     addtl_hold_days = 0
     start_dt = date_utils.parse_std_datestring(start_date_str)
+    training_or_real = TrainingOrReal.Real
 
     start(start_dt=start_dt, num_hold_days=num_hold_days, num_days_perf=255,
           end_date_str=end_date_str, min_price=min_price, size_buy_lot=None,
           verbose=True,
-          addtl_hold_days=addtl_hold_days)
+          addtl_hold_days=addtl_hold_days,
+          training_or_real=training_or_real)

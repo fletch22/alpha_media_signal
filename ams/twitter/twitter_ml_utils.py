@@ -540,8 +540,8 @@ def add_nasdaq_roi_new(df: pd.DataFrame, num_hold_days: int = 1):
     return df.drop_duplicates(subset=["f22_ticker", "date"])
 
 
-def add_sma_stuff(df: pd.DataFrame, tweet_date_str: str, sma_day_before: bool = False):
-    df = ticker_utils.add_sma_history(df=df, target_column="close", windows=[15, 20, 50, 100, 200], tweet_date_str=tweet_date_str, sma_day_before=sma_day_before)
+def add_sma_stuff(df: pd.DataFrame, tweet_date_str: str):
+    df = ticker_utils.add_sma_history(df=df, target_column="close", windows=[15, 20, 50, 100, 200], tweet_date_str=tweet_date_str)
 
     df = ticker_utils.add_days_since_under_sma_many_tickers(df=df, col_sma="close_SMA_200", close_col="close")
     df = ticker_utils.add_days_since_under_sma_many_tickers(df=df, col_sma="close_SMA_15", close_col="close")
@@ -804,7 +804,7 @@ def prep_predict(df, tweet_date_str: str):
 
     df_pred = df_pred.drop(columns=[c for c in df_pred.columns if "_SMA_" in c]).copy()
 
-    df_pred = add_sma_stuff(df=df_pred, tweet_date_str=tweet_date_str, sma_day_before=True)
+    df_pred = add_sma_stuff(df=df_pred, tweet_date_str=tweet_date_str)
 
     return pd.concat([df_pred, df_train], axis=0)
 
@@ -944,10 +944,11 @@ def predict_day(pp: PredictionParams):
 
     df_twitter = easy_convert_columns(df=df)
 
+    # NOTE: 2021-02-22: chris.flesche: Ascribe after hours tweets to previous market date.
+
     df_sd_futured = get_stocks_based_on_tweets_2(df_tweets=df_twitter, tweet_date_str=pp.tweet_date_str,
                                                  num_hold_days=pp.num_hold_days, num_days_until_purchase=pp.num_days_until_purchase)
 
-    # dt_prev_str = get_next_market_date(date_str=pp.predict_date_str, num_days=-1)
     if not has_pred_rows_on_date(df=df_sd_futured, date_str=pp.tweet_date_str, tag="get_stocks_based_on_tweets"):
         return False, rois
 
@@ -982,8 +983,8 @@ def predict_day(pp: PredictionParams):
     while True:
 
         df_ready = df_ticker_hotted[df_ticker_hotted["date"] <= pp.tweet_date_str].copy()
-        # df_prepped = prep_predict(df=df_ready, tweet_date_str=pp.tweet_date_str)
-        df_prepped = df_ready
+        df_prepped = prep_predict(df=df_ready, tweet_date_str=pp.tweet_date_str)
+        # df_prepped = df_ready
 
         if df_prepped is not None and df_prepped.shape[0] > 0:
 
