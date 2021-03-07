@@ -348,13 +348,13 @@ def exagerrate_stock_val_change(value):
     return is_neg * exag_val
 
 
-def std_col(df: pd.DataFrame, col_name: str):
-    standard_scaler = StandardScaler()
-
+def std_col(df: pd.DataFrame, col_name: str, standard_scaler: StandardScaler = StandardScaler()):
     df = fillna_column(df=df, col=col_name)
 
     with pd.option_context('mode.chained_assignment', None):
         df.loc[:, col_name] = standard_scaler.fit_transform(df[[col_name]])
+
+    return df, standard_scaler
 
 
 def add_buy_sell(df: pd.DataFrame):
@@ -364,14 +364,11 @@ def add_buy_sell(df: pd.DataFrame):
     df.loc[:, 'buy_sell'] = df['stock_val_change'].apply(lambda x: 1 if x >= roi_threshold_pct else -1)
     df.loc[:, 'stock_val_change_ex'] = df["stock_val_change"].apply(exagerrate_stock_val_change)
 
-    std_col(df=df, col_name="stock_val_change_ex")
-
     return df
 
 
 def fill_null_numeric(df: pd.DataFrame, cols_fundy_numeric: List[str]):
-    zero_fill_cols = ['created_at_timestamp',
-                      'favorite_count',
+    zero_fill_cols = ['favorite_count',
                       'user_listed_count',
                       'user_statuses_count',
                       'user_friends_count',
@@ -428,6 +425,7 @@ def add_tweet_count(df: pd.DataFrame):
 
 def convert_col_to_bool(df: pd.DataFrame, cols: List[str]):
     for c in cols:
+        print(f"Will attempt to convert column '{c}'")
         df = df.astype({c: str})
         df[c] = df[c].apply(lambda x: x.lower().strip())
         df = df.replace({c: {'true': True, 'false': False, '': False, '0': False, '1': True}})
@@ -436,12 +434,15 @@ def convert_col_to_bool(df: pd.DataFrame, cols: List[str]):
     return df.copy()
 
 
-def convert_to_bool(df: pd.DataFrame):
-    return convert_col_to_bool(df, ['possibly_sensitive', 'f22_ticker_in_text', 'user_verified',
-                                    'f22_has_cashtag',
-                                    'user_has_extended_profile', 'user_is_translation_enabled',
-                                    'f22_ticker_in_text',
-                                    'user_protected', 'user_geo_enabled'])
+# def convert_to_bool(df: pd.DataFrame):
+#
+#     print(list(df.columns))
+#
+#     return convert_col_to_bool(df, ['possibly_sensitive', 'f22_ticker_in_text', 'user_verified',
+#                                     'f22_has_cashtag',
+#                                     'user_has_extended_profile', 'user_is_translation_enabled',
+#                                     'f22_ticker_in_text',
+#                                     'user_protected', 'user_geo_enabled'])
 
 
 def refine_pool(df: pd.DataFrame, min_volume: int = None, min_price: float = None, max_price: float = None):
@@ -558,7 +559,7 @@ def train_mlp(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np
 
 
 def omit_columns(df: pd.DataFrame):
-    omit_cols = ['created_at_timestamp', 'in_reply_to_status_id', 'place_country', 'user_time_zone',
+    omit_cols = ['created_at_timestamp', 'in_reply_to_status_id', 'place_country',
                  'place_name', "famasector", "f22_id",
                  'user_location', 'metadata_result_type', 'place_name', 'place_country',
                  'lang', 'in_reply_to_screen_name', 'lastupdated', 'created_at', "future_open", "future_close",
@@ -615,7 +616,7 @@ def split_df_for_learning(df: pd.DataFrame, train_cols: List[str], label_col: st
 def get_feature_columns(narrow_cols):
     omit_cols = {'buy_sell', 'date', 'purchase_date', "future_open", 'future_low', "future_high",
                  "future_close", "stock_val_change_ex",
-                 "stock_val_change_scaled", "stock_val_change", "roi", "user_screen_name",
+                 "stock_val_change", "roi", "user_screen_name",
                  "future_date", "user_follow_request_sent", "f22_ticker"}
     omit_cols |= {"nasdaq_day_roi"}
     # End FIXME
@@ -720,7 +721,7 @@ def get_search_date_range():
 
 
 def get_daily_prediction():
-    jobs_start = "01:30"
+    jobs_start = "00:30"
     schedule.every().day.at(jobs_start).do(fetch_up_to_date_tweets)
 
     while True:
@@ -730,9 +731,9 @@ def get_daily_prediction():
 
 
 if __name__ == '__main__':
-    get_daily_prediction()
+    # get_daily_prediction()
 
     # fetch_up_to_date_tweets()
-    # date_range = DateRange.from_date_strings(from_date_str="2021-02-12", to_date_str="2021-02-13")
-    # search_one_day_at_a_time(date_range=date_range)
+    date_range = DateRange.from_date_strings(from_date_str="2021-02-25", to_date_str="2021-03-04")
+    search_one_day_at_a_time(date_range=date_range)
     # youngest_tweet_date_str = twitter_utils.get_youngest_tweet_date_in_system()

@@ -25,11 +25,10 @@ def start(command_path: Path):
 
 def get_equity_daily_data():
     start(command_path=StockPredictorPaths.command_equity_daily_svc_path.value)
-    # start(command_path=StockPredictorPaths.command_test_path.value)
 
 
 def get_equity_fundamentals_data():
-    start(command_path=StockPredictorPaths.command_equity_daily_svc_path.value)
+    start(command_path=StockPredictorPaths.command_equity_fun_svc_path.value)
 
 
 if __name__ == '__main__':

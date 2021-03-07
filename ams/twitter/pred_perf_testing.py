@@ -110,13 +110,13 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
 if __name__ == '__main__':
     # start_date_str = "2020-08-10"
     # end_date_str = "2021-02-16"
-    start_date_str = "2021-02-03" # "2020-08-10"
-    end_date_str = "2021-02-16"
+    start_date_str = "2020-08-10"
+    end_date_str = "2021-02-25"
     min_price = 5
-    num_hold_days = 5
+    num_hold_days = 1
     addtl_hold_days = 0
     start_dt = date_utils.parse_std_datestring(start_date_str)
-    training_or_real = TrainingOrReal.Real
+    training_or_real = TrainingOrReal.Training
 
     start(start_dt=start_dt, num_hold_days=num_hold_days, num_days_perf=255,
           end_date_str=end_date_str, min_price=min_price, size_buy_lot=None,

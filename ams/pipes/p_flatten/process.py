@@ -1,22 +1,18 @@
-import os
 import re
 from pathlib import Path
 from typing import Dict
 
-import findspark
 import pandas as pd
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
-from pyspark.sql import udf
 from pyspark.sql.functions import explode
 from pyspark.sql.functions import udf, struct
 from pyspark.sql.types import IntegerType, StringType
 from pyspark.sql.types import StructType, StructField, BooleanType, ArrayType, Row
 from retry import retry
 
-from ams.config import constants
-from ams.config import logger_factory
+from ams.config import logger_factory, constants
 from ams.config.constants import ensure_dir
 from ams.pipes import batchy_bae
 from ams.services import dataframe_services
@@ -32,6 +28,7 @@ pd.set_option('display.width', 1000)
 
 entity_comma = '&#44;'
 line_ending_pattern = re.compile("[\r\n]")
+CHUNK_SIZE = 16
 
 search_tuples = None
 schema = StructType(fields=[StructField('place_country', StringType()),
@@ -169,6 +166,7 @@ def get_cashtags_row_wise(row: Row):
     all_thing = ''
 
     text = ''
+    text_len = 0
     for k in row_dict.keys():
         if k.endswith('_lc'):
             if k == 'text_lc':
@@ -226,10 +224,10 @@ def find_tickers_and_explode(df: DataFrame):
                                                    StructField('ticker_in_text', BooleanType()),
                                                    StructField('num_other_tickers_in_tweet', IntegerType())
                                                    ]))
+
     get_cashtags_row_wise_udf = udf(get_cashtags_row_wise, cashtags_schema)
 
     df = df.withColumn("f22", get_cashtags_row_wise_udf((struct([df[x] for x in df.columns]))))
-
     df = df.withColumn('f22', explode(F.col('f22')))
 
     se_columns = list(set(df.columns) - set(lc_cols)) + [F.col('f22.ticker').alias('f22_ticker'),
@@ -237,7 +235,6 @@ def find_tickers_and_explode(df: DataFrame):
                                                          F.col('f22.ticker_in_text').alias('f22_ticker_in_text'),
                                                          F.col('f22.num_other_tickers_in_tweet').alias('f22_num_other_tickers_in_tweet')
                                                          ]
-
     return df.select(*se_columns).drop('f22')
 
 
@@ -251,7 +248,7 @@ def persist(df: DataFrame, output_drop_folder_path: Path, prefix: str = "tweets_
                                          file_type=file_type)
 
 
-def clean_unexpected_null_column(place: str):
+def clean_unexpected_null_column(place: dict):
     result = {"place_country": None, "place_full_name": None, "place_name": None}
     if place is not None:
         result["place_country"] = place["country"]
@@ -289,57 +286,55 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
     logger.info(f"Number of files: {len(files)}")
 
-    num_files = 4
-    chunked_list = list(chunk_it(files, num_files))
-    tot_chunks = len(chunked_list)
+    df = spark.read.option("charset", "UTF-8").json(files)
 
-    logger.info(f"Files chunked: {tot_chunks}")
+    # df_init = df_init.sample(fraction=.01)
 
-    total_count = 0
-    for ndx, chunk in enumerate(chunked_list):
-        logger.info(f"Processing {ndx + 1} of {tot_chunks}.")
+    df = df.dropDuplicates(['id'])
 
-        logger.info(f"Processing files: {chunk}")
+    df = clean_place(df=df)
 
-        df_init = spark.read.json(chunk)
+    df = df.persist()
 
-        df_unduped = df_init.dropDuplicates(['id'])
+    df = fix_columns(df=df)
 
-        df_clean_place = clean_place(df=df_unduped)
+    df = df.persist()
 
-        df_thin = fix_columns(df=df_clean_place)
+    df = clean_columns(df=df)
 
-        df_clean = clean_columns(df=df_thin)
+    df = df.persist()
 
-        df_tickered = find_tickers_and_explode(df=df_clean)
+    df = find_tickers_and_explode(df=df)
 
-        total_count += df_tickered.count()
+    df = df.persist()
 
-        persist(df=df_tickered, output_drop_folder_path=output_dir_path)
+    logger.info(f"Will attempt to write {CHUNK_SIZE} files to {output_dir_path}")
+    persist(df=df, output_drop_folder_path=output_dir_path)
 
-    logger.info(f"Total records processed: {total_count}")
+    df.unpersist()
 
 
-def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool):
-    file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".parquet")
+
+def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
+    file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".txt")
 
     output_dir_path = Path(twitter_root_path, 'flattened_drop', "main")
     ensure_dir(output_dir_path)
 
-    batchy_bae.ensure_clean_output_path(output_dir_path)
+    batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False, snow_plow_stage=snow_plow_stage)
+    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path,
+                     process_callback=process, should_archive=False,
+                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
 
     return output_dir_path
 
 
-def start_old():
-    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "smallified_raw_drop", "main")
-    file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".parquet")
+if __name__ == '__main__':
+    twit_root_dir = Path(constants.TEMP_PATH, "twitter")
+    src_dir_path = Path(twit_root_dir, "smallified_raw_drop", "main")
 
-    output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'flattened_drop', "main")
-    os.makedirs(output_dir_path, exist_ok=True)
-
-    batchy_bae.ensure_clean_output_path(output_dir_path)
-
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False)
+    start(source_dir_path=src_dir_path,
+          twitter_root_path=twit_root_dir,
+          snow_plow_stage=False,
+          should_delete_leftovers=False)

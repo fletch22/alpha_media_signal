@@ -1,8 +1,7 @@
-from statistics import mean
+from datetime import datetime
 from typing import List
 
 import pandas as pd
-from datetime import datetime
 
 from ams.config import logger_factory
 from ams.services import ticker_service
@@ -11,7 +10,8 @@ from ams.utils import date_utils
 
 logger = logger_factory.create(__name__)
 
-def calc_and_persist_nasdaq_roi(date_from: datetime, date_to: datetime, days_hold_stock: int, min_price: float=None) -> (pd.DataFrame, List[str]):
+
+def calc_and_persist_nasdaq_roi(date_from: datetime, date_to: datetime, days_hold_stock: int, min_price: float = None) -> (pd.DataFrame, List[str]):
     df_tickers = get_nasdaq_info()
     tickers = df_tickers["ticker"].to_list()
     tickers = sorted(tickers)
@@ -34,13 +34,10 @@ def start():
 
     date_from = date_utils.parse_std_datestring(from_str)
     date_to = date_utils.parse_std_datestring(to_str)
+    min_price = None  # 5.
 
-    df, _ = calc_and_persist_nasdaq_roi(date_from=date_from, date_to=date_to, days_hold_stock=days_hold_stock)
+    df, _ = calc_and_persist_nasdaq_roi(date_from=date_from, date_to=date_to, min_price=min_price, days_hold_stock=days_hold_stock)
 
-    logger.info(df.head())
-
-    df = df[df["date"] >= "2020-08-10"].copy()
-    # df.sort_values(by=["date"], inplace=True)
     roi_mean = df["roi"].mean()
 
     logger.info(roi_mean)

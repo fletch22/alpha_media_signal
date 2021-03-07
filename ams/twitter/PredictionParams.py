@@ -32,6 +32,7 @@ class PredictionParams:
     max_date_str: str = None  # NOTE: The most recent date (with tweets) we want to predict.
     oldest_tweet_date = None  # NOTE: The oldest date (with tweets) we want to train with.
     prediction_mode: PredictionMode = None
+    require_balance = None # NOTE: 2021-03-06: chris.flesche: If True, will remove rows in order to balance the dataset.
 
     def __init__(self, df: pd.DataFrame, tweet_date_str: str, num_hold_days: int,
                  min_date_str: str, max_date_str: str,
@@ -40,7 +41,8 @@ class PredictionParams:
                  persist_predictions: bool = True,
                  min_train_size: int = 500, num_days_until_purchase: int = 1,
                  oldest_tweet_date: str = "2020-08-10",
-                 prediction_mode: PredictionMode = PredictionMode.DevelopmentAndTraining):
+                 prediction_mode: PredictionMode = PredictionMode.DevelopmentAndTraining,
+                 require_balance: bool = True):
 
         self.df = df
         self.tweet_date_str = tweet_date_str
@@ -54,6 +56,7 @@ class PredictionParams:
         self.max_date_str = max_date_str
         self.oldest_tweet_date = oldest_tweet_date
         self.prediction_mode = prediction_mode
+        self.require_balance = require_balance
 
         self.validate_init()
 

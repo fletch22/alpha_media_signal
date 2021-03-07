@@ -1,9 +1,9 @@
 import ctypes
 import os
 import shutil
+import stat
 from datetime import datetime
-from os import walk as walker, listdir
-from os.path import isfile, join
+from os import walk as walker
 from pathlib import Path
 from threading import Thread
 from typing import Sequence, Tuple, List
@@ -163,3 +163,21 @@ def unnest_files(parent: Path, target_path: Path, filename_ends_with: str):
                 filename_ends_with = filename_ends_with[1:]
             file_dest = create_unique_filename(parent_dir=str(file_dest.parent), prefix="unnested", extension=filename_ends_with)
         shutil.move(str(f), dst=str(file_dest))
+
+
+def remove_folder_read_only(dir_path: Path, recursive: bool):
+    path_str = str(dir_path)
+    if not os.access(path_str, os.W_OK):
+        try:
+            os.chmod(path_str, stat.S_IWUSR)
+        except BaseException as be:
+            logger.warning(be)
+    if recursive:
+        folders = list_child_folders(parent_path=dir_path)
+        for fld in folders:
+            remove_folder_read_only(dir_path=fld, recursive=recursive)
+
+
+def create_text_file(file_path: Path, contents: str):
+    with open(str(file_path), "w") as fw:
+        fw.write(contents)

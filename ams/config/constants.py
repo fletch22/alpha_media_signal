@@ -158,9 +158,16 @@ TWEET_RAW_DROP_ARCHIVE = Path(TWITTER_OVERFLOW_OUTPUT, "raw_drop", "archive")
 TESTS_ROOT = Path(PROJECT_ROOT, "tests")
 TESTS_RESOURCES = Path(TESTS_ROOT, "resources")
 
-TEST_TEMP_PATH  = Path("e:\\tmp")
+TEMP_PATH  = Path("e:\\tmp")
+
+TRANSIENT_DIR_PATH = Path(TEMP_PATH, "transient")
+ensure_dir(TRANSIENT_DIR_PATH)
 
 TWITTER_END_DROP = Path(TWITTER_OUTPUT_RAW_PATH, "end_drop")
 
-xgb = SimpleNamespace(defaults=SimpleNamespace(max_depth=20))
+xgb_defaults = SimpleNamespace(defaults=SimpleNamespace(max_depth=20))
+
+SAMPLE_TWEET_STOCK_TRAIN_DF_PATH = Path(TRANSIENT_DIR_PATH, "tweet_stock_df_train.parquet")
+SAMPLE_TWEET_STOCK_TEST_DF_PATH = Path(TRANSIENT_DIR_PATH, "tweet_stock_df_test.parquet")
+
 

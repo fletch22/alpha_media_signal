@@ -25,6 +25,68 @@ from tests.services import zip_service
 logger = logger_factory.create(__name__)
 
 
+def process(twitter_root_path: Path, end_drop_path: Path,
+            input_archive_path: Path, should_delete_leftovers: bool,
+            skip_external_data_dl: bool = False, archive_raw: bool = True):
+
+    if not skip_external_data_dl:
+        command_service.get_equity_daily_data()
+        command_service.get_equity_fundamentals_data()
+        equity_performance.start()
+
+        earliest_dt = date_utils.parse_std_datestring("2020-08-10")
+        calc_and_persist_nasdaq_roi(date_from=earliest_dt, date_to=datetime.now(), days_hold_stock=1)
+    else:
+        logger.info("Skipping external data download.")
+
+    source_dir_path = Path(twitter_root_path, "raw_drop", "main")
+    ensure_dir(source_dir_path)
+
+    if file_services.has_no_files(source_dir_path):
+        return False
+
+    files = file_services.list_files(source_dir_path)
+    logger.info(f"Processing {files}")
+
+    small_source_path, small_output_path = smallify_process.start(src_dir_path=source_dir_path, twitter_root_path=twitter_root_path,
+                                                                  snow_plow_stage=False, should_delete_leftovers=should_delete_leftovers)
+
+    flat_output_dir = flatten_process.start(source_dir_path=small_output_path, twitter_root_path=twitter_root_path,
+                                            snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+
+    # # flat_output_dir = Path("e:\\tmp\\twitter\\flattened_drop\\main")
+    add_output_dir = add_id_process.start(source_dir_path=flat_output_dir, twitter_root_path=twitter_root_path,
+                                          snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+
+    # add_output_dir = Path("e:\\tmp\\twitter\\id_fixed\\main")
+    rem_output_dir = rem_dupes_process.start(source_dir_path=add_output_dir, twitter_root_path=twitter_root_path,
+                                             snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+
+    # rem_output_dir = Path(constants.TWITTER_OUTPUT_RAW_PATH, "deduped", "main")
+    coal_output_dir = coalesce_process.start(source_dir_path=rem_output_dir, twitter_root_path=twitter_root_path,
+                                             snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+
+    # coal_output_dir = Path(constants.TWITTER_OUTPUT_RAW_PATH, "coalesced\\main")
+    sent_output_dir = add_sent_process.start(source_dir_path=coal_output_dir, twitter_root_path=twitter_root_path,
+                                             snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+
+    # sent_output_dir = Path("e:\\tmp\\twitter\\sent_drop\\main")
+    learn_output_dir = add_learn_prep_process.start(source_dir_path=sent_output_dir, twitter_root_path=twitter_root_path,
+                                                    snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+    twit_output_dir = twit_reduce_process.start(source_dir_path=learn_output_dir, twitter_root_path=twitter_root_path,
+                                                snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+
+    transfer_to_end_drop(end_drop_path=end_drop_path, twit_output_dir=twit_output_dir)
+
+    validate_final_output(output_dir_path=end_drop_path)
+
+    if archive_raw:
+        # small_source_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop\\main")
+        archive_input(source_dir_path=small_source_path, output_dir_path=input_archive_path)
+
+    return True
+
+
 def validate_final_output(output_dir_path: Path):
     files = file_services.walk(output_dir_path)
 
@@ -49,75 +111,12 @@ def archive_input(source_dir_path: Path, output_dir_path: Path):
         # new_path.unlink()
 
 
-def process(twitter_root_path: Path, end_drop_path: Path, input_archive_path: Path, skip_external_data_dl: bool = False):
-
-    if not skip_external_data_dl:
-        command_service.get_equity_daily_data()
-        command_service.get_equity_fundamentals_data()
-        equity_performance.start()
-
-        earliest_dt = date_utils.parse_std_datestring("2020-08-10")
-        calc_and_persist_nasdaq_roi(date_from=earliest_dt, date_to=datetime.now(), days_hold_stock=1)
-    else:
-        logger.info("Skipping external data download.")
-
-    source_dir_path = Path(twitter_root_path, "raw_drop", "main")
-    ensure_dir(source_dir_path)
-
-    if file_services.has_no_files(source_dir_path):
-        return False
-
-    small_source_path, small_output_path = smallify_process.start(source_dir_path=source_dir_path, twitter_root_path=twitter_root_path, snow_plow_stage=False)
-
-    flat_output_dir = flatten_process.start(source_dir_path=small_output_path, twitter_root_path=twitter_root_path, snow_plow_stage=True)
-
-    # # flat_output_dir = Path("e:\\tmp\\twitter\\flattened_drop\\main")
-    add_output_dir = add_id_process.start(source_dir_path=flat_output_dir, twitter_root_path=twitter_root_path, snow_plow_stage=True)
-
-    # add_output_dir = Path("e:\\tmp\\twitter\\id_fixed\\main")
-    rem_output_dir = rem_dupes_process.start(source_dir_path=add_output_dir, twitter_root_path=twitter_root_path, snow_plow_stage=True)
-
-    # rem_output_dir = Path(constants.TWITTER_OUTPUT_RAW_PATH, "deduped", "main")
-    coal_output_dir = coalesce_process.start(source_dir_path=rem_output_dir, twitter_root_path=twitter_root_path, snow_plow_stage=True)
-
-    # coal_output_dir = Path(constants.TWITTER_OUTPUT_RAW_PATH, "coalesced\\main")
-    sent_output_dir = add_sent_process.start(source_dir_path=coal_output_dir, twitter_root_path=twitter_root_path, snow_plow_stage=True)
-
-    # sent_output_dir = Path("e:\\tmp\\twitter\\sent_drop\\main")
-    learn_output_dir = add_learn_prep_process.start(source_dir_path=sent_output_dir, twitter_root_path=twitter_root_path, snow_plow_stage=True)
-    twit_output_dir = twit_reduce_process.start(source_dir_path=learn_output_dir, twitter_root_path=twitter_root_path, snow_plow_stage=True)
-
-    transfer_to_end_drop(end_drop_path=end_drop_path, twit_output_dir=twit_output_dir)
-
-    validate_final_output(output_dir_path=end_drop_path)
-
-    # small_source_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "raw_drop\\main")
-    archive_input(source_dir_path=small_source_path, output_dir_path=input_archive_path)
-
-    return True
-
-
 def transfer_to_end_drop(twit_output_dir: Path, end_drop_path: Path):
     files_final = file_services.list_files(twit_output_dir, ends_with=".parquet")
     ensure_dir(end_drop_path)
     for f in files_final:
         dest_path = Path(end_drop_path, f.name)
         shutil.copy(str(f), str(dest_path))
-
-
-def process_old():
-    # command_service.get_equity_daily_data()
-    # command_service.get_equity_fundamentals_data()
-    # equity_performance.start()
-
-    smallify_process.start_old()
-    flatten_process.start_old()
-    add_id_process.start_old()
-    rem_dupes_process.start_old()
-    coalesce_process.start_old()
-    add_sent_process.start_old()
-    add_learn_prep_process.start_old()
-    # twit_reduce_process.start_old()
 
 
 def predict(tweet_date_str: str, num_hold_days: int):
@@ -149,7 +148,8 @@ def get_todays_prediction(twitter_root_path: Path, input_archive_path: Path):
     end_drop_path = constants.TWITTER_END_DROP
     messages = []
     try:
-        was_successful = process(twitter_root_path=twitter_root_path, end_drop_path=end_drop_path, input_archive_path=input_archive_path)
+        was_successful = process(twitter_root_path=twitter_root_path, end_drop_path=end_drop_path,
+                                 input_archive_path=input_archive_path, should_delete_leftovers=False)
 
         if was_successful:
             get_and_message_predictions(num_days_hold_list=[10, 5, 4, 3, 2, 1])
@@ -183,7 +183,7 @@ def get_and_message_predictions(num_days_hold_list):
 
 
 if __name__ == '__main__':
-    end_drop_path = constants.TWITTER_END_DROP
+    # end_drop_path = constants.TWITTER_END_DROP
     get_todays_prediction(twitter_root_path=constants.TWITTER_OUTPUT_RAW_PATH, input_archive_path=constants.TWEET_RAW_DROP_ARCHIVE)
     # process(twitter_root_path=constants.TWITTER_OUTPUT_RAW_PATH, end_drop_path=end_drop_path, input_archive_path=constants.TWEET_RAW_DROP_ARCHIVE)
 

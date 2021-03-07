@@ -1,9 +1,6 @@
-import os
 from pathlib import Path
 
-import findspark
-
-from ams.config import logger_factory, constants
+from ams.config import logger_factory
 from ams.config.constants import ensure_dir
 from ams.pipes import batchy_bae
 from ams.services import file_services, spark_service
@@ -38,26 +35,16 @@ def process(source_dir_path: Path, output_dir_path: Path):
     df.coalesce(num_coalesce).write.format("parquet").mode("overwrite").save(str(out_write_path))
 
 
-def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool):
+def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
     file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".parquet")
 
     output_dir_path = Path(twitter_root_path, 'coalesced', "main")
     ensure_dir(output_dir_path)
 
-    batchy_bae.ensure_clean_output_path(output_dir_path)
+    batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False, snow_plow_stage=snow_plow_stage)
+    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path,
+                     process_callback=process, should_archive=False,
+                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
 
     return output_dir_path
-
-
-def start_old():
-    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "deduped", "main")
-    file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".parquet")
-
-    output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'coalesced', "main")
-    os.makedirs(output_dir_path, exist_ok=True)
-
-    batchy_bae.ensure_clean_output_path(output_dir_path)
-
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False)

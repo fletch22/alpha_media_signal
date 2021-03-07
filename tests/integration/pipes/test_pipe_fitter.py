@@ -33,7 +33,7 @@ def test_old_starts():
 
 def test_process():
     # Arrange
-    twitter_root_path = Path(constants.TEST_TEMP_PATH, "twitter")
+    twitter_root_path = Path(constants.TEMP_PATH, "twitter")
     source_file_test_path = Path(constants.TESTS_RESOURCES, "sample_raw_drop.txt")
     test_source_path = Path(twitter_root_path, "raw_drop", "main")
     end_drop_path = Path(twitter_root_path, "end_drop")
@@ -42,7 +42,7 @@ def test_process():
     test_path_new = Path(test_source_path, source_file_test_path.name)
     shutil.copy(source_file_test_path, test_path_new)
 
-    output_dir_path = Path(file_services.create_unique_folder_name(constants.TEST_TEMP_PATH, prefix="archive_input"))
+    output_dir_path = Path(file_services.create_unique_folder_name(constants.TEMP_PATH, prefix="archive_input"))
 
     with patch("ams.pipes.pipe_fitter.command_service.get_equity_daily_data", return_value=None) as mock_get_equity, \
         patch("ams.pipes.pipe_fitter.command_service.get_equity_fundamentals_data", return_value=None) as mock_get_eq_funda, \

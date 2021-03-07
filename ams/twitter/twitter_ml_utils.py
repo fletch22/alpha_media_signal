@@ -8,10 +8,12 @@ import numpy as np
 import pandas as pd
 import torch
 import xgboost as xgb
+from sklearn.metrics import f1_score
+from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 
 from ams.config import constants, logger_factory
-from ams.services import twitter_service, ticker_service, pickle_service, file_services
+from ams.services import twitter_service, ticker_service, pickle_service, file_services, slack_service
 from ams.services.csv_service import write_dicts_as_csv
 from ams.services.equities.EquityFundaDimension import EquityFundaDimension
 from ams.services.ticker_service import get_ticker_eod_data
@@ -110,12 +112,12 @@ def model_torch_predict(X_torch, model):
     return y_pred_tag
 
 
-def transform_to_numpy(df: pd.DataFrame, narrow_cols: List[str], require_balance: bool = True) -> Tuple[any, any, any]:
+def transform_to_numpy(df: pd.DataFrame, narrow_cols: List[str], label_col: str = "buy_sell", require_balance: bool = True) -> Tuple[any, any, any]:
     standard_scaler = StandardScaler()
 
     train_cols = twitter_service.get_feature_columns(narrow_cols)
 
-    X_train_raw, y_train = twitter_service.split_df_for_learning(df=df, train_cols=train_cols, require_balance=require_balance)
+    X_train_raw, y_train = twitter_service.split_df_for_learning(df=df, label_col=label_col, train_cols=train_cols, require_balance=require_balance)
 
     if X_train_raw is None or X_train_raw.shape[0] == 0:
         return None, None, None
@@ -445,10 +447,10 @@ def coerce_convert_to_numeric(df: pd.DataFrame, col: str):
     return df
 
 
-def convert_twitter_to_numeric(df: pd.DataFrame):
-    df = coerce_convert_to_numeric(df=df, col="user_followers_count")
-    df = coerce_convert_to_numeric(df=df, col="f22_sentiment_compound")
-    return coerce_convert_to_numeric(df=df, col="f22_compound_score")
+# def convert_twitter_to_numeric(df: pd.DataFrame):
+#     df = coerce_convert_to_numeric(df=df, col="user_followers_count")
+#     df = coerce_convert_to_numeric(df=df, col="f22_sentiment_compound")
+#     return coerce_convert_to_numeric(df=df, col="f22_compound_score")
 
 
 def merge_fundies_with_stock(df_stock_data: pd.DataFrame):
@@ -559,6 +561,7 @@ def get_data_for_predictions(df: pd.DataFrame,
     df_features = df[feature_cols]
 
     X_array_raw = np.array(df_features)
+
     return standard_scaler.transform(X_array_raw)
 
 
@@ -616,11 +619,6 @@ def split_train_predict(df: pd.DataFrame, tweet_date_str: str, num_days_until_pu
 
     df_train = twitter_service.add_buy_sell(df=df_th_train)
 
-    # FIXME: 2021-02-19: chris.flesche: Find out why I need this.
-    # num_days_in_future = num_hold_days + num_days_until_purchase
-    # future_date_limit = get_next_market_date(tweet_date_str, num_days_in_future)
-    # df_predict = df[(df["date"] == tweet_date_str) & (df["future_date"] <= future_date_limit)].copy()
-
     df_predict = df[df["date"] == tweet_date_str].copy()
 
     df_train = twitter_service.omit_columns(df=df_train)
@@ -642,11 +640,6 @@ def get_stock_matchable(df):
             good_tickers.append(t)
 
     return df[df["f22_ticker"].isin(good_tickers)].copy()
-
-
-def easy_convert_columns(df):
-    df_booled = twitter_service.convert_to_bool(df=df)
-    return convert_twitter_to_numeric(df=df_booled)
 
 
 def get_stocks_based_on_tweets(df_tweets: pd.DataFrame, tweet_date_str: str, num_hold_days: int):
@@ -828,34 +821,76 @@ def remove_fundy_category_cols(all_columns):
     return clean_cols
 
 
-def train_predict(df_train, df_predict, narrow_cols):
+def grid_search(X_train, y_train):
+    # 'learning_rate': 0.1, 'max_depth': 4, 'reg_lambda': 10.0
+    # 'learning_rate': 0.001, 'max_depth': 8, 'reg_lambda': 7
+    # 'learning_rate': 0.001, 'max_depth': 6, 'reg_lambda': 5
+    # 'learning_rate': 0.0098, 'max_depth': 11, 'n_estimators': 134
+    # 'learning_rate': 0.0098, 'max_depth': 11, 'n_estimators': 134
+    param_grid = {
+        'n_estimators': [125, 130, 134],  # , 165, 175],
+        'max_depth': [11, 12, 13],  # 12, 15],
+        'learning_rate': [.0097, .0098, .99]  # , 1.0, 1.5]
+    }
+    scoring = 'f1'  # 'roc_auc'
+    eval_metric = 'f1'  # 'auc'
+
+    model = xgb.XGBClassifier(seed=42,
+                              subsample=0.9, reg_lambda=2)
+    optimal_params = GridSearchCV(estimator=model,
+                                  param_grid=param_grid,
+                                  scoring='f1',
+                                  verbose=2,
+                                  n_jobs=4,
+                                  cv=3)
+
+    optimal_params.fit(X_train,
+                       y_train,
+                       eval_metric=f1_score,
+                       verbose=True)
+
+    msg = f"Best score: {optimal_params.best_score_}; Best params: {optimal_params.best_params_}"
+    logger.info(msg)
+
+    slack_service.send_direct_message_to_chris(msg)
+    raise Exception("foo")
+
+
+def train_predict(df_train, df_predict, narrow_cols, label_col:str = "buy_sell", require_balance: bool = True):
     import warnings
-    require_balance = True
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="invalid value encountered in true_divide")
         X_train, y_train, standard_scaler = transform_to_numpy(df=df_train,
                                                                narrow_cols=narrow_cols,
+                                                               label_col=label_col,
                                                                require_balance=require_balance)
 
         if X_train is None or X_train.shape[0] == 0 or y_train is None:
             logger.info("Not enough training data.")
             return None
 
-        if require_balance:
-            logger.info(f"XGB Max depth: {constants.xgb.defaults.max_depth}")
-            model = xgb.XGBClassifier(max_depth=constants.xgb.defaults.max_depth)
-        else:
+        xgb_args = dict(seed=42,
+                        reg_lambda=2, n_estimators=134,
+                        max_depth=11, learning_rate=.0098)
+
+        if not require_balance:
             num_buy = df_train[df_train["buy_sell"] == 1].shape[0]
             num_sell = df_train[df_train["buy_sell"] != 1].shape[0]
 
-            balance_ratio = num_buy / num_sell
+            balance_ratio = num_sell / num_buy
 
-            logger.info(f"Buy: {num_buy}; Sell: {num_sell}; balance_ratio: {balance_ratio}")
+            logger.info(f"Sell: {num_sell} / Buy: {num_buy}; ratio: {balance_ratio}")
 
-            model = xgb.XGBClassifier(max_depth=4, scale_pos_weight=balance_ratio)
+            xgb_args["scale_pos_weight"] = balance_ratio
 
-        model.fit(X_train, y_train)
+        # grid_search(X_train=X_train, y_train=y_train)
+
+        logger.info(f"Using XGB Args: {xgb_args}")
+        model = xgb.XGBClassifier(**xgb_args)
+
+        model.fit(X_train,
+                  y_train)
 
     X_predict = get_data_for_predictions(df=df_predict, narrow_cols=narrow_cols, standard_scaler=standard_scaler)
 
@@ -876,6 +911,8 @@ def remove_purchase_cols(cols: Set[str]) -> List[str]:
 def get_train_columns(all_columns: List):
     return remove_purchase_cols(cols=set(all_columns))
     # clean_cols = remove_fundy_category_cols(all_columns)
+
+
 #     misc_1 = set(['f22_num_other_tickers_in_tweet', 'high', 'days_util_sale', 'evebitda', 'user_screen_name', 'close_SMA_200_days_since_under', 'days_since', 'debtc', 'shareswa', 'debtnc', 'ebitdausd', 'receivables', 'currentratio', 'ebitda', 'future_date', 'de', 'date', 'netincdis', 'price', 'investmentsnc', 'shareswadil', 'closeunadj', 'assetsavg', 'ppnenet', 'f22_sentiment_neg', 'f22_has_cashtag', 'inventory', 'depamor', 'table_SFP', 'epsusd', 'fd_day_of_year', 'siccode', 'fcfps', 'f22_sentiment_pos', 'close_SMA_50_days_since_under', 'tbvps', 'dps', 'taxliabilities', 'ebitusd', 'evebit', 'liabilitiesc', 'pe', 'eps', 'fxusd', 'sbcomp', 'sps', 'ebit', 'close_SMA_20', 'user_listed_count', 'pe1', 'revenueusd', 'close_SMA_15', 'tangibles', 'ncfdebt', 'investments', 'equityavg', 'netinccmn'])
 #     misc_2 = set(['ncf', 'ps', 'opex', 'intangibles', 'ros', 'liabilitiesnc', 'fd_day_of_week', 'prev_volume', 'rnd', 'ebt', 'user_verified', 'buy_sell', 'nasdaq_day_roi', 'stock_val_change_ex', 'capex', 'original_close_price', 'deposits', 'favorite_count', 'ncfi', 'investmentsc', 'ps1', 'f22_sentiment_compound', 'sgna', 'grossmargin', 'rank_roi', 'invcap', 'ncfdiv', 'close_SMA_100_days_since_under', 'ebitdamargin', 'fd_day_of_month', 'volume', 'user_friends_count', 'f22_sentiment_neu', 'accoci', 'sharefactor', 'assets', 'low', 'deferredrev', 'ncfinv', 'cashneq', 'assetsc', 'prev_high'])
 #     add_back = ['f22_id', 'dimension', 'in_reply_to_status_id', 'created_at', 'calendardate', 'prev_date', 'datekey', 'place_country', 'user_location', 'lastupdated', 'user_time_zone', 'famasector', 'place_name', 'reportperiod', 'lang', 'created_at_timestamp', 'metadata_result_type', 'in_reply_to_screen_name']
@@ -890,6 +927,7 @@ def seal_label_leak(df: pd.DataFrame, purchase_date_str: str, num_hold_days: int
     df.loc[df["future_date"] >= purchase_date_str, "buy_sell"] = -1
 
     return df
+
 
 def seal_label_leak_2(df: pd.DataFrame, purchase_date_str: str, num_hold_days: int, num_days_until_purchase: int):
     df_grouped = df.groupby(by=["f22_ticker"])
@@ -938,12 +976,11 @@ def has_rows_on_date(df: pd.DataFrame, tag: str):
     return result
 
 
-def predict_day(pp: PredictionParams):
+def predict_day(pp: PredictionParams, prediction_ndx_count: int):
     rois = []
-    df = pp.df.copy()
+    df_twitter = pp.df.copy()
 
-    df_twitter = easy_convert_columns(df=df)
-
+    # df_twitter = easy_convert_columns(df=df)
     # NOTE: 2021-02-22: chris.flesche: Ascribe after hours tweets to previous market date.
 
     df_sd_futured = get_stocks_based_on_tweets_2(df_tweets=df_twitter, tweet_date_str=pp.tweet_date_str,
@@ -994,7 +1031,7 @@ def predict_day(pp: PredictionParams):
                 logger.info(f"df_predict after prep_predict: {df_predict.shape[0]}")
 
                 df_sealed = seal_label_leak_2(df=df_prepped, purchase_date_str=pp.purchase_date_str, num_hold_days=pp.num_hold_days,
-                                           num_days_until_purchase=pp.num_days_until_purchase)
+                                              num_days_until_purchase=pp.num_days_until_purchase)
 
                 df_train, df_predict = split_train_predict(df=df_sealed, tweet_date_str=pp.tweet_date_str, num_days_until_purchase=pp.num_days_until_purchase,
                                                            num_hold_days=pp.num_hold_days)
@@ -1002,13 +1039,18 @@ def predict_day(pp: PredictionParams):
                 if df_train is not None and df_predict is not None and df_predict.shape[0] > 0 and df_train.shape[0] > 0:
                     logger.info(f"df_predict after split_train_predict: {df_predict.shape[0]}")
 
-                    narrow_cols = get_train_columns(all_columns=list(df_train.columns))
+                    if prediction_ndx_count == 0:
+                        persist_train_and_predict_dfs(df_predict, df_train)
 
-                    # df_train = seal_label_leak(df=df_train, purchase_date_str=pp.purchase_date_str, num_hold_days=pp.num_hold_days, num_days_until_purchase=pp.num_days_until_purchase)
+                    narrow_cols = get_train_columns(all_columns=list(df_train.columns))
 
                     df_predict = train_predict(df_train=df_train,
                                                df_predict=df_predict,
-                                               narrow_cols=narrow_cols)
+                                               narrow_cols=narrow_cols,
+                                               require_balance=pp.require_balance)
+
+                    prediction_ndx_count += 1
+
                     if df_predict is not None and df_predict.shape[0] > 0:
                         num_buys = df_predict[df_predict["prediction"] == 1].shape[0]
                         logger.info(f"df_predict: {df_predict.shape[0]}: num buy predictions: {num_buys}")
@@ -1048,7 +1090,13 @@ def predict_day(pp: PredictionParams):
     if len(rois) > 0:
         logger.info(f"Ongoing roi: {mean(rois)}")
 
-    return True, rois
+    return True, rois, prediction_ndx_count
+
+
+def persist_train_and_predict_dfs(df_predict, df_train):
+    df_train.to_parquet(constants.SAMPLE_TWEET_STOCK_TRAIN_DF_PATH)
+    df_predict.to_parquet(constants.SAMPLE_TWEET_STOCK_TEST_DF_PATH)
+    logger.info("Persisted df_train and df_predict.")
 
 
 def get_real_predictions(sample_size: int, num_hold_days: int, purchase_date_str: str, min_price: float = 0):

@@ -12,6 +12,7 @@ class PersistedDataFrameTypes(Enum):
     CSV = "CSV"
     PARQUET = "PARQUET"
     ORC = "ORC"
+    TXT = "TXT"
 
 
 def persist_dataframe(df: DataFrame, output_drop_folder_path: Path, prefix: str, num_output_files: int = -1,
@@ -27,6 +28,8 @@ def persist_dataframe(df: DataFrame, output_drop_folder_path: Path, prefix: str,
         df.write.save(str(output_folder_path), format="orc")
     elif file_type == PersistedDataFrameTypes.CSV:
         df.write.save(str(output_folder_path), format="csv")
+    elif file_type == PersistedDataFrameTypes.TXT:
+        df.write.save(str(output_folder_path), format="text")
 
     logger.info(f" Output: {str(output_folder_path)}")
 

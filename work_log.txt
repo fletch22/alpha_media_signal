@@ -1,3 +1,22 @@
+March 6th 2021:
+	
+	Pred with Class: .06395038158995493
+	Pred Reg 3 deep: 0.028 
+	Pred Reg 8 deep: 0.0332039357904556, 0.03586278507792609
+	Pred Reg 11 deep: .025
+
+
+March 4th 2021:
+
+    Use stratify to use unbalanced data.
+    Pass verbose to XGBoost fit
+    Use early_stopping_rounds=10
+    Use eval_metric 'aucpr'
+    Use scale_pos_weight to help unbalanced data.
+    Use XGBClassifier.fit's eval_set=[(X_test, y_test)] argument.
+        This might sharpen predictions because these test affect the number of trees used while training.
+
+
 Feb 22 2021:
 	
 	Fix tweet date attribution.

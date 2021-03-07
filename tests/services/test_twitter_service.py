@@ -1435,3 +1435,11 @@ def test_split():
 
     # Assert
     print(df_rez.head())
+
+def test_nas_roi_with_constraints():
+    import pandas as pd
+    df_roi_nasdaq = pd.read_parquet(str(constants.DAILY_ROI_NASDAQ_PATH))
+
+
+
+    logger.info(df_roi_nasdaq.head(100))

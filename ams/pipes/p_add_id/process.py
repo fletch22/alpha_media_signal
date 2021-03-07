@@ -119,26 +119,16 @@ def replace_chars(text):
     return text.replace("\\\"", "").replace("\"", "").replace("\"", "")
 
 
-def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool):
+def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
     move_nested(parent=source_dir_path, target_path=source_dir_path)
 
     output_dir_path = Path(twitter_root_path, "id_fixed", "main")
     ensure_dir(output_dir_path)
 
-    batchy_bae.ensure_clean_output_path(output_dir_path)
+    batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False, snow_plow_stage=snow_plow_stage)
+    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path, process_callback=process,
+                     should_delete_leftovers=should_delete_leftovers,
+                     should_archive=False, snow_plow_stage=snow_plow_stage)
 
     return output_dir_path
-
-
-def start_old():
-    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "flattened_drop", "main")
-    move_nested(parent=source_dir_path, target_path=source_dir_path)
-
-    output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "id_fixed", "main")
-    os.makedirs(output_dir_path, exist_ok=True)
-
-    batchy_bae.ensure_clean_output_path(output_dir_path)
-
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False)

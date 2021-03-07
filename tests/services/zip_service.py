@@ -20,7 +20,7 @@ def extract_file(source_file_path: Path, output_parent_path: Path):
         zip_ref.extractall(output_parent_path)
 
 
-def raw_from_zip_generator(source_path: Path, already_proc_filenames: List[str]):
+def raw_from_zip_generator(temp_dir_path: Path, source_path: Path, already_proc_filenames: List[str]):
     zips = file_services.list_files(parent_path=source_path, ends_with=".zip")
     logger.info(f"Number of zips found: {len(zips)}")
     for z in zips:
@@ -28,13 +28,12 @@ def raw_from_zip_generator(source_path: Path, already_proc_filenames: List[str])
         internal_files = zip_file.filelist
         for infi in internal_files:
             if not infi.is_dir():
-                with TemporaryDirectory() as td:
-                    filename = Path(infi.filename).name
-                    if filename in already_proc_filenames:
-                        logger.info(f"File has already been processed. Skipping {filename}")
-                        continue
-                    output_path = Path(td, filename)
-                    with open(output_path, "wb+") as f:  # open the output path for writing
-                        f.write(zip_file.read(infi))  # save the contents of the file in it
-                    yield output_path
+                filename = Path(infi.filename).name
+                if filename in already_proc_filenames:
+                    logger.info(f"File has already been processed. Skipping {filename}")
+                    continue
+                output_path = Path(temp_dir_path, filename)
+                with open(output_path, "wb") as f:  # open the output path for writing
+                    f.write(zip_file.read(infi))  # save the contents of the file in it
+                yield output_path
 

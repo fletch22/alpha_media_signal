@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Set
 
 from ams.DateRange import DateRange
@@ -35,7 +35,30 @@ def get_every_nth_sell_date(nth_sell_day: int) -> Set[str]:
     return sell_days
 
 
-if __name__ == '__main__':
-    sell_days = get_every_nth_sell_date(nth_sell_day=3)
+def get_every_nth_tweet_date(nth_sell_day: int, skip_days: int = 0) -> Set[str]:
+    now_dt_str = date_utils.get_standard_ymd_format(datetime.now())
 
-    print(sell_days)
+    early_dt = date_utils.parse_std_datestring(EARLIEST_TWEET_DATE_STR)
+    early_dt = early_dt + timedelta(days=skip_days)
+    early_dt_str = date_utils.get_standard_ymd_format(early_dt)
+
+    date_range = DateRange.from_date_strings(from_date_str=early_dt_str, to_date_str=now_dt_str)
+    all_mrkt_days = get_all_market_days_in_range(date_range=date_range)
+    sell_days = set()
+    for ndx, md in enumerate(all_mrkt_days):
+        # NOTE: 2021-02-24: chris.flesche: Adds the first date as a tweet date.
+        if ndx == 0 or ndx % nth_sell_day == 0:
+            sell_days.add(md)
+
+    return sell_days
+
+
+if __name__ == '__main__':
+    tweet_days_1 = get_every_nth_tweet_date(nth_sell_day=3, skip_days=0)
+    tweet_days_2 = get_every_nth_tweet_date(nth_sell_day=3, skip_days=1)
+    tweet_days_3 = get_every_nth_tweet_date(nth_sell_day=3, skip_days=2)
+
+    assert (len(tweet_days_1.intersection(tweet_days_2)) == 0)
+    assert (len(tweet_days_1.intersection(tweet_days_3)) == 0)
+    assert (len(tweet_days_2.intersection(tweet_days_3)) == 0)
+

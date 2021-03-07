@@ -1,16 +1,14 @@
 import gc
-import os
 from functools import reduce
 from pathlib import Path
 from typing import List
 
-import findspark
 import pandas as pd
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql.types import StringType
 
-from ams.config import constants, logger_factory
+from ams.config import logger_factory
 from ams.config.constants import ensure_dir
 from ams.pipes import batchy_bae
 from ams.services import file_services, spark_service, dataframe_services
@@ -44,6 +42,10 @@ def process(source_dir_path: Path, output_dir_path: Path):
         df = df.drop_duplicates(["nlp_text"]).drop("text")
         df = df.withColumn("place_full_name", F.col('place_full_name').cast(StringType()))
 
+        # NOTE: 2021-02-28: chris.flesche: Attempted bug fix for "pyspark.sql.utils.AnalysisException: Cannot resolve column name "__index_level_0__"
+        if "__index_level_0__" in df.columns:
+            df = df.drop("__index_level_0__")
+
         df_all.append(df)
 
         if len(df_all) >= max_files:
@@ -69,24 +71,14 @@ def combine_and_persist(df_all: List[pd.DataFrame], output_dir_path: Path):
     return df_combined.count()
 
 
-def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool):
+def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
     output_dir_path = Path(twitter_root_path, "deduped", "main")
     ensure_dir(output_dir_path)
 
-    batchy_bae.ensure_clean_output_path(output_dir_path)
+    batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False, snow_plow_stage=snow_plow_stage)
-
-    return output_dir_path
-
-
-def start_old():
-    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "id_fixed", "main")
-    output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "deduped", "main")
-    os.makedirs(output_dir_path, exist_ok=True)
-
-    batchy_bae.ensure_clean_output_path(output_dir_path)
-
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False)
+    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path,
+                     process_callback=process, should_archive=False,
+                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
 
     return output_dir_path

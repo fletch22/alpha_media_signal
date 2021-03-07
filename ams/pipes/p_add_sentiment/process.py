@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import List
 
@@ -8,7 +7,7 @@ from dask.dataframe import from_pandas
 from distributed import Client
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-from ams.config import logger_factory, constants
+from ams.config import logger_factory
 from ams.config.constants import ensure_dir
 from ams.pipes import batchy_bae
 from ams.services import file_services
@@ -40,7 +39,7 @@ def process(source_dir_path: Path, output_dir_path: Path):
         total_count += pdf.shape[0]
 
         logger.info(f"Converting Pandas dataframe ({pdf.shape[0]} rows) to Dask DF ...")
-        ddf = from_pandas(pdf, npartitions=20)
+        ddf = from_pandas(pdf, npartitions=10)
         ddf.persist()
 
         ddf = ddf.assign(sent_list=ddf.nlp_text.map(lambda x: add_senti(x)))
@@ -61,27 +60,16 @@ def process(source_dir_path: Path, output_dir_path: Path):
     client.close()
 
 
-def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool):
+def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
     file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".parquet")
 
     output_dir_path = Path(twitter_root_path, 'sent_drop', "main")
     ensure_dir(output_dir_path)
 
-    batchy_bae.ensure_clean_output_path(output_dir_path)
+    batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False, snow_plow_stage=snow_plow_stage)
+    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path,
+                     process_callback=process, should_archive=False,
+                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
 
     return output_dir_path
-
-
-def start_old():
-    source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "coalesced", "main")
-    # source_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "deduped", "main")
-    file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".parquet")
-
-    output_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'sent_drop', "main")
-    os.makedirs(output_dir_path, exist_ok=True)
-
-    batchy_bae.ensure_clean_output_path(output_dir_path)
-
-    batchy_bae.start(source_path=source_dir_path, output_dir_path=output_dir_path, process_callback=process, should_archive=False)

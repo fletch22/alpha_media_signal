@@ -643,12 +643,6 @@ def test_get_ticker_data_prepped():
 
     df_dated.groupby()
 
-    from sklearn.model_selection import train_test_split
-    train_test_split
-
-    from sklearn.svm import SVC
-    SVC
-
     logger.info(f'Num in date range: {df_dated.shape[0]}')
 
 
@@ -914,12 +908,12 @@ def test_roi():
 
     from_str = "2020-08-10"
     to_str = "2021-01-07"
-    mean_roi = find_roi(from_str, to_str, days_hold_stock=5)
+    mean_roi = find_roi(from_str, to_str)
 
     logger.info(f"\n\nROI mean of means: {mean_roi:.4f}")
 
 
-def find_roi(from_str, to_str, days_hold_stock):
+def find_roi(from_str, to_str):
     df = pd.read_parquet(constants.DAILY_ROI_NASDAQ_PATH)
     df = df[df["date"] > from_str]
     df = df[df["date"] < to_str]

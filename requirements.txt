@@ -19,7 +19,7 @@ GoogleNews==1.4.1
 newspaper3k==0.2.8
 pytz
 searchtweets==1.7.6
-xgboost==1.2.1
+xgboost==1.3.3
 watermark==2.0.2
 transformers==3.4.0
 seaborn==0.11.0
