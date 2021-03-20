@@ -5,7 +5,7 @@ import pytz
 from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType
 
-from ams.config import constants
+from ams.config import constants, logger_factory
 
 TZ_AMERICA_NEW_YORK = 'America/New_York'
 
@@ -18,6 +18,8 @@ TWITTER_FORMAT = '%Y%m%D%H%M'
 TWITTER_LONG_FORMAT = "%a %b %d %H:%M:%S %z %Y"
 
 NASDAQ_CLOSE_AT_ONE_PM_DATES = ["2020-11-27", "2020-12-24"]
+
+logger = logger_factory.create(__name__)
 
 stock_market_holidays = None
 
@@ -92,10 +94,14 @@ def is_after_nasdaq_closed(utc_timestamp: int):
     return dt_utc > dt_close
 
 
-@udf(returnType=StringType())
 def convert_timestamp_to_nyc_date_str(utc_timestamp):
     dt_nyc = convert_utc_timestamp_to_nyc(utc_timestamp=utc_timestamp)
     return get_standard_ymd_format(dt_nyc)
+
+
+@udf(returnType=StringType())
+def convert_timestamp_to_nyc_date_str_udf(utc_timestamp):
+    return convert_timestamp_to_nyc_date_str(utc_timestamp=utc_timestamp)
 
 
 def get_market_holidays() -> str:
@@ -121,18 +127,39 @@ def is_stock_market_closed(dt: datetime):
     return is_closed, reached_end_of_data
 
 
-def find_next_market_open_day(dt: datetime, num_days_to_skip: int):
-    reverse = num_days_to_skip < 0
+def find_next_market_open_day(dt: datetime, is_reverse: bool = False):
+    day = -1 if is_reverse else 1
     while True:
-        dt = dt + timedelta(days=num_days_to_skip)
+        dt = dt + timedelta(days=day)
         is_closed, reached_end_of_data = is_stock_market_closed(dt)
         if reached_end_of_data:
             raise Exception("While finding the next market open day, the system reached the end of the available data.")
-        if is_closed:
-            if reverse:
-                num_days_to_skip = -1
-            else:
-                num_days_to_skip = 1
-        else:
+        if not is_closed:
             break
     return dt
+
+
+def skip_market_days(dt: datetime, num_market_days_to_skip: int):
+    is_reverse = num_market_days_to_skip < 0
+    for i in range(abs(num_market_days_to_skip)):
+        dt = find_next_market_open_day(dt=dt, is_reverse=is_reverse)
+    return dt
+
+
+def ensure_market_date(date_str):
+    dt = parse_std_datestring(date_str)
+    is_closed_date = is_stock_market_closed(dt=dt)
+    if is_closed_date:
+        date_str = get_next_market_date(date_str, is_reverse=True)
+
+    return date_str
+
+
+def get_next_market_date(date_str: str, is_reverse: bool = False) -> str:
+    dt = parse_std_datestring(date_str)
+    return get_standard_ymd_format(find_next_market_open_day(dt, is_reverse=is_reverse))
+
+
+def get_next_market_day_no_count_closed_days(date_str: str, num_days: int) -> str:
+    dt = parse_std_datestring(date_str)
+    return get_standard_ymd_format(skip_market_days(dt, num_days))

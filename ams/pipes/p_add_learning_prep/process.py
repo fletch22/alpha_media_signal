@@ -11,7 +11,7 @@ from ams.config.constants import ensure_dir
 from ams.pipes import batchy_bae
 from ams.services import file_services, spark_service, dataframe_services
 from ams.utils import date_utils
-from ams.utils.date_utils import TZ_AMERICA_NEW_YORK, STANDARD_DAY_FORMAT
+from ams.utils.date_utils import TZ_AMERICA_NEW_YORK, STANDARD_DAY_FORMAT, ensure_market_date
 
 pd.set_option('display.max_rows', 5000)
 pd.set_option('display.max_columns', 500)
@@ -89,50 +89,6 @@ def add_timestamp(df):
     return df
 
 
-# def get_fave_cols(df):
-#     return df[FAVE_COLS]
-#
-#
-# def process(source_dir_path: Path, output_dir_path: Path):
-#     file_paths = file_services.list_files(source_dir_path, ends_with=".parquet.in_transition", use_dir_recursion=True)
-#
-#     tot_files = len(file_paths)
-#
-#     file_paths = sorted(file_paths)
-#
-#     total_count = 0
-#     for f_ndx, f in enumerate(file_paths):
-#         logger.info(f"Processing {f_ndx + 1} of {tot_files}: {f}")
-#         df = pd.read_parquet(f)
-#
-#         df = get_fave_cols(df)
-#
-#         df = add_timestamp(df)
-#
-#         df = df[df['created_at_timestamp'].notnull()]
-#
-#         df['date'] = df['created_at_timestamp'].apply(convert_to_date_string)
-#
-#         df = df[df['user_followers_count'].notnull()]
-#         df = df[df['f22_sentiment_compound'].notnull()]
-#
-#         df['user_followers_count'] = df['user_followers_count'].astype("int")
-#         df['f22_sentiment_compound'] = df['f22_sentiment_compound'].astype("float64")
-#
-#         # NOTE: 2021-02-06: chris.flesche: Mysteriously, setting this value here made the following line work.
-#         df['f22_compound_score'] = None
-#
-#         df['f22_compound_score'] = df.apply(calc_compound_score, axis=1)
-#
-#         df = df.drop_duplicates(subset=['f22_id'])
-#
-#         total_count += df.shape[0]
-#
-#         persist_parquet(df=df, parent_dir=str(output_dir_path))
-#
-#     logger.info(f"Total records processed: {total_count}")
-
-
 def process_with_spark(source_dir_path: Path, output_dir_path: Path):
     spark = spark_service.get_or_create("twitter")
 
@@ -155,6 +111,10 @@ def process_with_spark(source_dir_path: Path, output_dir_path: Path):
     convert_to_date_string_udf = F.udf(convert_to_date_string, T.StringType())
     df = df.withColumn("date", convert_to_date_string_udf(F.col("created_at_timestamp")))
 
+    # TODO: 2021-03-15: chris.flesche: Uncomment when ready to reprocess all data.
+    # ensure_market_date_udf = F.udf(ensure_market_date, T.StringType())
+    # df = df.withColumn("applied_date", ensure_market_date_udf(F.col("date")))
+
     df.na.fill(value=0, subset=["user_followers_count", "f22_sentiment_compound"])
 
     df = df.withColumn("user_followers_count", F.col("user_followers_count").cast(T.IntegerType()))
@@ -166,19 +126,16 @@ def process_with_spark(source_dir_path: Path, output_dir_path: Path):
     dataframe_services.persist_dataframe(df=df, output_drop_folder_path=output_dir_path, prefix="add_learning_prep")
 
 
-def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
+def start(source_dir_path: Path, dest_dir_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
     file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".parquet")
 
-    output_dir_path = Path(twitter_root_path, 'learning_prep_drop', "main")
-    ensure_dir(output_dir_path)
+    ensure_dir(dest_dir_path)
 
-    batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
+    batchy_bae.ensure_clean_output_path(dest_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path,
-                     process_callback=process_with_spark, should_archive=False,
-                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
-
-    return output_dir_path
+    batchy_bae.start_drop_processing(source_path=source_dir_path, out_dir_path=dest_dir_path,
+                                     process_callback=process_with_spark, should_archive=False,
+                                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
 
 
 if __name__ == '__main__':

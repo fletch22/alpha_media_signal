@@ -10,6 +10,7 @@ from ams.utils.date_utils import TZ_AMERICA_NEW_YORK
 
 logger = logger_factory.create(__name__)
 
+
 def test_dt():
     date_max = "2020-11-01"
     date_min = "2020-11-30"
@@ -140,3 +141,14 @@ def test_is_stock_market_closed_raises():
 def test_tuple():
     a = [123, 234, 345]
     a1, a2, a3 = tuple(a)
+
+
+def test_get_next_market_day_no_count_closed_days():
+    # Arrange
+    date_str = "2021-03-12"
+
+    # Act
+    date_str = date_utils.get_next_market_day_no_count_closed_days(date_str=date_str, num_days=2)
+
+    # Assert
+    logger.info(date_str)

@@ -11,7 +11,7 @@ class LoggerFactory():
     all_loggers = []
 
     def __init__(self):
-        self.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self.formatter = logging.Formatter('%(asctime)s - %(name)s:%(lineno)d - %(levelname)s - %(message)s', "%H:%M:%S")
 
         self.handler_stream = logging.StreamHandler(sys.stdout)
         self.handler_stream.setFormatter(self.formatter)

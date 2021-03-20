@@ -71,14 +71,12 @@ def combine_and_persist(df_all: List[pd.DataFrame], output_dir_path: Path):
     return df_combined.count()
 
 
-def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
-    output_dir_path = Path(twitter_root_path, "deduped", "main")
-    ensure_dir(output_dir_path)
+def start(source_dir_path: Path, dest_dir_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
 
-    batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
+    ensure_dir(dest_dir_path)
 
-    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path,
-                     process_callback=process, should_archive=False,
-                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
+    batchy_bae.ensure_clean_output_path(dest_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    return output_dir_path
+    batchy_bae.start_drop_processing(source_path=source_dir_path, out_dir_path=dest_dir_path,
+                                     process_callback=process, should_archive=False,
+                                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)

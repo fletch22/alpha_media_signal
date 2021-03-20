@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from ams.config import constants, logger_factory
 from ams.config.constants import ensure_dir
-from ams.pipes import pipe_fitter
+from ams.marios_workbench.tweets import pipe_fitter
 from ams.services import file_services, ticker_service
 
 sample_raw_drop_path = Path(constants.TESTS_RESOURCES, "sample_raw_drop.txt")
@@ -47,7 +47,7 @@ def test_process():
     with patch("ams.pipes.pipe_fitter.command_service.get_equity_daily_data", return_value=None) as mock_get_equity, \
         patch("ams.pipes.pipe_fitter.command_service.get_equity_fundamentals_data", return_value=None) as mock_get_eq_funda, \
         patch("ams.pipes.pipe_fitter.equity_performance.start") as mock_eq_perf_start:
-        pipe_fitter.process(twitter_root_path=twitter_root_path, end_drop_path=end_drop_path, input_archive_path=output_dir_path)
+        pipe_fitter.process(twitter_root_path=twitter_root_path, end_bucket_path=end_drop_path, input_archive_path=output_dir_path)
 
         mock_get_equity.assert_called_once()
         mock_get_eq_funda.assert_called_once()

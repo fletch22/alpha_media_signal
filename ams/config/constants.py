@@ -163,11 +163,12 @@ TEMP_PATH  = Path("e:\\tmp")
 TRANSIENT_DIR_PATH = Path(TEMP_PATH, "transient")
 ensure_dir(TRANSIENT_DIR_PATH)
 
-TWITTER_END_DROP = Path(TWITTER_OUTPUT_RAW_PATH, "end_drop")
+REFINED_TWEETS_BUCKET_PATH = Path(TWITTER_OUTPUT_RAW_PATH, "refined_tweets_bucket")
 
 xgb_defaults = SimpleNamespace(defaults=SimpleNamespace(max_depth=20))
 
-SAMPLE_TWEET_STOCK_TRAIN_DF_PATH = Path(TRANSIENT_DIR_PATH, "tweet_stock_df_train.parquet")
-SAMPLE_TWEET_STOCK_TEST_DF_PATH = Path(TRANSIENT_DIR_PATH, "tweet_stock_df_test.parquet")
+AUTO_ML_PATH = Path(TRANSIENT_DIR_PATH, "auto_ml_train_test_val.csv")
 
+TWITTER_STACKING_MODEL_PATH = Path(TWITTER_MODEL_PATH, "twitter_stacking_model.pkl")
 
+TWIT_STOCK_MERGE_DROP_PATH = Path(TWITTER_OUTPUT_RAW_PATH, "stock_merge_drop", "main")

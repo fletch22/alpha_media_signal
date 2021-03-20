@@ -45,13 +45,5 @@ def test_get_time_from_json():
     assert ("2021-02-04" == date_str)
 
 
-def test_get_oldest_tweet():
-    youngest_tweet_dt_str = twitter_utils.get_youngest_tweet_date_in_system()
 
-    logger.info(youngest_tweet_dt_str)
-
-def test_get_oldest_tweet_2():
-    youngest_tweet_dt_str = twitter_utils.get_youngest_tweet_date_in_system_2()
-
-    logger.info(youngest_tweet_dt_str)
 

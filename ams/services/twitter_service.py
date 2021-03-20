@@ -4,6 +4,7 @@ import operator
 import re
 import time
 import urllib
+import warnings
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import timedelta, datetime
 from pathlib import Path
@@ -24,11 +25,11 @@ from ams import utils
 from ams.DateRange import DateRange
 from ams.config import logger_factory, constants
 from ams.services import file_services, ticker_service
-from ams.services import stock_action_service as sas
 from ams.services.equities import equity_fundy_service
 from ams.services.equities.ExchangeType import ExchangeType
 from ams.services.equities.TickerService import TickerService
 from ams.services.ticker_service import fillna_column
+
 from ams.utils import date_utils, equity_utils, twitter_utils
 from ams.utils.PrinterThread import PrinterThread
 
@@ -281,8 +282,8 @@ def search_with_multi_thread(date_range: DateRange):
     ticker_tuples = get_ticker_searchable_tuples()
 
     from_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
-    if from_date_str == "2021-02-05":
-        ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='RAND', delete_before=True)
+    if from_date_str == "2021-03-11":
+        ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='GOGO', delete_before=True)
 
     parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop', "main")
     tweet_raw_output_path = file_services.create_unique_filename(str(parent),
@@ -320,14 +321,9 @@ def search_with_multi_thread(date_range: DateRange):
     logger.info(f"Total tweets: {ticker_tweet_count}")
 
 
-def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_days_in_future: int = 1):
+def get_stock_data_for_twitter_companies(df_tweets: pd.DataFrame, num_hold_days: int, num_days_until_purchase: int):
     ttd = ticker_service.extract_ticker_tweet_dates(df_tweets)
-    return ticker_service.get_ticker_on_dates(ttd, num_days_in_future=num_days_in_future)
-
-
-def get_stock_data_for_twitter_companies_2(df_tweets: pd.DataFrame, num_hold_days: int, num_days_until_purchase: int):
-    ttd = ticker_service.extract_ticker_tweet_dates(df_tweets)
-    return ticker_service.get_ticker_on_dates_2(ttd, num_hold_days=num_hold_days, num_days_until_purchase=num_days_until_purchase)
+    return ticker_service.get_ticker_on_dates(ttd, num_hold_days=num_hold_days, num_days_until_purchase=num_days_until_purchase)
 
 
 def get_rec_quarter_for_twitter():
@@ -362,7 +358,6 @@ def add_buy_sell(df: pd.DataFrame):
     df.loc[:, 'stock_val_change'] = ((df['future_close'] - df['purchase_close']) / df['purchase_close']) - df["nasdaq_day_roi"]
 
     df.loc[:, 'buy_sell'] = df['stock_val_change'].apply(lambda x: 1 if x >= roi_threshold_pct else -1)
-    df.loc[:, 'stock_val_change_ex'] = df["stock_val_change"].apply(exagerrate_stock_val_change)
 
     return df
 
@@ -425,7 +420,6 @@ def add_tweet_count(df: pd.DataFrame):
 
 def convert_col_to_bool(df: pd.DataFrame, cols: List[str]):
     for c in cols:
-        print(f"Will attempt to convert column '{c}'")
         df = df.astype({c: str})
         df[c] = df[c].apply(lambda x: x.lower().strip())
         df = df.replace({c: {'true': True, 'false': False, '': False, '0': False, '1': True}})
@@ -434,15 +428,14 @@ def convert_col_to_bool(df: pd.DataFrame, cols: List[str]):
     return df.copy()
 
 
-# def convert_to_bool(df: pd.DataFrame):
-#
-#     print(list(df.columns))
-#
-#     return convert_col_to_bool(df, ['possibly_sensitive', 'f22_ticker_in_text', 'user_verified',
-#                                     'f22_has_cashtag',
-#                                     'user_has_extended_profile', 'user_is_translation_enabled',
-#                                     'f22_ticker_in_text',
-#                                     'user_protected', 'user_geo_enabled'])
+def convert_to_bool(df: pd.DataFrame):
+    col_exist = set(df.columns)
+
+    col_convert = col_exist.intersection(['possibly_sensitive', 'f22_ticker_in_text', 'user_verified',
+                                    'f22_has_cashtag', 'user_has_extended_profile', 'user_is_translation_enabled',
+                                    'f22_ticker_in_text', 'user_protected', 'user_geo_enabled'])
+
+    return convert_col_to_bool(df, list(col_convert))
 
 
 def refine_pool(df: pd.DataFrame, min_volume: int = None, min_price: float = None, max_price: float = None):
@@ -538,8 +531,8 @@ def train_mlp(X_train: np.array, y_train: np.array, X_test: np.array, y_test: np
     num_input_features = X_train.shape[1]
     classes = 2  # Buy/Sell
     num_hidden_neurons = int(num_input_features / classes)
-    clf = MLPClassifier(hidden_layer_sizes=(num_hidden_neurons), max_iter=800, tol=1e-19, activation='relu',
-                        solver='adam')
+    clf = MLPClassifier(hidden_layer_sizes=(num_hidden_neurons, num_hidden_neurons, num_hidden_neurons), max_iter=80, alpha=0.0001,
+                     solver='sgd', verbose=10,  random_state=42, tol=0.000000001)
     clf.fit(X_train, y_train)  # Fit data
     y_pred = clf.predict(X_test)  # Predict results for x_test
     accs = accuracy_score(y_test, y_pred)  # Accuracy Score
@@ -721,19 +714,62 @@ def get_search_date_range():
 
 
 def get_daily_prediction():
-    jobs_start = "00:30"
+    jobs_start = "00:00"
     schedule.every().day.at(jobs_start).do(fetch_up_to_date_tweets)
 
     while True:
-        logger.info(f"Waiting to start job at {jobs_start} ...")
+        logger.info(f"Waiting to start job at {jobs_start}pm ...")
         schedule.run_pending()
         time.sleep(120)
 
 
+def convert_to_arrays(df: pd.DataFrame, label_col: str, require_balance: bool = False):
+    from ams.twitter.twitter_ml_utils import transform_to_numpy
+
+    narrow_cols = list(df.columns)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="invalid value encountered in true_divide")
+        X_train, y_train, standard_scaler = transform_to_numpy(df=df,
+                                                               narrow_cols=narrow_cols,
+                                                               label_col=label_col,
+                                                               require_balance=require_balance)
+    return X_train, y_train, standard_scaler
+
+
+def get_split_prepped_twitter_data(requires_balance: bool = False):
+    from ams.twitter.twitter_ml_utils import remove_ticker_cols
+
+    df_train = pd.read_parquet(constants.SAMPLE_TWEET_STOCK_TRAIN_DF_PATH)
+
+    cols = remove_ticker_cols(list(df_train.columns))
+    df_train = df_train[cols]
+
+    # df_train = df_train.sample(frac=.1)
+
+    df_train = df_train.dropna(subset=["purchase_date"]).copy()
+    df_train.loc[:, "buy_sell"] = df_train["buy_sell"].apply(lambda bs: 1 if bs == 1 else 0)
+    df_train = df_train.fillna(value=0)
+
+    max_dates = list(set(df_train["purchase_date"].to_list()))
+    max_dates = sorted(max_dates)
+    cutoff_dt_str = max_dates[-2]
+    df_test = df_train[df_train["purchase_date"] == cutoff_dt_str]
+    df_train = df_train[df_train["purchase_date"] != cutoff_dt_str]
+
+    print(f"Num rows: {df_train.shape[0]}")
+
+    df_test['buy_sell'] = df_test["buy_sell"].astype("int")
+
+    X_train, y_train, _ = convert_to_arrays(df=df_train, label_col="buy_sell", require_balance=requires_balance)
+    X_test, y_test, _ = convert_to_arrays(df=df_test, label_col="buy_sell", require_balance=requires_balance)
+
+    return X_train, y_train, X_test, y_test
+
+
 if __name__ == '__main__':
-    # get_daily_prediction()
+    get_daily_prediction()
 
     # fetch_up_to_date_tweets()
-    date_range = DateRange.from_date_strings(from_date_str="2021-02-25", to_date_str="2021-03-04")
-    search_one_day_at_a_time(date_range=date_range)
-    # youngest_tweet_date_str = twitter_utils.get_youngest_tweet_date_in_system()
+
+    # date_range = DateRange.from_date_strings(from_date_str="2021-03-12", to_date_str="2021-03-13")
+    # search_one_day_at_a_time(date_range=date_range)

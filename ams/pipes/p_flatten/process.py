@@ -288,25 +288,31 @@ def process(source_dir_path: Path, output_dir_path: Path):
 
     df = spark.read.option("charset", "UTF-8").json(files)
 
-    # df_init = df_init.sample(fraction=.01)
-
     df = df.dropDuplicates(['id'])
 
     df = clean_place(df=df)
 
-    df = df.persist()
+    df_new = df.persist()
+    df.unpersist()
+    df = df_new
 
     df = fix_columns(df=df)
 
-    df = df.persist()
+    df_new = df.persist()
+    df.unpersist()
+    df = df_new
 
     df = clean_columns(df=df)
 
-    df = df.persist()
+    df_new = df.persist()
+    df.unpersist()
+    df = df_new
 
     df = find_tickers_and_explode(df=df)
 
-    df = df.persist()
+    df_new = df.persist()
+    df.unpersist()
+    df = df_new
 
     logger.info(f"Will attempt to write {CHUNK_SIZE} files to {output_dir_path}")
     persist(df=df, output_drop_folder_path=output_dir_path)
@@ -314,20 +320,16 @@ def process(source_dir_path: Path, output_dir_path: Path):
     df.unpersist()
 
 
-
-def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
+def start(source_dir_path: Path, dest_dir_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
     file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".txt")
 
-    output_dir_path = Path(twitter_root_path, 'flattened_drop', "main")
-    ensure_dir(output_dir_path)
+    ensure_dir(dest_dir_path)
 
-    batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
+    batchy_bae.ensure_clean_output_path(dest_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path,
-                     process_callback=process, should_archive=False,
-                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
-
-    return output_dir_path
+    batchy_bae.start_drop_processing(source_path=source_dir_path, out_dir_path=dest_dir_path,
+                                     process_callback=process, should_archive=False,
+                                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
 
 
 if __name__ == '__main__':

@@ -3,9 +3,7 @@ import pandas as pd
 from ams.config import logger_factory
 from ams.twitter import twitter_ml_utils as tmu
 from ams.twitter.twitter_ml import get_tweet_data
-from ams.twitter.twitter_ml_utils import get_next_market_date
-from ams.utils import date_utils
-from ams.utils.date_utils import is_stock_market_closed
+from ams.utils.date_utils import get_next_market_date
 
 logger = logger_factory.create(__name__)
 
@@ -25,33 +23,47 @@ def test_get_real_predictions():
     assert (len(tickers) == sample_size)
 
 
-def ensure_market_date(row: pd.Series):
-    date_str = row["date"]
-    dt = date_utils.parse_std_datestring(date_str)
-    is_closed_date = is_stock_market_closed(dt=dt)
-    if is_closed_date:
-        date_str = get_next_market_date(date_str, -1)
-
-    return date_str
-
-
-def adjust_tweet_dt_to_market_dt(df: pd.DataFrame):
-    df_grouped = df.groupby(by=["date"])
-
-    all_dfs = []
-    for date_str, df_g in df_grouped:
-        df_g.loc[:, "prev_market_date"] = df_g.apply(ensure_market_date, axis=1)
-        all_dfs.append(df_g)
-
-    df = pd.concat(all_dfs, axis=0)
-
-    return df
-
-
-def test_assign_tweets_to_previous_date():
+def test_tw_():
     df = get_tweet_data()
-    df = df.sample(frac=.1)
 
-    df = adjust_tweet_dt_to_market_dt(df=df)
+    max_dt_str = df["date"].max()
+    min_dt_str = "2020-08-10"
 
-    print(df[["date", "prev_market_date"]].head(5))
+    all_dts = []
+    current_dt_str = min_dt_str
+    while current_dt_str <= max_dt_str:
+        all_dts.append(current_dt_str)
+        current_dt_str = get_next_market_date(current_dt_str)
+
+    df_all_dts = pd.DataFrame(all_dts, columns=["date"])
+
+    df_g = df.groupby(by=["date"]).size().reset_index(name="counts")
+    df_joined = pd.merge(df_g, df_all_dts, how="left", on="date")
+    df_joined.loc[df_joined["counts"].isnull(), "counts"] = 0
+
+    df_joined.sort_values("date", inplace=True)
+
+    print(df_joined.head(250))
+
+    return
+
+    logger.info(f"Prediction start from {min_dt_str} \n")
+    logger.info(f"Prediction end at {max_dt_str} \n")
+
+    datenums = all_dts
+    value_raw = np.array(df['counts'])
+
+    plt.figure()
+    plt.subplots_adjust(bottom=0.2)
+    plt.xticks(rotation=60)
+    ax = plt.gca()
+    ax.xaxis_date()
+    plt.xlabel("date range")
+    plt.ylabel("num tickers with tweets")
+    plt.title("Num tickers with Tweets on Date")
+    plt.grid()
+    plt.plot(datenums, value_raw, linestyle='-', marker='o', markersize=5, color='r', linewidth=2, label="raw temp C")
+    # plt.plot(datenums, value_predict, linestyle='-', marker='o', markersize=5, color='b', linewidth=2, label="predict temp C")
+    # plt.legend(loc="best")
+    #
+    # plt.show()

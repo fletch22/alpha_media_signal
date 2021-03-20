@@ -1,9 +1,69 @@
+March 15th:
+
+    TODO: Adjust date (or some other new date field) to reflect the previous market it applies to if it arrived > close and < midnight. Perform this step in
+    stock merge for Sat and Sun tweets - create new field called "adjust_market_date_str"; add num days between end of market and tweet time.
+
+March 12th:
+
+    ToDo: Convert historical model to pipe. Output is dataframe.
+    Todo: Convert model_excercise to pipe. Ouput is models.
+    Todo: Reconsider stacking. Is there a way to test without leakage?
+    ToDo: Fit piping logic to fit with Pipe class.
+
+    Weekend Todo:
+
+        Step 1. Fix twitter_service ability to detect missing data
+                Status: Actually not broken.
+        Step 2. Convert twitter_ml_utils to pipe. Must be single df. Add columns for revolution; consider splitting
+                into revolutions at all at once; at train time (next pipe).
+                Status:
+        Step 3. Convert model_excercise to pipe (either perf testing or prediction)
+        Step 4. Add weights to XGBRegressor - more recent more weight.
+        Step 5. Start testing CatBoost Regression.
+
+March 11th:
+
+	.008 with using buy_sell_predictions + regression using "stocking_val_change" - (buy all preds)
+	1.1,.009.1.3,1.2: Above top of 1st quintile
+
+	0.007: above top of 1st quintile; min_price 5.;
+	0.0046 min_price 5.;
+	0.005; above top of 1st quartile; min_price 5.;
+	0.0088; above top of 1st sixtile; min_price 5.;
+    0.0081; above top of 1st septile; min_price 5.;
+
+
+March 10th:
+
+    ToDo: Finish modding merge_with_stock. Bolt on train+prediction by spinning through data files.
+    ToDo: Test with Regression.
+    ToDo: Finish stacking.
+    ToDo: Pull out December data.
+    ToDo: Add supplement code when new tweet data comes in.
+
+
+March 9th 2021:
+
+	MLP (100, 100, 100); 10: 0.5393258426966292
+
+March 8th 2021:
+
+    TODO: Productionize test_stacking.py
+
+
+March 7th 2021:
+
+	TODO: Enhance pipeline framework to define linkages to be used by all pipes. A linkage defines input and output paths - also behaviors?
+
 March 6th 2021:
 	
 	Pred with Class: .06395038158995493
 	Pred Reg 3 deep: 0.028 
 	Pred Reg 8 deep: 0.0332039357904556, 0.03586278507792609
 	Pred Reg 11 deep: .025
+
+	TODO: Add t_bill change in last: 1 day, 2 day, 3 day
+	TODO: Test with same day open->close.
 
 
 March 4th 2021:

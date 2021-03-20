@@ -93,8 +93,8 @@ def revert_in_transition_files(src_dir_path: Path):
     remove_remaining_files(staging_path, should_delete=True)
 
 
-def start(source_path: Path, out_dir_path: Path, process_callback: pipe_process_callback, should_delete_leftovers: bool, should_archive: bool = True,
-          snow_plow_stage: bool = True):
+def start_drop_processing(source_path: Path, out_dir_path: Path, process_callback: pipe_process_callback, should_delete_leftovers: bool, should_archive: bool = True,
+                          snow_plow_stage: bool = True):
     if snow_plow_stage:
         target_path = get_stage_dir(src_dir_path=source_path)
         remove_remaining_files(target_path=target_path, should_delete=should_delete_leftovers)
@@ -187,4 +187,4 @@ if __name__ == '__main__':
         pass
 
 
-    start(source_path=source_dir_path, out_dir_path=output_dir_path, process_callback=foo, should_archive=False, should_delete_leftovers=False)
+    start_drop_processing(source_path=source_dir_path, out_dir_path=output_dir_path, process_callback=foo, should_archive=False, should_delete_leftovers=False)

@@ -3,6 +3,6 @@ cd ..\
 
 call "activate.bat" alpha_media_signal
 
-python -m ams.pipes.pipe_fitter
+python -m ams.marios_workbench.twitter.import_and_predict.valve
 
 cd .\scripts

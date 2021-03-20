@@ -1,18 +1,21 @@
+import sys
+import traceback
+
+from ams.config import logger_factory
+from ams.marios_workbench.twitter.import_and_predict import valve as import_and_pred_valve
+
+logger = logger_factory.create(__name__)
+
 import shutil
 from datetime import datetime
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from typing import Set
 
 from ams.config import constants
-from ams.config import logger_factory
 from ams.config.constants import ensure_dir
-from ams.pipes import pipe_fitter
-from ams.services import file_services, temp_dir_service
-from ams.twitter.twitter_ml_utils import get_next_market_date
+from ams.services import file_services, temp_dir_service, zip_service
+from ams.utils.date_utils import get_next_market_date
 from ams.utils import date_utils
-from tests.services import zip_service
-
-logger = logger_factory.create(__name__)
 
 # NOTE: 2021-02-20: chris.flesche: 3GB
 CHUNK_SIZE = 1E9
@@ -26,7 +29,7 @@ class ReProcessZip:
     raw_root_main = None
     end_drop_path = None
     iap = None
-    already_proc_filenames = []
+    already_proc_filenames = set()
     total_acc_size = 0
     last_proc_dt = None
 
@@ -38,15 +41,18 @@ class ReProcessZip:
         self.raw_root_main = Path(twitter_root_path, "raw_drop", "main")
         self.raw_root_acc = Path(twitter_root_path, "raw_drop", "accumulator")
         ensure_dir(self.raw_root_acc)
+        file_services.clean_dir(parent_path=self.raw_root_acc)
+
         self.end_drop_path = Path(twitter_root_path, "end_drop")
         self.processed_path = Path(self.input_archive_path, "leftover_raw_main")
 
         for f in file_services.list_files(self.processed_path):
-            self.already_proc_filenames.append(f)
+            self.already_proc_filenames.add(f.name)
 
     def process_all(self):
         with temp_dir_service.TempDir() as temp_dir_path:
-            for tmp_zip_path in zip_service.raw_from_zip_generator(temp_dir_path=temp_dir_path, source_path=self.source_zips, already_proc_filenames=self.already_proc_filenames):
+            for tmp_zip_path in zip_service.raw_from_zip_generator(temp_dir_path=temp_dir_path, source_path=self.source_zips,
+                                                                   already_proc_filenames=self.already_proc_filenames):
                 self.process_zip(tmp_zip_path=tmp_zip_path)
 
             self.move_and_proc_accumulated()
@@ -84,33 +90,40 @@ class ReProcessZip:
 
         logger.info(f"About to process files ... {len(files)}")
 
-        pipe_fitter.process(twitter_root_path=trp,
-                            end_drop_path=self.end_drop_path,
-                            input_archive_path=self.input_archive_path,
-                            skip_external_data_dl=skip_external_data_dl,
-                            archive_raw=False,
-                            should_delete_leftovers=True)
+        import_and_pred_valve.process(twitter_root_path=trp,
+                                      input_archive_path=self.input_archive_path,
+                                      skip_external_data_dl=skip_external_data_dl,
+                                      archive_raw=False,
+                                      should_delete_leftovers=True)
 
         self.last_proc_dt = datetime.now()
 
-        create_dummy_files(source_dir_path=self.raw_root_main, output_dir_path=self.processed_path)
+        proc_files = create_dummy_files(source_dir_path=self.raw_root_main, output_dir_path=self.processed_path)
+
+        self.already_proc_filenames |= proc_files
+
+        print(self.already_proc_filenames)
 
     @classmethod
     def was_less_than_market_day_ago(cls, dt: datetime):
         dt_str = date_utils.get_standard_ymd_format(dt)
-        dt_next_dt = date_utils.parse_std_datestring(get_next_market_date(dt_str, 1))
+        dt_next_dt = date_utils.parse_std_datestring(get_next_market_date(dt_str))
 
         return dt_next_dt < datetime.now()
 
 
-def create_dummy_files(source_dir_path, output_dir_path: Path):
+def create_dummy_files(source_dir_path, output_dir_path: Path) -> Set[str]:
     ensure_dir(output_dir_path)
     files = file_services.list_files(parent_path=source_dir_path)
+    proc_files = set()
     for f in files:
         f.unlink()
         target_path = Path(output_dir_path, f.name)
         with open(target_path, "w+") as fw:
             fw.write("dummy file")
+        proc_files.add(f.name)
+
+    return proc_files
 
 
 def move_file_to_folder(a_path, target_dir_path):
@@ -133,15 +146,17 @@ if __name__ == '__main__':
 
     file_services.remove_folder_read_only(dir_path=trp, recursive=True)
 
-    # CHUNK_SIZE = 1E5
+    CHUNK_SIZE = 1E5
 
     count = 0
-    max_retry = 10
+    max_retry = 2
     while count < max_retry:
-        try:
-            reprocess(source_zips=src_zips,
-                      twitter_root_path=trp,
-                      input_archive_path=iap)
-        except BaseException as be:
-            logger.error(be)
+        # try:
+        reprocess(source_zips=src_zips,
+                  twitter_root_path=trp,
+                  input_archive_path=iap)
+        # except BaseException as be:
+        #     traceback.print_stack(file=sys.stdout)
+        #     logger.error(be)
         count += 1
+        break

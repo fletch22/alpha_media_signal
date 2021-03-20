@@ -32,9 +32,11 @@ def walk(the_path: Path, use_dir_recursion: bool = True):
     return file_paths
 
 
-def list_files(parent_path: Path, ends_with: str = None, use_dir_recursion: bool = True):
+def list_files(parent_path: Path, ends_with: str = None, starts_with: str = None, use_dir_recursion: bool = True):
     file_paths = walk(parent_path, use_dir_recursion=use_dir_recursion)
-    file_paths = list(filter(lambda x: x.is_file() and (ends_with is None or str(x).endswith(ends_with)), file_paths))
+    file_paths = list(filter(lambda x: x.is_file()
+                    and (ends_with is None or str(x).endswith(ends_with))
+                    and (starts_with is None or str(x.name).startswith(starts_with)), file_paths))
     return file_paths if file_paths is not None else []
 
 
@@ -181,3 +183,9 @@ def remove_folder_read_only(dir_path: Path, recursive: bool):
 def create_text_file(file_path: Path, contents: str):
     with open(str(file_path), "w") as fw:
         fw.write(contents)
+
+
+def clean_dir(parent_path: Path):
+    files = list_files(parent_path=parent_path)
+    for f in files:
+        f.unlink()

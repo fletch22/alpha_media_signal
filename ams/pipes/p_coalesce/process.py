@@ -35,16 +35,13 @@ def process(source_dir_path: Path, output_dir_path: Path):
     df.coalesce(num_coalesce).write.format("parquet").mode("overwrite").save(str(out_write_path))
 
 
-def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
+def start(source_dir_path: Path, dest_dir_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
     file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".parquet")
 
-    output_dir_path = Path(twitter_root_path, 'coalesced', "main")
-    ensure_dir(output_dir_path)
+    ensure_dir(dest_dir_path)
 
-    batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
+    batchy_bae.ensure_clean_output_path(dest_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path,
-                     process_callback=process, should_archive=False,
-                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
-
-    return output_dir_path
+    batchy_bae.start_drop_processing(source_path=source_dir_path, out_dir_path=dest_dir_path,
+                                     process_callback=process, should_archive=False,
+                                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)

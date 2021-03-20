@@ -11,7 +11,7 @@ from pyspark.sql.types import StructType
 from ams.config import constants, logger_factory
 from ams.services import file_services
 from ams.utils import sentiment
-from tests.test_tweets import test_multithreads
+from tests.integration.test_tweets import test_multithreads
 
 logger = logger_factory.create(__name__)
 

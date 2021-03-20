@@ -46,7 +46,7 @@ def start(source_dir_path: Path, twitter_root_path: Path, should_delete_leftover
 
     batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path,
-                     process_callback=process, should_archive=False, should_delete_leftovers=should_delete_leftovers)
+    batchy_bae.start_drop_processing(source_path=source_dir_path, out_dir_path=output_dir_path,
+                                     process_callback=process, should_archive=False, should_delete_leftovers=should_delete_leftovers)
 
     return output_dir_path

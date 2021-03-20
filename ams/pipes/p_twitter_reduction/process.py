@@ -2,8 +2,9 @@ import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pyspark.sql import DataFrame, Window
+from pyspark.sql import DataFrame
 from pyspark.sql import functions as F, types as T
+from pyspark.sql.functions import udf
 
 from ams.config import logger_factory, constants
 from ams.config.constants import ensure_dir
@@ -18,11 +19,24 @@ ORG_COLS = ["f22_ticker", "date"]
 fraction = 1.
 
 
+def applied_date(utc_timestamp: int):
+    dt = date_utils.convert_utc_timestamp_to_nyc(utc_timestamp=utc_timestamp)
+    date_str = date_utils.get_standard_ymd_format(dt)
+    if date_utils.is_stock_market_closed(dt):
+        date_str = date_utils.get_next_market_date(date_str, is_reverse=True)
+    return date_str
+
+
+applied_date_udf = udf(applied_date, returnType=T.StringType())
+
+
 def group_and_reduce_spark(df: DataFrame):
     def is_after_n_closed(created_at_timestamp: str):
         return date_utils.is_after_nasdaq_closed(utc_timestamp=int(created_at_timestamp))
 
     is_after_closed_udf = F.udf(is_after_n_closed, T.BooleanType())
+
+    # df = df.withColumn("f22_tweet_applied_date", applied_date_udf(F.col("created_at_timestamp")))
 
     df = df.withColumn(COL_AFTER_HOURS, is_after_closed_udf(F.col("created_at_timestamp")))
 
@@ -95,26 +109,34 @@ def get_output_dir(twitter_root_path: Path):
     return output_dir
 
 
-def start(source_dir_path: Path, twitter_root_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
+def start(source_dir_path: Path, dest_dir_path: Path, snow_plow_stage: bool, should_delete_leftovers: bool):
     file_services.unnest_files(parent=source_dir_path, target_path=source_dir_path, filename_ends_with=".parquet")
 
-    output_dir_path = get_output_dir(twitter_root_path=twitter_root_path)
-    ensure_dir(output_dir_path)
+    ensure_dir(dest_dir_path)
 
-    batchy_bae.ensure_clean_output_path(output_dir_path, should_delete_remaining=should_delete_leftovers)
+    batchy_bae.ensure_clean_output_path(dest_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    batchy_bae.start(source_path=source_dir_path, out_dir_path=output_dir_path,
-                     process_callback=process_with_spark, should_archive=False,
-                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
-
-    return output_dir_path
+    batchy_bae.start_drop_processing(source_path=source_dir_path, out_dir_path=dest_dir_path,
+                                     process_callback=process_with_spark, should_archive=False,
+                                     snow_plow_stage=snow_plow_stage, should_delete_leftovers=should_delete_leftovers)
 
 
 if __name__ == '__main__':
-    twit_root_dir = Path(f"{constants.TEMP_PATH}2", "twitter")
-    src_dir_path = Path(twit_root_dir, "learning_prep_drop", "main")
+    import pandas as pd
 
-    start(source_dir_path=src_dir_path,
-          twitter_root_path=twit_root_dir,
-          snow_plow_stage=False,
-          should_delete_leftovers=False)
+    e_twit_root = Path(constants.TEMP_PATH, "twitter")
+    src_dir_path = Path(e_twit_root, "learning_prep_drop", "main")
+    dest_dir_path = get_output_dir(twitter_root_path=e_twit_root)
+
+    # start(source_dir_path=src_dir_path,
+    #       dest_dir_path=dest_dir_path,
+    #       snow_plow_stage=False,
+    #       should_delete_leftovers=False)
+
+    files = file_services.list_files(dest_dir_path, ends_with=".parquet")
+    f = files[0]
+    df = pd.read_parquet(str(f))
+    print(list(df.columns))
+
+    df = df[(df["f22_tweet_applied_date"] > "2021-03-12") & (df["f22_tweet_applied_date"] > "2021-03-16")]
+    print(df[["f22_ticker", "f22_tweet_applied_date"]].head(40))

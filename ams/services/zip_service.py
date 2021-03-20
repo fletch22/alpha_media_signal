@@ -1,7 +1,7 @@
 import zipfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import List
+from typing import List, Set
 from zipfile import ZipFile
 
 from ams.services import file_services
@@ -20,7 +20,7 @@ def extract_file(source_file_path: Path, output_parent_path: Path):
         zip_ref.extractall(output_parent_path)
 
 
-def raw_from_zip_generator(temp_dir_path: Path, source_path: Path, already_proc_filenames: List[str]):
+def raw_from_zip_generator(temp_dir_path: Path, source_path: Path, already_proc_filenames: Set[str]):
     zips = file_services.list_files(parent_path=source_path, ends_with=".zip")
     logger.info(f"Number of zips found: {len(zips)}")
     for z in zips:
@@ -32,6 +32,9 @@ def raw_from_zip_generator(temp_dir_path: Path, source_path: Path, already_proc_
                 if filename in already_proc_filenames:
                     logger.info(f"File has already been processed. Skipping {filename}")
                     continue
+
+                logger.info(f"Filename {filename} not found proc list.")
+
                 output_path = Path(temp_dir_path, filename)
                 with open(output_path, "wb") as f:  # open the output path for writing
                     f.write(zip_file.read(infi))  # save the contents of the file in it

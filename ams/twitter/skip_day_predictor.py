@@ -3,9 +3,8 @@ from typing import Set
 
 from ams.DateRange import DateRange
 from ams.services.twitter_service import EARLIEST_TWEET_DATE_STR
-from ams.twitter.twitter_ml_utils import get_next_market_date
 from ams.utils import date_utils
-from ams.utils.date_utils import is_stock_market_closed
+from ams.utils.date_utils import is_stock_market_closed, get_next_market_date
 
 
 def get_all_market_days_in_range(date_range: DateRange):
@@ -18,7 +17,7 @@ def get_all_market_days_in_range(date_range: DateRange):
             raise Exception("Reached end of market data. Need to add calendar data.")
         if not is_closed:
             market_days.append(current_date_str)
-        current_date_str = get_next_market_date(date_str=current_date_str, num_days=1)
+        current_date_str = get_next_market_date(date_str=current_date_str)
 
     return market_days
 
@@ -35,11 +34,11 @@ def get_every_nth_sell_date(nth_sell_day: int) -> Set[str]:
     return sell_days
 
 
-def get_every_nth_tweet_date(nth_sell_day: int, skip_days: int = 0) -> Set[str]:
+def get_every_nth_tweet_date(nth_sell_day: int, skip_start_days: int = 0) -> Set[str]:
     now_dt_str = date_utils.get_standard_ymd_format(datetime.now())
 
     early_dt = date_utils.parse_std_datestring(EARLIEST_TWEET_DATE_STR)
-    early_dt = early_dt + timedelta(days=skip_days)
+    early_dt = early_dt + timedelta(days=skip_start_days)
     early_dt_str = date_utils.get_standard_ymd_format(early_dt)
 
     date_range = DateRange.from_date_strings(from_date_str=early_dt_str, to_date_str=now_dt_str)
@@ -54,9 +53,9 @@ def get_every_nth_tweet_date(nth_sell_day: int, skip_days: int = 0) -> Set[str]:
 
 
 if __name__ == '__main__':
-    tweet_days_1 = get_every_nth_tweet_date(nth_sell_day=3, skip_days=0)
-    tweet_days_2 = get_every_nth_tweet_date(nth_sell_day=3, skip_days=1)
-    tweet_days_3 = get_every_nth_tweet_date(nth_sell_day=3, skip_days=2)
+    tweet_days_1 = get_every_nth_tweet_date(nth_sell_day=3, skip_start_days=0)
+    tweet_days_2 = get_every_nth_tweet_date(nth_sell_day=3, skip_start_days=1)
+    tweet_days_3 = get_every_nth_tweet_date(nth_sell_day=3, skip_start_days=2)
 
     assert (len(tweet_days_1.intersection(tweet_days_2)) == 0)
     assert (len(tweet_days_1.intersection(tweet_days_3)) == 0)

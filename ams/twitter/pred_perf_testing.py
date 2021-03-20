@@ -1,5 +1,6 @@
 from datetime import timedelta, datetime
 from enum import Enum
+from pathlib import Path
 from random import shuffle
 from statistics import mean
 
@@ -17,13 +18,15 @@ class TrainingOrReal(Enum):
     Real = "real"
 
 
-def start(start_dt: datetime, num_hold_days: int, num_days_perf: int,
+def start(src_path: Path, start_dt: datetime, num_hold_days: int, num_days_perf: int,
           end_date_str: str = None, min_price: float = 0, size_buy_lot: int = None,
           verbose: bool = False, addtl_hold_days: int = 0, training_or_real: TrainingOrReal = TrainingOrReal.Training):
+    from ams.pipes.p_make_prediction.mp_process import PREDICTIONS_CSV
+    from ams.pipes.p_make_prediction.mp_process import MONEY_PREDICTIONS_CSV
 
-    file_path = constants.TWITTER_TRAINING_PREDICTIONS_FILE_PATH
+    file_path = Path(src_path, PREDICTIONS_CSV)
     if training_or_real == TrainingOrReal.Real:
-        file_path = constants.TWITTER_REAL_MONEY_PREDICTIONS_FILE_PATH
+        file_path = Path(src_path, MONEY_PREDICTIONS_CSV)
 
     df_preds = pd.read_csv(file_path)
 
@@ -111,14 +114,16 @@ if __name__ == '__main__':
     # start_date_str = "2020-08-10"
     # end_date_str = "2021-02-16"
     start_date_str = "2020-08-10"
-    end_date_str = "2021-02-25"
-    min_price = 5
+    end_date_str = "2021-03-15"
+    min_price = 5.0
     num_hold_days = 1
-    addtl_hold_days = 0
+    addtl_hold_days = 1
     start_dt = date_utils.parse_std_datestring(start_date_str)
     training_or_real = TrainingOrReal.Training
 
-    start(start_dt=start_dt, num_hold_days=num_hold_days, num_days_perf=255,
+    src_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "prediction_bucket")
+
+    start(src_path=src_path, start_dt=start_dt, num_hold_days=num_hold_days, num_days_perf=255,
           end_date_str=end_date_str, min_price=min_price, size_buy_lot=None,
           verbose=True,
           addtl_hold_days=addtl_hold_days,

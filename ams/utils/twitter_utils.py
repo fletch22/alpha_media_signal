@@ -1,22 +1,23 @@
 import os
-from datetime import timedelta
+from datetime import datetime
 from pathlib import Path
 from zipfile import ZipFile
 
 import pandas as pd
 import pyspark
+import pytz
 from pyspark.sql import functions as F
 
 from ams.config import constants, logger_factory
 from ams.services import file_services
 from ams.utils import date_utils
-from ams.utils.date_utils import convert_timestamp_to_nyc_date_str, convert_utc_timestamp_to_nyc, get_standard_ymd_format
+from ams.utils.date_utils import TZ_AMERICA_NEW_YORK, STANDARD_DAY_FORMAT, TWITTER_FORMAT, convert_timestamp_to_nyc_date_str_udf
 
 logger = logger_factory.create(__name__)
 
 
 def create_date_column(df: pyspark.sql.DataFrame):
-    return df.withColumn('date', convert_timestamp_to_nyc_date_str(F.col('created_at_timestamp')))
+    return df.withColumn('date', convert_timestamp_to_nyc_date_str_udf(F.col('created_at_timestamp')))
 
 
 def get_time_from_json(json):
@@ -93,18 +94,33 @@ def get_max_date_from_all_lines(youngest_dt_str, r):
     return youngest_dt_str
 
 
+def convert_to_date_string(utc_timestamp: int):
+    dt_utc = pd.datetime.fromtimestamp(utc_timestamp)
+    dt_nyc = dt_utc.astimezone(pytz.timezone(TZ_AMERICA_NEW_YORK))
+    return dt_nyc.strftime(STANDARD_DAY_FORMAT)
+
+
+def add_ts(date_string: str):
+    result = None
+    try:
+        dt = datetime.strptime(date_string, TWITTER_FORMAT)
+        result = int(dt.timestamp())
+    except Exception as e:
+        pass
+    return result
+
+
 def get_youngest_end_drop_tweet():
-    files = file_services.list_files(constants.TWITTER_END_DROP)
+    files = file_services.list_files(constants.REFINED_TWEETS_BUCKET_PATH)
     yougest_date_str = ""
     for f in files:
         df = pd.read_parquet(f)
 
-        utc_timestamp = df["created_at_timestamp"].max()
-        dt_nyc = convert_utc_timestamp_to_nyc(utc_timestamp=utc_timestamp)
-        created_at_str = get_standard_ymd_format(dt_nyc)
+        created_at_str = df["date"].max()
 
         if created_at_str > yougest_date_str:
             yougest_date_str = created_at_str
+
     return yougest_date_str
 
 
@@ -116,9 +132,10 @@ def get_youngest_tweet_date_in_system():
 
     youngest_tweet_dt_str = youngest_end_drop_dt_str
     if youngest_raw_dt_str is not None and youngest_raw_dt_str > youngest_end_drop_dt_str:
-        youngest_tweet_dt_str = youngest_end_drop_dt_str
+        youngest_tweet_dt_str = youngest_raw_dt_str
 
     return youngest_tweet_dt_str
+
 
 # FIXME: 2021-02-09: chris.flesche: Too slow.
 def get_youngest_archive_tweet():
@@ -139,6 +156,7 @@ def get_youngest_archive_tweet():
                         youngest_dt_str = get_max_date_from_all_lines(youngest_dt_str, r=raw_txt_file)
 
     return youngest_dt_str
+
 
 # FIXME: 2021-02-09: chris.flesche: Too slow.
 def get_youngest_tweet_date_in_system_2():
