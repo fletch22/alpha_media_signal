@@ -1,4 +1,4 @@
-SET COMMIT=57a8061
+SET COMMIT=c27b7e0
 
 REM git clone https://github.com/fletch22/alpha_media_signal.git C:\Users\Chris\deploy_environments\prod\ams
 
