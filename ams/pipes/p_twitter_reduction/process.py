@@ -1,7 +1,9 @@
 import shutil
+from datetime import timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytz
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F, types as T
 from pyspark.sql.functions import udf
@@ -12,10 +14,14 @@ from ams.pipes import batchy_bae
 from ams.services import file_services, spark_service, dataframe_services
 from ams.services.twitter_service import COL_AFTER_HOURS
 from ams.utils import date_utils
+from ams.utils.date_utils import TZ_AMERICA_NEW_YORK
 
 logger = logger_factory.create(__name__)
 
+# # FIXME: 2021-03-21: chris.flesche: Change when reprocess complete.
 ORG_COLS = ["f22_ticker", "date"]
+# ORG_COLS = ["f22_ticker", "f22_tweet_applied_date"]
+
 fraction = 1.
 
 
@@ -30,13 +36,24 @@ def applied_date(utc_timestamp: int):
 applied_date_udf = udf(applied_date, returnType=T.StringType())
 
 
+def minutes_from_tweet_eod(created_at_timestamp: float, applied_date_str: str):
+    tweet_dt = date_utils.convert_utc_timestamp_to_nyc(utc_timestamp=created_at_timestamp)
+    ap_dt = date_utils.parse_std_datestring(applied_date_str).replace(tzinfo=pytz.timezone(TZ_AMERICA_NEW_YORK)) #e(pytz.timezone(TZ_AMERICA_NEW_YORK))
+    return (tweet_dt - ap_dt).total_seconds()/60
+
+
+minutes_from_tweet_eod_udf = udf(minutes_from_tweet_eod, returnType=T.FloatType())
+
+
 def group_and_reduce_spark(df: DataFrame):
     def is_after_n_closed(created_at_timestamp: str):
         return date_utils.is_after_nasdaq_closed(utc_timestamp=int(created_at_timestamp))
 
     is_after_closed_udf = F.udf(is_after_n_closed, T.BooleanType())
 
-    # df = df.withColumn("f22_tweet_applied_date", applied_date_udf(F.col("created_at_timestamp")))
+    # FIXME: 2021-03-21: chris.flesche: Uncomment when reprocessing is done.
+    df = df.withColumn("f22_tweet_applied_date", applied_date_udf(F.col("created_at_timestamp")))
+    df = df.withColumn("minutes_from_tweet_eod", minutes_from_tweet_eod_udf(F.col("created_at_timestamp"), F.col("f22_tweet_applied_date")))
 
     df = df.withColumn(COL_AFTER_HOURS, is_after_closed_udf(F.col("created_at_timestamp")))
 
@@ -54,6 +71,7 @@ def group_and_reduce_spark(df: DataFrame):
     df = df.groupBy(*ORG_COLS) \
         .agg(F.mean("created_at").alias("created_at"),
              F.mean("user_time_zone").alias("user_time_zone"),
+             F.mean("minutes_from_tweet_eod").alias("minutes_from_tweet_eod"),
              F.mean("user_verified").alias("user_verified"),
              F.mean("user_geo_enabled").alias("user_geo_enabled"),
              F.mean("user_location").alias("user_location"),
@@ -122,21 +140,19 @@ def start(source_dir_path: Path, dest_dir_path: Path, snow_plow_stage: bool, sho
 
 
 if __name__ == '__main__':
-    import pandas as pd
-
     e_twit_root = Path(constants.TEMP_PATH, "twitter")
     src_dir_path = Path(e_twit_root, "learning_prep_drop", "main")
     dest_dir_path = get_output_dir(twitter_root_path=e_twit_root)
 
-    # start(source_dir_path=src_dir_path,
-    #       dest_dir_path=dest_dir_path,
-    #       snow_plow_stage=False,
-    #       should_delete_leftovers=False)
+    start(source_dir_path=src_dir_path,
+          dest_dir_path=dest_dir_path,
+          snow_plow_stage=False,
+          should_delete_leftovers=False)
 
-    files = file_services.list_files(dest_dir_path, ends_with=".parquet")
-    f = files[0]
-    df = pd.read_parquet(str(f))
-    print(list(df.columns))
-
-    df = df[(df["f22_tweet_applied_date"] > "2021-03-12") & (df["f22_tweet_applied_date"] > "2021-03-16")]
-    print(df[["f22_ticker", "f22_tweet_applied_date"]].head(40))
+    # files = file_services.list_files(dest_dir_path, ends_with=".parquet")
+    # f = files[0]
+    # df = pd.read_parquet(str(f))
+    # print(list(df.columns))
+    #
+    # df = df[(df["f22_tweet_applied_date"] > "2021-03-12") & (df["f22_tweet_applied_date"] > "2021-03-16")]
+    # print(df[["f22_ticker", "f22_tweet_applied_date"]].head(40))

@@ -162,15 +162,23 @@ def merge_with_stocks_for_day(tapp: TrainAndPredictionParams, output_parent_path
 
 
 def process(src_dir_path: Path, dest_dir_path: Path, max_date_str: str = None, sample_fraction: float = None, num_hold_days: int = 1):
+    logger.info(f"Getting tweet data from {src_dir_path}")
     df: pd.DataFrame = get_tweet_data(src_path=src_dir_path)
     if sample_fraction is not None:
         df = df.sample(frac=sample_fraction)
+
+    col_new_date = "f22_tweet_applied_date"
+    if col_new_date in df.columns:
+        logger.info("Found new column! Renaming ...")
+        df.rename(columns={col_new_date: "date"}, inplace=True)
 
     df.dropna(subset=["date"], inplace=True)
 
     if max_date_str is None:
         max_date_str = df["date"].max()
         max_date_str = get_next_market_date(max_date_str, is_reverse=True)
+
+    logger.info(f"max_date: {max_date_str}")
 
     tapp = TrainAndPredictionParamFactory.create_generic_trainer(df=df, max_date_str=max_date_str, num_hold_days=num_hold_days, require_balance=False)
 
@@ -198,11 +206,15 @@ def start(src_dir_path: Path, dest_dir_path: Path, should_delete_leftovers: bool
 
 
 if __name__ == '__main__':
-    sample_frac = 1 # None  # .4
-    dest_dir_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "stock_merge_drop", "main")
-    num_hold_days = 5
+    twit_root_path = Path(constants.TWITTER_OUTPUT_RAW_PATH)  # Path(constants.TEMP_PATH, "twitter")
 
-    start(src_dir_path=constants.REFINED_TWEETS_BUCKET_PATH,
+    src_dir_path = Path(twit_root_path, "refined_tweets_bucket")
+    dest_dir_path = Path(twit_root_path, "stock_merge_drop", "main")
+
+    sample_frac = 1  # None  # .4
+    num_hold_days = 1
+
+    start(src_dir_path=src_dir_path,
           dest_dir_path=dest_dir_path,
           should_delete_leftovers=True,
           sample_fraction=sample_frac,

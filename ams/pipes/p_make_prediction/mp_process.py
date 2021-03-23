@@ -31,7 +31,7 @@ def split_train_test(tapp: TrainAndPredictionParams) -> (pd.DataFrame, pd.DataFr
 
     df_train = df[df["date"] < tapp.tweet_date_str].copy()
     df_test = df[df["date"] == tapp.tweet_date_str].copy()
-    df_test.dropna(subset=["future_date"], inplace=True)
+    # df_test.dropna(subset=["future_date"], inplace=True)
 
     logger.info(f"Test data size: {df_test.shape[0]}")
     logger.info(f"Train data size: {df_train.shape[0]}")
@@ -127,8 +127,11 @@ def predict_day(tapp: TrainAndPredictionParams, output_path: Path, rev_ndx: int)
     return roi, model
 
 
-def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode):
+def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode, purchase_date_str: str, send_msgs: bool = True):
     ensure_dir(dest_path)
+
+    logger.info(f"Getting files from {src_path}")
+
     stocks_merged_path = Path(src_path, STOCKS_MERGED_FILENAME)
     df = pd.read_parquet(stocks_merged_path)
 
@@ -138,14 +141,13 @@ def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode):
 
     logger.info(f"Stock-merged size: {df.shape[0]}")
 
+    tsm = TwitterStackingModel()
     roi_all = []
+
     nth_sell_day = 1 + tapp.num_days_until_purchase + tapp.num_hold_days
 
-    today_date_str = date_utils.get_standard_ymd_format(date=datetime.now())
-
     mode_offset = 0 if tapp.prediction_mode == PredictionMode.DevelopmentAndTraining else 2
-
-    tweet_date_str = get_next_market_day_no_count_closed_days(date_str=today_date_str, num_days=-(nth_sell_day - mode_offset))
+    tweet_date_str = get_next_market_day_no_count_closed_days(date_str=purchase_date_str, num_days=-(nth_sell_day - mode_offset))
 
     for i in range(nth_sell_day):
         tapp.tweet_date_str = tweet_date_str
@@ -155,9 +157,22 @@ def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode):
         dates = list(set(dates) | {tapp.tweet_date_str})
         tapp.df = df[df["date"].isin(dates)].copy()
 
-        roi = train_skipping_data(output_path=dest_path, tapp=tapp, rev_ndx=nth_sell_day)
-        if roi is not None:
-            roi_all.append(roi)
+        if tapp.prediction_mode == PredictionMode.RealMoneyStockRecommender:
+            roi, model = predict_day(tapp=tapp, output_path=dest_path, rev_ndx=i)
+
+            tsm.add_trained_model(model)
+
+            tickers = inspect_real_pred_results(dest_path, tapp.purchase_date_str)
+
+            if send_msgs:
+                slack_service.send_direct_message_to_chris(f"{tapp.purchase_date_str}: {str(tickers)}")
+        else:
+            roi = train_skipping_data(output_path=dest_path, tapp=tapp, rev_ndx=nth_sell_day)
+            if roi is not None:
+                roi_all.append(roi)
+
+    if tapp.prediction_mode == PredictionMode.RealMoneyStockRecommender:
+        TwitterStackingModel.persist(twitter_stacking_model=tsm)
 
     overall_roi = None
     if len(roi_all) > 0:
@@ -170,33 +185,18 @@ def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode):
 def train_skipping_data(output_path: Path, tapp: TrainAndPredictionParams, rev_ndx: int):
     has_more_days = True
     roi_all = []
-    tsm = TwitterStackingModel()
-    is_first_loop = True
+    overall_roi = None
+
     while has_more_days:
-
         roi, model = predict_day(tapp=tapp, output_path=output_path, rev_ndx=rev_ndx)
-
-        if tapp.prediction_mode == PredictionMode.RealMoneyStockRecommender:
-            break
 
         if roi is not None:
             roi_all.append(roi)
             logger.info(f"Ongoing roi: {mean(roi_all)}")
 
-        if model is not None and is_first_loop:
-            tsm.add_trained_model(model)
-            is_first_loop = False
-
         is_at_end = tapp.subtract_day()
         has_more_days = not is_at_end
 
-    TwitterStackingModel.persist(twitter_stacking_model=tsm)
-
-    if tapp.prediction_mode == PredictionMode.RealMoneyStockRecommender:
-        tickers = inspect_real_pred_results(output_path, tapp.purchase_date_str)
-        slack_service.send_direct_message_to_chris(f"{tapp.purchase_date_str}: {str(tickers)}")
-
-    overall_roi = None
     if len(roi_all) > 0:
         overall_roi = mean(roi_all)
 
@@ -223,17 +223,21 @@ def inspect_real_pred_results(output_path: Path, purchase_date_str: str):
 
 
 if __name__ == '__main__':
-    dest_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "prediction_bucket")
-    # src_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "stock_merge_drop", "main")
-    #
-    # prediction_mode = PredictionMode.DevelopmentAndTraining # PredictionMode.DevelopmentAndTraining PredictionMode.RealMoneyStockRecommender
-    #
-    # start(src_path=src_path,
-    #         dest_path=dest_path,
-    #         prediction_mode=prediction_mode)
+    twit_root_path = constants.TWITTER_OUTPUT_RAW_PATH # Path(constants.TEMP_PATH, "twitter")
+    src_path = Path(twit_root_path, "stock_merge_drop", "main")
+    dest_path = Path(twit_root_path, "prediction_bucket")
 
-    purchase_date_str = "2021-03-17"
-    tick_1 = inspect_real_pred_results(output_path=dest_path, purchase_date_str="2021-03-17")
-    tick_2 = inspect_real_pred_results(output_path=dest_path, purchase_date_str="2021-03-18")
+    prediction_mode = PredictionMode.DevelopmentAndTraining # PredictionMode.DevelopmentAndTraining PredictionMode.RealMoneyStockRecommender
 
-    logger.info(f"Overlap: {tick_1.intersection(tick_2)}")
+    # purchase_date_str = date_utils.get_standard_ymd_format(date=datetime.now())
+    purchase_date_str = "2021-03-19"
+    start(src_path=src_path,
+            dest_path=dest_path,
+            prediction_mode=prediction_mode,
+            send_msgs=False,
+            purchase_date_str=purchase_date_str)
+
+    # purchase_date_str = "2021-03-17"
+    # tick_1 = inspect_real_pred_results(output_path=dest_path, purchase_date_str="2021-03-17")
+    # tick_2 = inspect_real_pred_results(output_path=dest_path, purchase_date_str="2021-03-18")
+    # logger.info(f"Overlap: {tick_1.intersection(tick_2)}")

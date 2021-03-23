@@ -2,11 +2,22 @@ from typing import List
 
 import pandas as pd
 import xgboost as xgb
+from sklearn.preprocessing import MinMaxScaler
 
 from ams.config import logger_factory
-from ams.twitter.twitter_ml_utils import transform_to_numpy, get_data_for_predictions
+from ams.twitter.twitter_ml_utils import transform_to_numpy, get_data_for_predictions, grid_search
 
 logger = logger_factory.create(__name__)
+
+
+def get_weights(df):
+
+    # Yielded 1.1
+    weights = df["days_since_earliest_date"].to_numpy()
+    scaler = MinMaxScaler()
+    results = scaler.fit_transform(weights.reshape(-1, 1))
+
+    return results
 
 
 def train_predict(df_train: pd.DataFrame, df_test: pd.DataFrame, narrow_cols: List[str], label_col: str = "buy_sell", require_balance: bool = True, buy_thresh: float = 0.):
@@ -37,7 +48,6 @@ def train_predict(df_train: pd.DataFrame, df_test: pd.DataFrame, narrow_cols: Li
 
         # grid_search(X_train=X_train, y_train=y_train)
 
-        logger.info(f"Using XGB Args: {xgb_args}")
         model = xgb.XGBRegressor(**xgb_args)
 
         model.fit(X_train,

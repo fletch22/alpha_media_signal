@@ -13,6 +13,13 @@ def add_simple_moving_averages(df: pd.DataFrame, target_column: str, windows: Li
     return df_copy
 
 
+def add_price_volatility(df: pd.DataFrame, col_price: str):
+    df_copy = df.copy()
+    with pd.option_context('mode.chained_assignment', None):
+        df_copy[f"price_volatility"] = df_copy[col_price].rolling(window=30).std().astype("float64")
+    return df_copy
+
+
 def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], tweet_date_str: str):
     max_window = max(windows)
 
@@ -43,14 +50,15 @@ def add_sma_history(df: pd.DataFrame, target_column: str, windows: List[int], tw
                     with pd.option_context('mode.chained_assignment', None):
                         dt_start_str = df_hist.iloc[-max_window:][date_col].values.tolist()[0]
                 elif df_hist.shape[0] > 0:
-                        dt_start_str = df_hist[date_col].min()
+                    dt_start_str = df_hist[date_col].min()
 
                 if dt_start_str is not None:
                     df_dated = df_equity[df_equity[date_col] >= dt_start_str].copy()
 
                     df_sma = add_simple_moving_averages(df=df_dated, target_column=target_column, windows=windows)
+                    df_price_vol = add_price_volatility(df=df_sma, col_price=target_column)
 
-                    all_dataframes.append(df_sma)
+                    all_dataframes.append(df_price_vol)
 
     df_all = pd.concat(all_dataframes, axis=0)
 

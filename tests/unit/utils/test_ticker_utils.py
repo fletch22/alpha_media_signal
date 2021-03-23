@@ -82,3 +82,19 @@ def test_ams():
     num_under = df_ungrouped[df_ungrouped["close_SMA_200_days_since_under"] > 0].shape[0]
     assert (num_under > 1)
 
+def test_up_or_down():
+    # Arrange
+    df = pd.DataFrame([
+        {"close": 1.0},
+        {"close": 0.0},
+        {"close": 3.0},
+        {"close": 3.0},
+        {"close": 8.0},
+        {"close": 2.0}
+    ])
+
+    # Act
+    df = ticker_service.prev_up_or_down(df=df)
+
+    # Assert
+    logger.info(df.head())

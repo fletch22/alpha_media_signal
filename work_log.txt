@@ -1,3 +1,12 @@
+March 20th:
+
+    Weighting the training labels so that precision is optimized will be ideal. That is, precision=1.0 means
+    there are no false positives.
+
+    TODO: Add filter step: do not use if symbol is not in upper case and is not mentioned by full name and does not use $symbol format.
+
+    TODO: Re-download data from the 18th and the 19th and 21st.
+
 March 15th:
 
     TODO: Adjust date (or some other new date field) to reflect the previous market it applies to if it arrived > close and < midnight. Perform this step in

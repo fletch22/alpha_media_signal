@@ -148,9 +148,13 @@ def test_stacking():
 
 def test_tweet_stacking():
     requires_balance = False
-    X_train, y_train, _, _ = get_split_prepped_twitter_data(requires_balance)
 
     twit_stock_model = TwitterStackingModel.load()
+
+
+    X_train, y_train, _, _ = get_split_prepped_twitter_data(requires_balance)
+
+
 
     # get the models to evaluate
     models = get_twitter_models(twit_stack_model=twit_stock_model)

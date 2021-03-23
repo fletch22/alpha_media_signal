@@ -3,6 +3,7 @@ from pathlib import Path
 from ams.config import constants, logger_factory
 from ams.services import pickle_service
 from ams.twitter.TrainAndPredictionParams import TrainAndPredictionParams
+import pandas as pd
 
 logger = logger_factory.create(__name__)
 

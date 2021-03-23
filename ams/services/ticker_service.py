@@ -156,6 +156,25 @@ def get_equity_on_prev_trading_day(df: pd.DataFrame, date_str: str) -> pd.DataFr
     return df_merged
 
 
+def prev_up_or_down(df: pd.DataFrame) -> pd.DataFrame:
+    df.loc[:, ("prev_close_1")] = df["close"].shift(1)
+    df["prev_close_1"].fillna(df["close"], inplace=True)
+    df.loc[:, f"up_or_down_1"] = (df["close"] - df["prev_close_1"] > 0).astype(int)
+
+    df.loc[:, ("prev_close_2")] = df["close"].shift(2)
+    df["prev_close_2"].fillna(df["prev_close_1"], inplace=True)
+    df.loc[:, f"up_or_down_2"] = ((df["prev_close_1"] - df["prev_close_2"]) > 0).astype(int)
+
+    df.loc[:, ("prev_close_3")] = df["close"].shift(3)
+    df["prev_close_3"].fillna(df["prev_close_2"], inplace=True)
+    df.loc[:, f"up_or_down_3"] = ((df["prev_close_2"] - df["prev_close_3"]) > 0).astype(int)
+
+    cols = ["prev_close_1", "prev_close_2", "prev_close_3"]
+    df.drop(columns=cols, inplace=True)
+
+    return df
+
+
 def get_equity_on_dates(ticker: str, date_strs: List[str], num_hold_days: int, num_days_until_purchase: int) -> pd.DataFrame:
     df = get_ticker_eod_data(ticker)
     df_in_dates = None
@@ -163,6 +182,8 @@ def get_equity_on_dates(ticker: str, date_strs: List[str], num_hold_days: int, n
         start, end = get_start_end_dates(date_strs)
         df = df[(df["date"] >= start) & (df["date"] <= end)]
         df.sort_values(by="date", inplace=True)
+
+        df = prev_up_or_down(df=df)
 
         df.loc[:, "purchase_date"] = df["date"]
         df.loc[:, "purchase_open"] = df["open"]

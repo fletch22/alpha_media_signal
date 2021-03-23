@@ -111,9 +111,10 @@ def add_ts(date_string: str):
 
 
 def get_youngest_end_drop_tweet():
-    files = file_services.list_files(constants.REFINED_TWEETS_BUCKET_PATH)
+    files = file_services.list_files(constants.REFINED_TWEETS_BUCKET_PATH, ends_with=".parquet")
     yougest_date_str = ""
     for f in files:
+        logger.info(f"Reading {f}")
         df = pd.read_parquet(f)
 
         created_at_str = df["date"].max()
@@ -143,7 +144,9 @@ def get_youngest_archive_tweet():
 
     youngest_dt_str = "2020-01-01"
     for f in files:
+
         f_str = str(f)
+        logger.info(f"Reading {f_str}")
         if f_str.endswith(".txt"):
             young_raw_dt_str = get_youngest_raw_textfile_tweet(source_path=f)
             if young_raw_dt_str is not None and young_raw_dt_str > youngest_dt_str:

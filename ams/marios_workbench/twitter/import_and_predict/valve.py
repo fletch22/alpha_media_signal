@@ -191,9 +191,12 @@ def get_and_message_predictions(twitter_root_path: Path):
                      should_delete_leftovers=True)
 
     pb_dir_path = Path(twitter_root_path, "prediction_bucket")
+
+    purchase_date_str = date_utils.get_standard_ymd_format(date=datetime.now())
     mp_process.start(src_path=sm_dir_path,
                      dest_path=pb_dir_path,
-                     prediction_mode=PredictionMode.RealMoneyStockRecommender)
+                     prediction_mode=PredictionMode.RealMoneyStockRecommender,
+                     purchase_date_str=purchase_date_str)
 
 
 if __name__ == '__main__':

@@ -282,8 +282,8 @@ def search_with_multi_thread(date_range: DateRange):
     ticker_tuples = get_ticker_searchable_tuples()
 
     from_date_str = date_utils.get_standard_ymd_format(date_range.from_date)
-    if from_date_str == "2021-03-11":
-        ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='GOGO', delete_before=True)
+    if from_date_str == "2021-03-18":
+        ticker_tuples = remove_items(ticker_tuples=ticker_tuples, ticker_to_flag='IOMI', delete_before=True)
 
     parent = Path(constants.TWITTER_OUTPUT_RAW_PATH, 'raw_drop', "main")
     tweet_raw_output_path = file_services.create_unique_filename(str(parent),
@@ -767,9 +767,12 @@ def get_split_prepped_twitter_data(requires_balance: bool = False):
 
 
 if __name__ == '__main__':
-    get_daily_prediction()
-
+    # get_daily_prediction()
     # fetch_up_to_date_tweets()
 
-    # date_range = DateRange.from_date_strings(from_date_str="2021-03-12", to_date_str="2021-03-13")
+    # date_range = DateRange.from_date_strings(from_date_str="2021-03-19", to_date_str="2021-03-21")
     # search_one_day_at_a_time(date_range=date_range)
+
+    # IOMI
+    date_range = DateRange.from_date_strings(from_date_str="2021-03-22", to_date_str="2021-03-23")
+    search_one_day_at_a_time(date_range=date_range)

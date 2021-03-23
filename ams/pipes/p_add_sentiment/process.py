@@ -73,7 +73,6 @@ def process_with_spark(source_dir_path: Path, output_dir_path: Path):
 
     f_path_strs = [str(f) for f in files]
     df = spark.read.parquet(*f_path_strs)
-    df = df.sample(fraction=.1)
 
     columns = list(df.columns)
 

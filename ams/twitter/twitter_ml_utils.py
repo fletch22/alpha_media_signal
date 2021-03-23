@@ -485,7 +485,7 @@ def add_days_since_quarter_results(df: pd.DataFrame, should_drop_missing_future_
 def add_days_since_earliest_date(df: pd.DataFrame, earliest_date_str: str):
     df = df.dropna(axis="rows", subset=["datekey", "future_date"]).copy()
 
-    df.loc[:, "days_since_earliest_date"] = df.apply(lambda x: num_days_from(x["datekey"], earliest_date_str), axis=1)
+    df.loc[:, "days_since_earliest_date"] = df.apply(lambda x: num_days_from(earliest_date_str, x["date"]), axis=1)
 
     return df
 
@@ -564,7 +564,7 @@ def change_col_date_for_nan(df: pd.DataFrame, col: str, num_days_in_future: int)
 
 
 def load_twitter_raw(proc_path: Path):
-    file_paths = file_services.list_files(parent_path=proc_path, ends_with=".parquet", use_dir_recursion=True)
+    file_paths = file_services.list_files(parent_path=proc_path, ends_with="parquet", use_dir_recursion=True)
     all_dfs = []
     for f in file_paths:
         df = pd.read_parquet(f)
@@ -751,20 +751,20 @@ def grid_search(X_train, y_train):
     # 'learning_rate': 0.0098, 'max_depth': 11, 'n_estimators': 134
     # 'learning_rate': 0.0098, 'max_depth': 11, 'n_estimators': 134
     param_grid = {
-        'n_estimators': [125, 130, 134],  # , 165, 175],
-        'max_depth': [11, 12, 13],  # 12, 15],
-        'learning_rate': [.0097, .0098, .99]  # , 1.0, 1.5]
+        'n_estimators': [90, 100, 110],  # , 165, 175],
+        'max_depth': [7, 8, 9],  # 12, 15],
     }
+    # 'learning_rate': [.01, .001, .0001]  # , 1.0, 1.5]
     scoring = 'f1'  # 'roc_auc'
     eval_metric = 'f1'  # 'auc'
 
     model = xgb.XGBClassifier(seed=42,
-                              subsample=0.9, reg_lambda=2)
+                              subsample=0.9, reg_lambda=2, learning_rate=1.0)
     optimal_params = GridSearchCV(estimator=model,
                                   param_grid=param_grid,
                                   scoring='f1',
                                   verbose=2,
-                                  n_jobs=4,
+                                  n_jobs=1,
                                   cv=3)
 
     optimal_params.fit(X_train,
