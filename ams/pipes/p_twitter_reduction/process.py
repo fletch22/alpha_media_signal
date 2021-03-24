@@ -19,8 +19,8 @@ from ams.utils.date_utils import TZ_AMERICA_NEW_YORK
 logger = logger_factory.create(__name__)
 
 # # FIXME: 2021-03-21: chris.flesche: Change when reprocess complete.
-ORG_COLS = ["f22_ticker", "date"]
-# ORG_COLS = ["f22_ticker", "f22_tweet_applied_date"]
+# ORG_COLS = ["f22_ticker", "date"]
+ORG_COLS = ["f22_ticker", "f22_tweet_applied_date"]
 
 fraction = 1.
 
@@ -71,6 +71,7 @@ def group_and_reduce_spark(df: DataFrame):
     df = df.groupBy(*ORG_COLS) \
         .agg(F.mean("created_at").alias("created_at"),
              F.mean("user_time_zone").alias("user_time_zone"),
+             # FIXME: 2021-03-21: chris.flesche: Uncomment when reprocessing is done.
              F.mean("minutes_from_tweet_eod").alias("minutes_from_tweet_eod"),
              F.mean("user_verified").alias("user_verified"),
              F.mean("user_geo_enabled").alias("user_geo_enabled"),
