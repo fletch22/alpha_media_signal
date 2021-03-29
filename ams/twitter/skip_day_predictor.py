@@ -37,7 +37,8 @@ def get_every_nth_sell_date(nth_sell_day: int) -> Set[str]:
 def get_every_nth_tweet_date(nth_sell_day: int, skip_start_days: int = 0) -> Set[str]:
     now_dt_str = date_utils.get_standard_ymd_format(datetime.now())
 
-    early_dt = date_utils.parse_std_datestring(EARLIEST_TWEET_DATE_STR)
+    early_dt_str = EARLIEST_TWEET_DATE_STR
+    early_dt = date_utils.parse_std_datestring(early_dt_str)
     early_dt = early_dt + timedelta(days=skip_start_days)
     early_dt_str = date_utils.get_standard_ymd_format(early_dt)
 

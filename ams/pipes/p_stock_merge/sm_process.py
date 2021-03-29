@@ -12,7 +12,7 @@ from ams.services import pickle_service, twitter_service, slack_service
 from ams.services.twitter_service import EARLIEST_TWEET_DATE_STR
 from ams.twitter import twitter_ml_utils
 from ams.twitter.TrainAndPredictionParamFactory import TrainAndPredictionParamFactory
-from ams.twitter.TrainAndPredictionParams import TrainAndPredictionParams
+from ams.twitter.TrainAndPredictionParams import TrainAndPredictionParams, is_good_market_date
 from ams.twitter.twitter_ml_utils import seal_label_leak, easy_convert_columns, get_stocks_based_on_tweets, \
     combine_with_quarterly_stock_data, merge_tweets_with_stock_data, add_calendar_info, one_hot
 from ams.utils import date_utils
@@ -169,14 +169,20 @@ def process(src_dir_path: Path, dest_dir_path: Path, max_date_str: str = None, s
 
     col_new_date = "f22_tweet_applied_date"
     if col_new_date in df.columns:
-        logger.info("Found new column! Renaming ...")
+        logger.info("Found new column 'f22_tweet_applied_date'! Renaming to 'date' ...")
         df.rename(columns={col_new_date: "date"}, inplace=True)
 
     df.dropna(subset=["date"], inplace=True)
 
     if max_date_str is None:
         max_date_str = df["date"].max()
-        max_date_str = get_next_market_date(max_date_str, is_reverse=True)
+        dt_tweet = date_utils.parse_std_datestring(max_date_str)
+        is_good = is_good_market_date(dt_tweet)
+        if not is_good:
+            max_date_str = get_next_market_date(date_str=max_date_str, is_reverse=True)
+
+        # TODO: 2021-03-24: chris.flesche: Is this needed?
+        # max_date_str = get_next_market_date(max_date_str, is_reverse=True)
 
     logger.info(f"max_date: {max_date_str}")
 
@@ -206,7 +212,8 @@ def start(src_dir_path: Path, dest_dir_path: Path, should_delete_leftovers: bool
 
 
 if __name__ == '__main__':
-    twit_root_path = Path(constants.TWITTER_OUTPUT_RAW_PATH)  # Path(constants.TEMP_PATH, "twitter")
+    # twit_root_path = Path(constants.TEMP_PATH, "twitter") # Path(constants.TWITTER_OUTPUT_RAW_PATH)  #
+    twit_root_path = Path(constants.TWITTER_OUTPUT_RAW_PATH)
 
     src_dir_path = Path(twit_root_path, "refined_tweets_bucket")
     dest_dir_path = Path(twit_root_path, "stock_merge_drop", "main")

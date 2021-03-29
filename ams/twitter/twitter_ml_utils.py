@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 import xgboost as xgb
-from sklearn.metrics import f1_score
+from sklearn import metrics
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 
@@ -751,25 +751,27 @@ def grid_search(X_train, y_train):
     # 'learning_rate': 0.0098, 'max_depth': 11, 'n_estimators': 134
     # 'learning_rate': 0.0098, 'max_depth': 11, 'n_estimators': 134
     param_grid = {
-        'n_estimators': [90, 100, 110],  # , 165, 175],
-        'max_depth': [7, 8, 9],  # 12, 15],
+        'n_estimators': [110, 130, 140],  # , 165, 175],
+        'max_depth': [6, 7, 8],  # 12, 15],
+        'learning_rate': [.01, 1.0, 1.5]
     }
-    # 'learning_rate': [.01, .001, .0001]  # , 1.0, 1.5]
+    # 'learning_rate': [.01, 1.0, 1.5]
     scoring = 'f1'  # 'roc_auc'
     eval_metric = 'f1'  # 'auc'
 
-    model = xgb.XGBClassifier(seed=42,
-                              subsample=0.9, reg_lambda=2, learning_rate=1.0)
+    model = xgb.XGBRegressor(seed=42,
+                             subsample=0.9, reg_lambda=2, tree_method='gpu_hist', gpu_id=0)
+
     optimal_params = GridSearchCV(estimator=model,
                                   param_grid=param_grid,
-                                  scoring='f1',
+                                  scoring='neg_mean_squared_error',
                                   verbose=2,
-                                  n_jobs=1,
+                                  n_jobs=2,
                                   cv=3)
 
     optimal_params.fit(X_train,
                        y_train,
-                       eval_metric=f1_score,
+                       eval_metric=metrics.mean_squared_error,
                        verbose=True)
 
     msg = f"Best score: {optimal_params.best_score_}; Best params: {optimal_params.best_params_}"

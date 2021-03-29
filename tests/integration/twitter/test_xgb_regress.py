@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split
 
 from ams.config import constants, logger_factory
 from ams.config.constants import xgb_defaults
+from ams.models import xgb_reg
 from ams.twitter.pred_perf_testing import get_days_roi_from_prediction_table
 from ams.twitter.twitter_ml_utils import transform_to_numpy, get_data_for_predictions
 
@@ -104,11 +105,11 @@ def test_regress():
 
     # buy_thresh = df_train["stock_val_change"].mean()
     df_predict, _ = train_predict(df_train=df_train,
-                               df_predict=df_test,
-                               narrow_cols=list(df_train.columns),
-                               label_col="stock_val_change",
-                               require_balance=False,
-                               buy_thresh=0)
+                                  df_predict=df_test,
+                                  narrow_cols=list(df_train.columns),
+                                  label_col="stock_val_change",
+                                  require_balance=False,
+                                  buy_thresh=0)
 
     top_divisor = 0
     if top_divisor != 0 and df_predict.shape[0] >= top_divisor:
@@ -159,3 +160,20 @@ def test_min_max():
     scaled = scaler.fit_transform(data)
     print(scaled)
     print(np.mean(data))
+
+
+def test_add_weights():
+    # Arrange
+    rows = [
+        ["2020-12-01"],
+        ["2020-04-01"],
+        ["2020-05-01"],
+        ["2020-06-01"]
+    ]
+    df = pd.DataFrame(rows, columns=["date"])
+
+    # Act
+    sample_weights = xgb_reg.add_sample_weights(df=df)
+
+    # Assert
+    print(sample_weights)

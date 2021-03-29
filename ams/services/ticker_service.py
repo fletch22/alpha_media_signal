@@ -163,11 +163,13 @@ def prev_up_or_down(df: pd.DataFrame) -> pd.DataFrame:
 
     df.loc[:, ("prev_close_2")] = df["close"].shift(2)
     df["prev_close_2"].fillna(df["prev_close_1"], inplace=True)
-    df.loc[:, f"up_or_down_2"] = ((df["prev_close_1"] - df["prev_close_2"]) > 0).astype(int)
+    df.loc[:, f"up_or_down_2"] = ((df["prev_close_2"] - df["prev_close_1"]) > 0).astype(int)
 
     df.loc[:, ("prev_close_3")] = df["close"].shift(3)
     df["prev_close_3"].fillna(df["prev_close_2"], inplace=True)
-    df.loc[:, f"up_or_down_3"] = ((df["prev_close_2"] - df["prev_close_3"]) > 0).astype(int)
+    df.loc[:, f"up_or_down_3"] = ((df["prev_close_3"] - df["prev_close_2"]) > 0).astype(int)
+
+    df.loc[:, "3_down_in_row"] = ((df["prev_close_1"] == 0) & (df["prev_close_2"] == 0) & (df["prev_close_3"] == 0)).astype(int)
 
     cols = ["prev_close_1", "prev_close_2", "prev_close_3"]
     df.drop(columns=cols, inplace=True)
