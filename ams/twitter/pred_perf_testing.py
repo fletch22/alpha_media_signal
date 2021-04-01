@@ -26,7 +26,6 @@ def start(src_path: Path, start_dt: datetime, num_hold_days: int, num_days_perf:
     from ams.pipes.p_make_prediction.mp_process import MONEY_PREDICTIONS_CSV
 
     file_path = Path(src_path, PREDICTIONS_CSV)
-    # file_path = Path(src_path, "predictions_test.csv")
     if training_or_real == TrainingOrReal.Real:
         file_path = Path(src_path, MONEY_PREDICTIONS_CSV)
 
@@ -80,7 +79,11 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
             purchase_date_tick = df_tick.iloc[0]
             purchase_price = purchase_date_tick["close"]
 
-            # NOTE: 2021-03-30: chris.flesche: Avoid stocks where price is green on purchase date.
+            # NOTE: 2021-03-30: chris.flesche: Testing indicates that we should avoid stocks where price < -1% below prev
+            # close or > 0% above prev close date. Perhaps this should be disabled
+            # until I can determine how to implement this; the naive solution is to manually check the price at close
+            # time; but large EOD price fluxes may alter the equity's buy eligibility or I might not be able execute a
+            # trade close to the close date. We'll see.
             pre_purch_inc = (purchase_price - tweet_close) / tweet_close
             if pre_purch_inc > 0.:
                 continue

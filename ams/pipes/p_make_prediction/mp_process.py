@@ -265,7 +265,7 @@ def train_skipping_data(output_path: Path,
 
     dates = split_dfs.get_dates()
 
-    # FIXME: 2021-03-30: chris.flesche: Temporary
+    # FIXME: 2021-03-30: chris.flesche: Temporary?
     dates = [d for d in dates if d >= tapp.tweet_date_str]
 
     dpi = DayPredictionInfo(tapp=tapp, training_bag=training_bag, output_path=output_path, max_models=len(split_dfs.dfs))
