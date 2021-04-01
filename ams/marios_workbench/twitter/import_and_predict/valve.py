@@ -31,7 +31,6 @@ logger = logger_factory.create(__name__)
 def process(twitter_root_path: Path,
             input_archive_path: Path, should_delete_leftovers: bool,
             skip_external_data_dl: bool = False, archive_raw: bool = True):
-
     if not skip_external_data_dl:
         command_service.get_equity_daily_data()
         command_service.get_equity_fundamentals_data()
@@ -53,40 +52,40 @@ def process(twitter_root_path: Path,
 
     srd_dir_path = Path(twitter_root_path, "smallified_raw_drop", "main")
     smallify_process.start(src_dir_path=start_source_path, dest_dir_path=srd_dir_path,
-                                                                  snow_plow_stage=False, should_delete_leftovers=should_delete_leftovers)
+                           snow_plow_stage=False, should_delete_leftovers=should_delete_leftovers)
 
     fd_dir_path = Path(twitter_root_path, 'flattened_drop', "main")
     flatten_process.start(source_dir_path=srd_dir_path, dest_dir_path=fd_dir_path,
-                                            snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+                          snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
 
     # # flat_output_dir = Path("e:\\tmp\\twitter\\flattened_drop\\main")
     if_dir_path = Path(twitter_root_path, "id_fixed", "main")
     add_id_process.start(source_dir_path=fd_dir_path, dest_dir_path=if_dir_path,
-                                          snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+                         snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
 
     # add_output_dir = Path("e:\\tmp\\twitter\\id_fixed\\main")
     dd_dir_path = Path(twitter_root_path, "deduped", "main")
     rem_dupes_process.start(source_dir_path=if_dir_path, dest_dir_path=dd_dir_path,
-                                             snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+                            snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
 
     # rem_output_dir = Path(constants.TWITTER_OUTPUT_RAW_PATH, "deduped", "main")
     c_dir_path = Path(twitter_root_path, 'coalesced', "main")
     coalesce_process.start(source_dir_path=dd_dir_path, dest_dir_path=c_dir_path,
-                                             snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+                           snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
 
     # coal_output_dir = Path(constants.TWITTER_OUTPUT_RAW_PATH, "coalesced\\main")
     sd_dir_path = Path(twitter_root_path, 'sent_drop', "main")
     add_sent_process.start(source_dir_path=c_dir_path, dest_dir_path=sd_dir_path,
-                                             snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+                           snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
 
     # sent_output_dir = Path("e:\\tmp\\twitter\\sent_drop\\main")
     lpd_dir_path = Path(twitter_root_path, 'learning_prep_drop', "main")
     add_learn_prep_process.start(source_dir_path=sd_dir_path, dest_dir_path=lpd_dir_path,
-                                                    snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+                                 snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
 
     tr_dir_path = twit_reduce_process.get_output_dir(twitter_root_path=twitter_root_path)
     twit_reduce_process.start(source_dir_path=lpd_dir_path, dest_dir_path=tr_dir_path,
-                                                snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
+                              snow_plow_stage=True, should_delete_leftovers=should_delete_leftovers)
 
     ref_tweet_bucket = Path(twitter_root_path, "refined_tweets_bucket")
     transfer_to_refined_tweets_bucket(src_dir_path=tr_dir_path, refined_tweets_path=ref_tweet_bucket)
@@ -199,8 +198,12 @@ def get_and_message_predictions(twitter_root_path: Path):
                      purchase_date_str=purchase_date_str)
 
 
-if __name__ == '__main__':
+def open():
     get_todays_prediction(twitter_root_path=constants.TWITTER_OUTPUT_RAW_PATH, input_archive_path=constants.TWEET_RAW_DROP_ARCHIVE)
+
+
+if __name__ == '__main__':
+    open()
     # end_bucket_path = constants.REFINED_TWEETS_BUCKET_PATH
     # process(twitter_root_path=constants.TWITTER_OUTPUT_RAW_PATH,
     #         skip_external_data_dl=True,
@@ -208,4 +211,3 @@ if __name__ == '__main__':
     #         should_delete_leftovers=False)
 
     # get_and_message_predictions(twitter_root_path=constants.TWITTER_OUTPUT_RAW_PATH)
-
