@@ -767,12 +767,11 @@ def get_split_prepped_twitter_data(requires_balance: bool = False):
 
 
 if __name__ == '__main__':
-    # get_daily_prediction()
+    get_daily_prediction()
     # fetch_up_to_date_tweets()
 
     # date_range = DateRange.from_date_strings(from_date_str="2021-03-19", to_date_str="2021-03-21")
     # search_one_day_at_a_time(date_range=date_range)
 
-    # IOMI
-    date_range = DateRange.from_date_strings(from_date_str="2021-03-22", to_date_str="2021-03-23")
-    search_one_day_at_a_time(date_range=date_range)
+    # date_range = DateRange.from_date_strings(from_date_str="2021-03-22", to_date_str="2021-03-23")
+    # search_one_day_at_a_time(date_range=date_range)

@@ -9,6 +9,7 @@ import pandas as pd
 from ams.config import constants, logger_factory
 from ams.services import ticker_service
 from ams.utils import date_utils
+from ams.utils.date_utils import get_next_market_date
 
 logger = logger_factory.create(__name__)
 
@@ -25,6 +26,7 @@ def start(src_path: Path, start_dt: datetime, num_hold_days: int, num_days_perf:
     from ams.pipes.p_make_prediction.mp_process import MONEY_PREDICTIONS_CSV
 
     file_path = Path(src_path, PREDICTIONS_CSV)
+    # file_path = Path(src_path, "predictions_test.csv")
     if training_or_real == TrainingOrReal.Real:
         file_path = Path(src_path, MONEY_PREDICTIONS_CSV)
 
@@ -63,14 +65,26 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
     shuffle(tickers)
     rois = []
 
+    matched_tickers = []
     for t in tickers:
         df_tick = ticker_service.get_ticker_eod_data(t)
-        df_tick = df_tick[df_tick["date"] >= purchase_date_str]
         df_tick.sort_values(by=["date"], ascending=True, inplace=True)
 
-        if df_tick.shape[0] > 0:
-            row_tick = df_tick.iloc[0]
-            purchase_price = row_tick["close"]
+        df_tweet_date =  df_tick[df_tick["date"] < purchase_date_str].copy()
+        df_tweet_date.sort_values(by=["date"], ascending=True, inplace=True)
+        df_tick = df_tick[df_tick["date"] >= purchase_date_str].copy()
+
+        if df_tick.shape[0] > 0 and df_tweet_date.shape[0] > 0:
+            tweet_date_tick = df_tweet_date.iloc[-1]
+            tweet_close = tweet_date_tick["close"]
+            purchase_date_tick = df_tick.iloc[0]
+            purchase_price = purchase_date_tick["close"]
+
+            # NOTE: 2021-03-30: chris.flesche: Avoid stocks where price is green on purchase date.
+            pre_purch_inc = (purchase_price - tweet_close) / tweet_close
+            if pre_purch_inc > 0.:
+                continue
+
             if min_price is None or purchase_price > min_price:
                 if df_tick.shape[0] == 0:
                     logger.info(f"No EOD stock data for {purchase_date_str}.")
@@ -91,6 +105,7 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
                     roi = (sell_price - purchase_price) / purchase_price
 
                 rois.append(roi)
+                matched_tickers.append(t)
 
                 if size_buy_lot is not None and len(rois) >= size_buy_lot:
                     break
@@ -100,7 +115,7 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
         result = mean(rois)
         suffix = ""
         if verbose:
-            suffix = f": {sorted(tickers)}"
+            suffix = f": {sorted(matched_tickers)}"
         logger.info(f"{purchase_date_str}: roi: {result}: {len(rois)} tickers{suffix}")
     else:
         logger.info(f"No data found on {purchase_date_str}.")
@@ -114,7 +129,7 @@ if __name__ == '__main__':
     # start_date_str = "2020-08-10"
     # end_date_str = "2021-02-16"
     start_date_str = "2020-08-10"
-    end_date_str = "2021-03-15"
+    end_date_str = "2021-03-30"
     min_price = 5.0
     num_hold_days = 1
     addtl_hold_days = 1

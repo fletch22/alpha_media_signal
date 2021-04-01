@@ -44,7 +44,8 @@ class TrainAndPredictionParams:
                  num_days_until_purchase: int = 1,
                  oldest_tweet_date: str = "2020-08-10",
                  prediction_mode: PredictionMode = PredictionMode.DevelopmentAndTraining,
-                 require_balance: bool = True):
+                 require_balance: bool = True,
+                 ):
 
         self.df = df
         self.tweet_date_str = tweet_date_str

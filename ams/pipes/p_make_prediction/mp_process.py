@@ -1,15 +1,16 @@
-import collections
 from datetime import datetime
 from pathlib import Path
 from random import shuffle
 from statistics import mean
-from typing import Union
+from typing import Union, List
 
 import pandas as pd
 
 from ams.config import constants, logger_factory
 from ams.config.constants import ensure_dir
 from ams.models import xgb_reg
+from ams.pipes.p_make_prediction.DayPredictionInfo import DayPredictionInfo
+from ams.pipes.p_make_prediction.SplitDataFrames import SplitDataFrames
 from ams.pipes.p_make_prediction.TrainingBag import TrainingBag
 from ams.pipes.p_stock_merge.sm_process import STOCKS_MERGED_FILENAME, PRED_PARAMS_FILENAME
 from ams.services import pickle_service, slack_service
@@ -24,14 +25,15 @@ PREDICTIONS_CSV = "predictions.csv"
 MONEY_PREDICTIONS_CSV = "real_money_predictions.csv"
 
 
-def split_train_test(tapp: TrainAndPredictionParams) -> (pd.DataFrame, pd.DataFrame):
-    df = tapp.df
+def split_train_test(df: pd.DataFrame, tweet_date_str: str) -> (pd.DataFrame, pd.DataFrame):
+    logger.info(f"Splitting on tweet date {tweet_date_str}")
 
-    logger.info(f"Splitting on tweet date {tapp.tweet_date_str}")
-
-    df_train = df[df["date"] < tapp.tweet_date_str].copy()
-    df_test = df[df["date"] == tapp.tweet_date_str].copy()
+    df_train = df[df["date"] < tweet_date_str].copy()
+    df_test = df[df["date"] == tweet_date_str].copy()
     # df_test.dropna(subset=["future_date"], inplace=True)
+
+    max_test = df_test['future_date'].max()
+    df_train = df_train[df_train["future_date"] < max_test].copy()
 
     logger.info(f"Test data size: {df_test.shape[0]}")
     logger.info(f"Train data size: {df_train.shape[0]}")
@@ -59,30 +61,32 @@ def persist_predictions(df_buy: pd.DataFrame, tapp: TrainAndPredictionParams, ou
         df_preds = df_preds[~((df_preds["purchase_date"] == tapp.purchase_date_str)
                               & (df_preds["num_hold_days"] == tapp.num_hold_days))]
 
-    if df_preds is not None:
-        df_combined = pd.concat([df_preds, df_buy], axis=0)
+    if df_buy is None or df_buy.shape[0] == 0:
+        df_combined = df_preds
     else:
-        df_combined = df_buy
+        if df_preds is not None:
+            df_combined = pd.concat([df_preds, df_buy], axis=0)
+        else:
+            df_combined = df_buy
 
-    logger.info(f"Wrote {df_buy.shape[0]} predictions to {tapp.prediction_mode.name} output file.")
-    df_combined.to_csv(pred_path, index=False)
+    if df_combined is not None:
+        logger.info(f"Added {df_buy.shape[0]} predictions to {df_combined.shape[0]} {tapp.prediction_mode.name} output file '{str(pred_path)}'")
+        df_combined.to_csv(pred_path, index=False)
 
 
-def predict_day(tapp: TrainAndPredictionParams,
-                output_path: Path,
-                training_bag: TrainingBag) -> (Union[None, float]):
-    df_train, df_test = split_train_test(tapp=tapp)
+def predict_day(dpi: DayPredictionInfo, persist_results: bool = True) -> (Union[None, float], List[str]):
+
+    df_train, df_test = split_train_test(df=dpi.df, tweet_date_str=dpi.tapp.tweet_date_str)
 
     if df_test is None or df_test.shape[0] == 0:
         return None
 
     df_train = df_train.fillna(value=0)
 
-    predictions = xgb_reg.train_predict(df_train=df_train,
+    all_mod_preds = xgb_reg.train_predict(df_train=df_train,
                                         df_test=df_test.copy(),
                                         narrow_cols=list(df_train.columns),
-                                        training_bag=training_bag,
-                                        purchase_date_str=tapp.purchase_date_str,
+                                        dpi = dpi,
                                         label_col="stock_val_change",
                                         require_balance=False,
                                         buy_thresh=0)
@@ -101,17 +105,26 @@ def predict_day(tapp: TrainAndPredictionParams,
     # else:
     #     df_buy = df_predict[df_predict["prediction"] > 0]
 
-    col_preds = "predictions"
-    df_test.loc[:, col_preds] = predictions
-    df_buy = df_test[df_test[col_preds] > 0].copy()
+    all_buy_dfs = []
+    for amp in all_mod_preds:
+        col_preds = "predictions"
+        df_tmp = df_test.copy()
+        df_tmp.loc[:, col_preds] = amp
+        df_buy = df_tmp[df_tmp[col_preds] > 0].copy()
+        all_buy_dfs.append(df_buy)
+
+    df_buy = pd.concat(all_buy_dfs, axis=0)
     logger.info(f"df_predict num rows: {df_test.shape[0]}: buy predictions: {df_buy.shape[0]}")
 
-    roi = handle_buy_predictions(df_buy, output_path, tapp)
+    roi, df_buy = handle_buy_predictions(df_buy, tapp=dpi.tapp)
+
+    if persist_results:
+        persist_predictions(df_buy=df_buy, tapp=dpi.tapp, output_path=dpi.output_path)
 
     return roi
 
 
-def handle_buy_predictions(df_buy, output_path: Path, tapp: TrainAndPredictionParams):
+def handle_buy_predictions(df_buy, tapp: TrainAndPredictionParams):
     df_buy = df_buy[["f22_ticker", "purchase_date", "future_date", "marketcap"]].copy()
 
     df_buy = df_buy.groupby(["f22_ticker", "purchase_date"]).size().reset_index(name='counts')
@@ -140,8 +153,6 @@ def handle_buy_predictions(df_buy, output_path: Path, tapp: TrainAndPredictionPa
 
         logger.info(f"Purchase dts: {df_buy['purchase_date'].unique()}")
 
-        persist_predictions(df_buy=df_buy, tapp=tapp, output_path=output_path)
-
         if tapp.prediction_mode == PredictionMode.DevelopmentAndTraining:
             purchase_date_str = df_buy["purchase_date"].to_list()[0]
             roi = get_days_roi_from_prediction_table(df_preds=df_buy,
@@ -149,7 +160,8 @@ def handle_buy_predictions(df_buy, output_path: Path, tapp: TrainAndPredictionPa
                                                      num_hold_days=num_hold_days,
                                                      min_price=0.,
                                                      addtl_hold_days=1)
-    return roi
+
+    return roi, df_buy
 
 
 def filter_columns(df: pd.DataFrame):
@@ -176,6 +188,9 @@ def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode, purc
     stocks_merged_path = Path(src_path, STOCKS_MERGED_FILENAME)
     df = pd.read_parquet(stocks_merged_path)
 
+    # FIXME: 2021-03-30: chris.flesche: Temp
+    # df = df.sample(frac=.05)
+
     tran_and_pred_path = Path(src_path, PRED_PARAMS_FILENAME)
     tapp: TrainAndPredictionParams = pickle_service.load(tran_and_pred_path)
     tapp.prediction_mode = prediction_mode
@@ -190,27 +205,38 @@ def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode, purc
     mode_offset = 0 if tapp.prediction_mode == PredictionMode.DevelopmentAndTraining else 2
     tweet_date_str = get_next_market_day_no_count_closed_days(date_str=purchase_date_str, num_days=-(nth_sell_day - mode_offset))
 
+    all_dfs = []
+
+    df.sort_values(by=["date"], inplace=True)
     for i in range(nth_sell_day):
         tapp.tweet_date_str = tweet_date_str
         tapp.max_date_str = tapp.tweet_date_str
 
         dates = skip_day_predictor.get_every_nth_tweet_date(nth_sell_day=nth_sell_day, skip_start_days=i)
         dates = list(set(dates) | {tapp.tweet_date_str})
-        tapp.df = df[df["date"].isin(dates)].copy()
+        all_dfs.append(df[df["date"].isin(dates)].copy())
 
-        if tapp.prediction_mode == PredictionMode.RealMoneyStockRecommender:
-            _ = predict_day(tapp=tapp, output_path=dest_path)
+    split_dfs = SplitDataFrames(split_dfs=all_dfs)
 
-            tickers = inspect_real_pred_results(dest_path, tapp.purchase_date_str)
+    if tapp.prediction_mode == PredictionMode.RealMoneyStockRecommender:
+        dpi = DayPredictionInfo(tapp=tapp, training_bag=training_bag, output_path=dest_path, max_models=len(split_dfs.dfs))
+        for ndx, sd in enumerate(split_dfs.dfs):
+            dpi.df = sd
 
-            if send_msgs:
-                slack_service.send_direct_message_to_chris(f"{tapp.purchase_date_str}: {str(tickers)}")
-        else:
-            roi = train_skipping_data(output_path=dest_path, tapp=tapp, training_bag=training_bag)
-            if roi is not None:
-                roi_all.append(roi)
+            persist_results = False
+            if ndx == len(split_dfs.dfs) - 1:
+                persist_results = True
 
-        break
+            predict_day(dpi=dpi, persist_results=persist_results)
+
+        tickers = inspect_real_pred_results(output_path=dest_path, purchase_date_str=tapp.purchase_date_str)
+
+        if send_msgs:
+            slack_service.send_direct_message_to_chris(f"{tapp.purchase_date_str}: {str(tickers)}")
+    else:
+        roi = train_skipping_data(output_path=dest_path, tapp=tapp, training_bag=training_bag, split_dfs=split_dfs)
+        if roi is not None:
+            roi_all.append(roi)
 
     if tapp.prediction_mode == PredictionMode.DevelopmentAndTraining:
         twitter_root_path = src_path.parent.parent
@@ -224,35 +250,43 @@ def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode, purc
         logger.info(f"Overall roi: {overall_roi}")
 
 
-def train_skipping_data(output_path: Path, tapp: TrainAndPredictionParams, training_bag: TrainingBag) -> float:
+def train_skipping_data(output_path: Path,
+                        tapp: TrainAndPredictionParams,
+                        training_bag: TrainingBag.persist,
+                        split_dfs: SplitDataFrames) -> float:
     has_more_days = True
     roi_all = []
     overall_roi = None
 
-    tapp.df.sort_values(by=["date"], inplace=True)
-
     # FIXME: 2021-03-27: chris.flesche: Temp
     # tapp.df = tapp.df.sample(frac=.1)
 
-    dates = tapp.df["date"].unique()
+    # dates = tapp.df["date"].unique()
 
-    prev_model_deque = collections.deque()
+    dates = split_dfs.get_dates()
+
+    # FIXME: 2021-03-30: chris.flesche: Temporary
+    dates = [d for d in dates if d >= tapp.tweet_date_str]
+
+    dpi = DayPredictionInfo(tapp=tapp, training_bag=training_bag, output_path=output_path, max_models=len(split_dfs.dfs))
 
     count = 0
     while has_more_days:
-        roi, prev_model_deque = predict_day(tapp=tapp, output_path=output_path, prev_model_deque=prev_model_deque, training_bag=training_bag)
+        df = split_dfs.get_dataframe(date_str=tapp.tweet_date_str)
+        if df is not None:
+            dpi.set_df(df=df)
 
-        if roi is not None:
-            roi_all.append(roi)
-            logger.info(f"Ongoing roi: {mean(roi_all)}")
+            roi = predict_day(dpi=dpi, persist_results=True)
+
+            if roi is not None:
+                roi_all.append(roi)
+                logger.info(f"Ongoing roi: {mean(roi_all)}")
 
         dates = dates[1:]
         tapp.tweet_date_str = dates[0]
         has_more_days = len(dates) > 1
 
         count += 1
-        if count > 13:
-            break
 
     if len(roi_all) > 0:
         overall_roi = mean(roi_all)
@@ -264,7 +298,7 @@ def inspect_real_pred_results(output_path: Path, purchase_date_str: str):
     real_mon_path = get_real_money_preds_path(output_path)
     df = pd.read_csv(str(real_mon_path))
 
-    logger.info(f"Purchase date str: {purchase_date_str}")
+    logger.info(f"Looking for purchase date str: {purchase_date_str} in CSV {str(real_mon_path)}")
 
     # logger.info(list(df.columns))
 
@@ -282,7 +316,7 @@ def inspect_real_pred_results(output_path: Path, purchase_date_str: str):
 
 
 if __name__ == '__main__':
-    twit_root_path = constants.TWITTER_OUTPUT_RAW_PATH  # Path(constants.TEMP_PATH, "twitter")
+    twit_root_path = constants.TWITTER_OUTPUT_RAW_PATH
     # twit_root_path = Path(constants.TEMP_PATH, "twitter")
     src_path = Path(twit_root_path, "stock_merge_drop", "main")
     dest_path = Path(twit_root_path, "prediction_bucket")
@@ -294,7 +328,7 @@ if __name__ == '__main__':
     prediction_mode = PredictionMode.DevelopmentAndTraining  # PredictionMode.RealMoneyStockRecommender
 
     # purchase_date_str = date_utils.get_standard_ymd_format(date=datetime.now())
-    purchase_date_str = "2021-08-10"
+    purchase_date_str = "2021-03-09"
     start(src_path=src_path,
           dest_path=dest_path,
           prediction_mode=prediction_mode,

@@ -41,22 +41,22 @@ def test_bagger():
     purchase_date_list = tb.get_purchase_dates()
 
     all_rois = []
+    num_bags = 3
     for p_date in purchase_date_list:
-        logger.info(f"Primary purchase date: {pd}")
+        logger.info(f"Primary purchase date: {p_date}")
         df_train, df_test = tb.get_data(purchase_date_str=p_date)
         model_1, standard_scaler = get_model(df_train)
 
-        X_predict = get_data_for_predictions(df=df_test, narrow_cols=list(df_train.columns), standard_scaler=standard_scaler)
-
-        rec_data = tb.get_recent_data(purchase_date_str=p_date, num_models=2)
-        all_models = [model_1]
-        for df_train, df_test in rec_data:
-            model, _ = get_model(df_train=df_train)
-            all_models.append(model)
-
         predictions = []
-        for mod in all_models:
-            pred = mod.predict(X_predict)
+        X_predict = get_data_for_predictions(df=df_test, narrow_cols=list(df_train.columns), standard_scaler=standard_scaler)
+        pred = model_1.predict(X_predict)
+        predictions.append(pred)
+
+        rec_data = tb.get_recent_data(purchase_date_str=p_date, num_models=(num_bags - 1))
+        for df_train, _ in rec_data:
+            model, standard_scaler = get_model(df_train=df_train)
+            X_predict = get_data_for_predictions(df=df_test, narrow_cols=list(df_train.columns), standard_scaler=standard_scaler)
+            pred = model.predict(X_predict)
             predictions.append(pred)
 
         buys = []
@@ -71,7 +71,7 @@ def test_bagger():
 
         df_buy = pd.concat(buys, axis=0)
 
-        roi = handle_buy_predictions(df_buy)
+        roi = handle_buy_predictions(df_buy, num_bags=num_bags)
         all_rois.append(roi)
 
         logger.info(f"Ongoing roi: {mean(all_rois)}")
@@ -93,24 +93,22 @@ def get_model(df_train):
     return model, standard_scaler
 
 
-def handle_buy_predictions(df_buy):
+def handle_buy_predictions(df_buy: pd.DataFrame, num_bags: int):
     df_buy = df_buy[["f22_ticker", "purchase_date", "future_date", "marketcap"]].copy()
 
     df_buy = df_buy.groupby(["f22_ticker", "purchase_date"]).size().reset_index(name='counts')
-    df_buy_3 = df_buy[df_buy["counts"] == 3]
-    df_buy_2 = df_buy[df_buy["counts"] == 2]
-    df_buy_1 = df_buy[df_buy["counts"] == 1]
 
-    logger.info(f"Found {df_buy_3.shape[0]} with 3 counts.")
-    logger.info(f"Found {df_buy_2.shape[0]} with 2 counts.")
-    logger.info(f"Found {df_buy_1.shape[0]} with 1 counts.")
+    df_buy_all = []
+    for i in reversed(range(num_bags)):
+        num_count = i + 1
+        df_buy_tmp: pd.DataFrame = df_buy[df_buy["counts"] == num_count].copy()
+        logger.info(f"Found {df_buy_tmp.shape[0]} with {num_count} counts.")
+        df_buy_all.append(df_buy_tmp)
 
-    df_buy = df_buy_3
-    if df_buy.shape[0] == 0:
-        df_buy = df_buy_2
-
-    if df_buy.shape[0] == 0:
-        df_buy = df_buy_1
+    for df in df_buy_all:
+        df_buy = df
+        if df_buy.shape[0] > 0:
+            break
 
     roi = None
     num_hold_days = 1

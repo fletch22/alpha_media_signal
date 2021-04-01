@@ -14,4 +14,4 @@ def test_model_bag():
     model_bag.add_fistfull(rev_ndx=0, purchase_date_str="2020-01-01", model=model)
 
     # Assert
-    assert (len(model_bag.models) == 1)
+    assert (len(model_bag.models_info) == 1)

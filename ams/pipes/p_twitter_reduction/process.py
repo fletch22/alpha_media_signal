@@ -18,9 +18,7 @@ from ams.utils.date_utils import TZ_AMERICA_NEW_YORK
 
 logger = logger_factory.create(__name__)
 
-# # FIXME: 2021-03-21: chris.flesche: Change when reprocess complete.
 ORG_COLS = ["f22_ticker", "date"]
-# ORG_COLS = ["f22_ticker", "f22_tweet_applied_date"]
 
 fraction = 1.
 
@@ -51,10 +49,6 @@ def group_and_reduce_spark(df: DataFrame):
 
     is_after_closed_udf = F.udf(is_after_n_closed, T.BooleanType())
 
-    # FIXME: 2021-03-21: chris.flesche: Uncomment when reprocessing is done.
-    # df = df.withColumn("f22_tweet_applied_date", applied_date_udf(F.col("created_at_timestamp")))
-    # df = df.withColumn("minutes_from_tweet_eod", minutes_from_tweet_eod_udf(F.col("created_at_timestamp"), F.col("f22_tweet_applied_date")))
-
     df = df.withColumn(COL_AFTER_HOURS, is_after_closed_udf(F.col("created_at_timestamp")))
 
     df = df.withColumn("f22_has_cashtag", F.col("f22_has_cashtag").cast(T.BooleanType()).cast(T.IntegerType()))
@@ -71,8 +65,6 @@ def group_and_reduce_spark(df: DataFrame):
     df = df.groupBy(*ORG_COLS) \
         .agg(F.mean("created_at").alias("created_at"),
              F.mean("user_time_zone").alias("user_time_zone"),
-             # FIXME: 2021-03-21: chris.flesche: Uncomment when reprocessing is done.
-             # F.mean("minutes_from_tweet_eod").alias("minutes_from_tweet_eod"),
              F.mean("user_verified").alias("user_verified"),
              F.mean("user_geo_enabled").alias("user_geo_enabled"),
              F.mean("user_location").alias("user_location"),

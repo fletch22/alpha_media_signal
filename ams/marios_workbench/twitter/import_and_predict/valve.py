@@ -203,7 +203,7 @@ if __name__ == '__main__':
     get_todays_prediction(twitter_root_path=constants.TWITTER_OUTPUT_RAW_PATH, input_archive_path=constants.TWEET_RAW_DROP_ARCHIVE)
     # end_bucket_path = constants.REFINED_TWEETS_BUCKET_PATH
     # process(twitter_root_path=constants.TWITTER_OUTPUT_RAW_PATH,
-    #         end_bucket_path=end_bucket_path,
+    #         skip_external_data_dl=True,
     #         input_archive_path=constants.TWEET_RAW_DROP_ARCHIVE,
     #         should_delete_leftovers=False)
 

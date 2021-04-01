@@ -10,9 +10,11 @@ from ams.utils import date_utils
 class TrainAndPredictionParamFactory:
 
     @classmethod
-    def create_generic_trainer(self, df: pd.DataFrame, num_hold_days: int,
+    def create_generic_trainer(self, df: pd.DataFrame,
+                               num_hold_days: int,
                                max_date_str: str = None, min_date_str: str = None,
-                               require_balance: bool = True):
+                               require_balance: bool = True,
+                               ):
         if min_date_str is None:
             min_date_str = EARLIEST_TWEET_DATE_STR
 

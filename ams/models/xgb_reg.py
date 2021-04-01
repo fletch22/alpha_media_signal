@@ -1,4 +1,3 @@
-import collections
 import warnings
 from typing import List
 
@@ -7,7 +6,7 @@ import xgboost as xgb
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 from ams.config import logger_factory
-from ams.pipes.p_make_prediction.TrainingBag import TrainingBag
+from ams.pipes.p_make_prediction.DayPredictionInfo import DayPredictionInfo
 from ams.twitter.twitter_ml_utils import transform_to_numpy, get_data_for_predictions
 
 logger = logger_factory.create(__name__)
@@ -25,20 +24,24 @@ def get_weights(df):
 
 def predict_with_model(df_test: pd.DataFrame,
                        narrow_cols: List[str],
-                       standard_scaler: StandardScaler,
-                       model: object):
-    X_predict = get_data_for_predictions(df=df_test, narrow_cols=narrow_cols, standard_scaler=standard_scaler)
+                       dpi: DayPredictionInfo):
 
     logger.info("Invoking model prediction ...")
 
-    return model.predict(X_predict)
+    all_models = dpi.get_models_info()
+    all_preds = []
+    for mi in all_models:
+        X_predict = get_data_for_predictions(df=df_test, narrow_cols=narrow_cols, standard_scaler=mi.standard_scaler)
+        pred = mi.model.predict(X_predict)
+        all_preds.append(pred)
+
+    return all_preds
 
 
 def train_predict(df_train: pd.DataFrame,
                   df_test: pd.DataFrame,
                   narrow_cols: List[str],
-                  training_bag: TrainingBag,
-                  purchase_date_str: str,
+                  dpi: DayPredictionInfo,
                   label_col: str = "buy_sell",
                   require_balance: bool = True,
                   buy_thresh: float = 0.):
@@ -74,12 +77,11 @@ def train_predict(df_train: pd.DataFrame,
     # grid_search(X_train=X_train, y_train=y_train)
 
     xgb_reg = xgb.XGBRegressor(**xgb_args)
-
     model = xgb_reg.fit(X_train, y_train, sample_weight=get_weights(df=df_train))
+    dpi.append_model_info(model=model, standard_scaler=standard_scaler)
 
-    training_bag.add_fistfull(purchase_date_str=purchase_date_str, model=model, df_train=df_train, df_test=df_test)
+    # dpi.training_bag.add_fistfull(purchase_date_str=dpi.tapp.purchase_date_str, model=model, df_train=df_train, df_test=df_test)
 
     return predict_with_model(narrow_cols=narrow_cols,
                               df_test=df_test,
-                              standard_scaler=standard_scaler,
-                              model=model)
+                              dpi=dpi)

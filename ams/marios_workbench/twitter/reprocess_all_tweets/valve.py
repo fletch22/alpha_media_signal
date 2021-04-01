@@ -79,11 +79,6 @@ class ReProcessZip:
         for a_path in self.accum:
             move_file_to_folder(a_path, self.raw_root_main)
 
-        skip_external_data_dl = False
-        if self.last_proc_dt is not None:
-            skip_external_data_dl = ReProcessZip.was_less_than_market_day_ago(self.last_proc_dt)
-
-        # FIXME: 2021-02-27: chris.flesche: Temporary
         skip_external_data_dl = True
 
         files = file_services.list_files(self.raw_root_main)
