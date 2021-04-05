@@ -680,9 +680,10 @@ def merge_tweets_with_stock_data(df_twitter, df_stock_and_quarter):
     if df_merged.shape[0] == 0:
         logger.info("Not enough data after merge.")
 
-    df_ranked = add_tip_ranks_2(df=df_merged, tr_file_path=constants.TIP_RANKED_DATA_PATH)
+    # FIXME: 2021-04-03: chris.flesche: Uncomment if new tipranks is golden.
+    # df_ranked = add_tip_ranks_2(df=df_merged, tr_file_path=constants.TIP_RANKED_DATA_PATH)
 
-    return df_ranked
+    return df_merged
 
 
 def add_calendar_info(df: pd.DataFrame, columns_fundy: List[str], tweet_date_str: str, num_hold_days: int, oldest_tweet_date):

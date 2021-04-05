@@ -84,9 +84,9 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
             # until I can determine how to implement this; the naive solution is to manually check the price at close
             # time; but large EOD price fluxes may alter the equity's buy eligibility or I might not be able execute a
             # trade close to the close date. We'll see.
-            pre_purch_inc = (purchase_price - tweet_close) / tweet_close
-            if pre_purch_inc > 0.:
-                continue
+            # pre_purch_inc = (purchase_price - tweet_close) / tweet_close
+            # if pre_purch_inc > 0.:
+            #     continue
 
             if min_price is None or purchase_price > min_price:
                 if df_tick.shape[0] == 0:

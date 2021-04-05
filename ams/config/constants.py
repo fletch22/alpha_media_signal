@@ -10,6 +10,7 @@ from ams.config.Credentials import Credentials
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 STOCK_PREDICTOR_ROOT = Path(PROJECT_ROOT.parent, 'stock-predictor')
 
+
 def ensure_dir(dir):
     os.makedirs(dir, exist_ok=True)
 
@@ -158,7 +159,7 @@ TWEET_RAW_DROP_ARCHIVE = Path(TWITTER_OVERFLOW_OUTPUT, "raw_drop", "archive")
 TESTS_ROOT = Path(PROJECT_ROOT, "tests")
 TESTS_RESOURCES = Path(TESTS_ROOT, "resources")
 
-TEMP_PATH  = Path("e:\\tmp")
+TEMP_PATH = Path("e:\\tmp")
 
 TRANSIENT_DIR_PATH = Path(TEMP_PATH, "transient")
 ensure_dir(TRANSIENT_DIR_PATH)

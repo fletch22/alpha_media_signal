@@ -15,7 +15,7 @@ from ams.twitter.TrainAndPredictionParamFactory import TrainAndPredictionParamFa
 from ams.twitter.TrainAndPredictionParams import TrainAndPredictionParams, is_good_market_date
 from ams.twitter.twitter_ml_utils import seal_label_leak, easy_convert_columns, get_stocks_based_on_tweets, \
     combine_with_quarterly_stock_data, merge_tweets_with_stock_data, add_calendar_info, one_hot
-from ams.utils import date_utils
+from ams.utils import date_utils, tipranks_utils
 from ams.utils.date_utils import get_standard_ymd_format, get_market_holidays, get_next_market_date
 
 logger = logger_factory.create(__name__)
@@ -109,6 +109,9 @@ def merge_with_stocks_for_day(tapp: TrainAndPredictionParams, output_parent_path
 
     df_sd_futured = get_stocks_based_on_tweets(df_tweets=df_twitter, tweet_date_str=tapp.tweet_date_str,
                                                num_hold_days=tapp.num_hold_days, num_days_until_purchase=tapp.num_days_until_purchase)
+
+    # NOTE: 2021-04-04: chris.flesche: .005
+    # df_ranked = tipranks_utils.agg_tipranks(df_stocks=df_sd_futured)
 
     # show_metrics(df_sd_futured, tapp, "df_sd_futured rows")
 
@@ -227,4 +230,4 @@ if __name__ == '__main__':
           sample_fraction=sample_frac,
           num_hold_days=num_hold_days)
 
-    slack_service.send_direct_message_to_chris("Stocks merged w tweets.")
+    # slack_service.send_direct_message_to_chris("Stocks merged w tweets.")

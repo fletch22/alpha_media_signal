@@ -62,7 +62,7 @@ def train_predict(df_train: pd.DataFrame,
     #                 max_depth=7, n_estimators=110)
 
     # NOTE: 2021-03-24: chris.flesche: 1.1% roi
-    xgb_args = dict(seed=42, max_depth=8, tree_method='gpu_hist', gpu_id=0)
+    xgb_args = dict(seed=42, max_depth=4, tree_method='gpu_hist', gpu_id=0)
 
     if not require_balance:
         num_buy = df_train[df_train["stock_val_change"] > buy_thresh].shape[0]

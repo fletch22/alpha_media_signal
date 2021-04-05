@@ -181,7 +181,7 @@ def get_todays_prediction(twitter_root_path: Path, input_archive_path: Path):
             logger.info(be)
 
 
-def get_and_message_predictions(twitter_root_path: Path):
+def get_and_message_predictions(twitter_root_path: Path, prediction_mode: PredictionMode = PredictionMode.RealMoneyStockRecommender):
     ref_tweet_bucket = Path(twitter_root_path, "refined_tweets_bucket")
     sm_dir_path = Path(twitter_root_path, "stock_merge_drop", "main")
 
@@ -194,7 +194,7 @@ def get_and_message_predictions(twitter_root_path: Path):
     purchase_date_str = date_utils.get_standard_ymd_format(date=datetime.now())
     mp_process.start(src_path=sm_dir_path,
                      dest_path=pb_dir_path,
-                     prediction_mode=PredictionMode.RealMoneyStockRecommender,
+                     prediction_mode=prediction_mode,
                      purchase_date_str=purchase_date_str)
 
 

@@ -249,6 +249,8 @@ def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode, purc
     if overall_roi is not None:
         logger.info(f"Overall roi: {overall_roi}")
 
+    return overall_roi
+
 
 def train_skipping_data(output_path: Path,
                         tapp: TrainAndPredictionParams,
@@ -328,9 +330,17 @@ if __name__ == '__main__':
     prediction_mode = PredictionMode.DevelopmentAndTraining  # PredictionMode.RealMoneyStockRecommender
 
     # purchase_date_str = date_utils.get_standard_ymd_format(date=datetime.now())
-    purchase_date_str = "2021-03-09"
-    start(src_path=src_path,
-          dest_path=dest_path,
-          prediction_mode=prediction_mode,
-          send_msgs=False,
-          purchase_date_str=purchase_date_str)
+    purchase_date_str = "2020-08-10"
+
+    roi_list = []
+    for i in range(3):
+        roi = start(src_path=src_path,
+              dest_path=dest_path,
+              prediction_mode=prediction_mode,
+              send_msgs=False,
+              purchase_date_str=purchase_date_str)
+        roi_list.append(roi)
+
+        slack_service.send_direct_message_to_chris(f"Roi: {mean(roi_list)}")
+
+

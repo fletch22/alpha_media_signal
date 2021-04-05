@@ -104,41 +104,6 @@ def convert_timestamp_to_nyc_date_str_udf(utc_timestamp):
     return convert_timestamp_to_nyc_date_str(utc_timestamp=utc_timestamp)
 
 
-def get_market_holidays() -> str:
-    global stock_market_holidays
-    if stock_market_holidays is None:
-        stock_market_holidays = pd.read_csv(constants.US_MARKET_HOLIDAYS_PATH)["date"].to_list()
-
-    return stock_market_holidays
-
-
-def is_stock_market_closed(dt: datetime):
-    date_str = get_standard_ymd_format(dt)
-    max_date = sorted(get_market_holidays())[-1]
-    reached_end_of_data = False
-    if date_str > max_date:
-        reached_end_of_data = True
-    is_closed = False
-    if dt.weekday() > 4:
-        is_closed = True
-    else:
-        if date_str in get_market_holidays():
-            is_closed = True
-    return is_closed, reached_end_of_data
-
-
-def find_next_market_open_day(dt: datetime, is_reverse: bool = False):
-    day = -1 if is_reverse else 1
-    while True:
-        dt = dt + timedelta(days=day)
-        is_closed, reached_end_of_data = is_stock_market_closed(dt)
-        if reached_end_of_data:
-            raise Exception("While finding the next market open day, the system reached the end of the available data.")
-        if not is_closed:
-            break
-    return dt
-
-
 def skip_market_days(dt: datetime, num_market_days_to_skip: int):
     is_reverse = num_market_days_to_skip < 0
     for i in range(abs(num_market_days_to_skip)):
@@ -160,6 +125,47 @@ def get_next_market_date(date_str: str, is_reverse: bool = False) -> str:
     return get_standard_ymd_format(find_next_market_open_day(dt, is_reverse=is_reverse))
 
 
+def find_next_market_open_day(dt: datetime, is_reverse: bool = False):
+    day = -1 if is_reverse else 1
+    while True:
+        dt = dt + timedelta(days=day)
+        is_closed, reached_end_of_data = is_stock_market_closed(dt)
+        if reached_end_of_data:
+            raise Exception("While finding the next market open day, the system reached the end of the available data.")
+        if not is_closed:
+            break
+    return dt
+
+
+def is_stock_market_closed(dt: datetime):
+    date_str = get_standard_ymd_format(dt)
+    max_date = sorted(get_market_holidays())[-1]
+    reached_end_of_data = False
+    if date_str > max_date:
+        reached_end_of_data = True
+    is_closed = False
+    if dt.weekday() > 4:
+        is_closed = True
+    else:
+        if date_str in get_market_holidays():
+            is_closed = True
+    return is_closed, reached_end_of_data
+
+
+def get_market_holidays() -> str:
+    global stock_market_holidays
+    if stock_market_holidays is None:
+        stock_market_holidays = pd.read_csv(constants.US_MARKET_HOLIDAYS_PATH)["date"].to_list()
+
+    return stock_market_holidays
+
+
 def get_next_market_day_no_count_closed_days(date_str: str, num_days: int) -> str:
     dt = parse_std_datestring(date_str)
     return get_standard_ymd_format(skip_market_days(dt, num_days))
+
+
+def get_days_between(date_str_1: str, date_str_2: str):
+    dt_1 = parse_std_datestring(date_str_1)
+    dt_2 = parse_std_datestring(date_str_2)
+    return abs((dt_2 - dt_1).days)
