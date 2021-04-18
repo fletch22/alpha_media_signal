@@ -129,9 +129,9 @@ def merge_with_stocks_for_day(tapp: TrainAndPredictionParams, output_parent_path
                                       num_hold_days=tapp.num_hold_days,
                                       oldest_tweet_date=tapp.oldest_tweet_date)
 
-    # show_metrics(df_days_until, tapp, "df_days_until rows")
-
-    df_refined = twitter_service.refine_pool(df=df_days_until, min_volume=None, min_price=None, max_price=None)
+    # NOTE: 2021-04-07: chris.flesche: min_volume: Experimental. Negative correlation when min_volume == 100000
+    min_volume = None
+    df_refined = twitter_service.refine_pool(df=df_days_until, min_volume=min_volume, max_price=None)
 
     df_ticker_hotted, narrow_cols = one_hot(df=df_refined)
 
@@ -164,7 +164,11 @@ def merge_with_stocks_for_day(tapp: TrainAndPredictionParams, output_parent_path
     return
 
 
-def process(src_dir_path: Path, dest_dir_path: Path, max_date_str: str = None, sample_fraction: float = None, num_hold_days: int = 1):
+def process(src_dir_path: Path, dest_dir_path: Path,
+            max_date_str: str = None,
+            sample_fraction: float = None,
+            num_hold_days: int = 1,
+            min_price: float = 0.):
     logger.info(f"Getting tweet data from {src_dir_path}")
     df: pd.DataFrame = get_tweet_data(src_path=src_dir_path)
     if sample_fraction is not None:
@@ -189,7 +193,11 @@ def process(src_dir_path: Path, dest_dir_path: Path, max_date_str: str = None, s
 
     logger.info(f"max_date: {max_date_str}")
 
-    tapp = TrainAndPredictionParamFactory.create_generic_trainer(df=df, max_date_str=max_date_str, num_hold_days=num_hold_days, require_balance=False)
+    tapp = TrainAndPredictionParamFactory.create_generic_trainer(df=df,
+                                                                 max_date_str=max_date_str,
+                                                                 min_price=min_price,
+                                                                 num_hold_days=num_hold_days,
+                                                                 require_balance=False)
 
     pred_path_str = Path(dest_dir_path, PRED_PARAMS_FILENAME)
     pickle_service.save(tapp, file_path=pred_path_str)
@@ -206,12 +214,25 @@ def process(src_dir_path: Path, dest_dir_path: Path, max_date_str: str = None, s
     merge_with_stocks_for_day(tapp=tapp, output_parent_path=dest_dir_path)
 
 
-def start(src_dir_path: Path, dest_dir_path: Path, should_delete_leftovers: bool, sample_fraction: float = None, num_hold_days: int = 1):
+def get_stock_merge_trainer_params(stock_merge_drop_path: Path) -> TrainAndPredictionParams:
+    tran_and_pred_path = Path(stock_merge_drop_path, PRED_PARAMS_FILENAME)
+    return pickle_service.load(tran_and_pred_path)
+
+
+def start(src_dir_path: Path, dest_dir_path: Path,
+          should_delete_leftovers: bool,
+          sample_fraction: float = None,
+          num_hold_days: int = 1,
+          min_price: float = 0.):
     ensure_dir(dest_dir_path)
 
     batchy_bae.ensure_clean_output_path(dest_dir_path, should_delete_remaining=should_delete_leftovers)
 
-    process(src_dir_path=src_dir_path, dest_dir_path=dest_dir_path, sample_fraction=sample_fraction, num_hold_days=num_hold_days)
+    process(src_dir_path=src_dir_path,
+            dest_dir_path=dest_dir_path,
+            sample_fraction=sample_fraction,
+            num_hold_days=num_hold_days,
+            min_price=min_price)
 
 
 if __name__ == '__main__':
@@ -223,11 +244,13 @@ if __name__ == '__main__':
 
     sample_frac = 1  # None  # .4
     num_hold_days = 1
+    min_price = .0
 
     start(src_dir_path=src_dir_path,
           dest_dir_path=dest_dir_path,
           should_delete_leftovers=True,
           sample_fraction=sample_frac,
-          num_hold_days=num_hold_days)
+          num_hold_days=num_hold_days,
+          min_price=min_price)
 
-    # slack_service.send_direct_message_to_chris("Stocks merged w tweets.")
+    slack_service.send_direct_message_to_chris("Stocks merged w tweets.")

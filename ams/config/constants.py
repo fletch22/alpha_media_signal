@@ -166,10 +166,13 @@ ensure_dir(TRANSIENT_DIR_PATH)
 
 REFINED_TWEETS_BUCKET_PATH = Path(TWITTER_OUTPUT_RAW_PATH, "refined_tweets_bucket")
 
-xgb_defaults = SimpleNamespace(defaults=SimpleNamespace(max_depth=20))
+xgb_defaults = SimpleNamespace(defaults=SimpleNamespace(max_depth=4))
 
 AUTO_ML_PATH = Path(TRANSIENT_DIR_PATH, "auto_ml_train_test_val.csv")
 
 TWITTER_STACKING_MODEL_PATH = Path(TWITTER_MODEL_PATH, "twitter_stacking_model.pkl")
 
 TWIT_STOCK_MERGE_DROP_PATH = Path(TWITTER_OUTPUT_RAW_PATH, "stock_merge_drop", "main")
+
+PERF_METRICS_ROIS = Path(TRANSIENT_DIR_PATH, "perf_metrics_rois.csv")
+

@@ -2,8 +2,9 @@ import collections
 import random
 from pathlib import Path
 from statistics import mean
-from typing import List, Dict, Tuple, Union, Set
+from typing import List, Dict, Tuple, Union, Set, Optional
 
+import numpy
 import numpy as np
 import pandas as pd
 import torch
@@ -112,21 +113,22 @@ def model_torch_predict(X_torch, model):
     return y_pred_tag
 
 
-def transform_to_numpy(df: pd.DataFrame, narrow_cols: List[str], label_col: str = "buy_sell", require_balance: bool = True) -> Tuple[any, any, any]:
+def transform_to_numpy(df: pd.DataFrame, narrow_cols: List[str], label_col: str = "buy_sell", require_balance: bool = True) -> \
+    Tuple[Optional[numpy.array], Optional[numpy.array], Optional[StandardScaler], Optional[List[str]]]:
     standard_scaler = StandardScaler()
 
-    train_cols = twitter_service.get_feature_columns(narrow_cols)
+    feature_cols = twitter_service.get_feature_columns(narrow_cols)
 
-    X_train_raw, y_train = twitter_service.split_df_for_learning(df=df, label_col=label_col, train_cols=train_cols, require_balance=require_balance)
+    X_train_raw, y_train = twitter_service.split_df_for_learning(df=df, label_col=label_col, train_cols=feature_cols, require_balance=require_balance)
 
     if X_train_raw is None or X_train_raw.shape[0] == 0:
-        return None, None, None
+        return None, None, None, None
 
     standard_scaler = standard_scaler.fit(X_train_raw)
 
     X_train = standard_scaler.transform(X_train_raw)
 
-    return X_train, y_train, standard_scaler
+    return X_train, y_train, standard_scaler, feature_cols
 
 
 def split_off_data(df: pd.DataFrame,
@@ -367,26 +369,6 @@ def add_tip_ranks(df: pd.DataFrame, tr_file_path: Path):
 
     rows_are_null = df_ranked['target_price'].isnull()
     df_ranked.loc[rows_are_null, "target_price"] = df_ranked["prev_close"] + .01
-
-    df_ranked.loc[:, "rank_roi"] = df_ranked.apply(rank_roied, axis=1)
-
-    rank_mean = df_tip_ranks["rank"].mean()
-
-    df_ranked.loc[:, "rating"] = df_ranked["rating"].fillna(0)
-    df_ranked.loc[:, "rank"] = df_ranked["rank"].fillna(rank_mean)
-    df_ranked.loc[:, "rating_age_days"] = df_ranked["rating_age_days"].fillna(1000)
-
-    return df_ranked
-
-
-def add_tip_ranks_2(df: pd.DataFrame, tr_file_path: Path):
-    df_tip_ranks = pd.read_parquet(str(tr_file_path))
-    df_tip_ranks = df_tip_ranks.rename(columns={"ticker": "f22_ticker"})
-
-    df_ranked = pd.merge(df, df_tip_ranks, on=["date", "f22_ticker"], how="left")
-
-    rows_are_null = df_ranked['target_price'].isnull()
-    df_ranked.loc[rows_are_null, "target_price"] = df_ranked["close"] + .01
 
     df_ranked.loc[:, "rank_roi"] = df_ranked.apply(rank_roied, axis=1)
 
@@ -680,7 +662,7 @@ def merge_tweets_with_stock_data(df_twitter, df_stock_and_quarter):
     if df_merged.shape[0] == 0:
         logger.info("Not enough data after merge.")
 
-    # FIXME: 2021-04-03: chris.flesche: Uncomment if new tipranks is golden.
+    # FIXME: 2021-04-03: chris.flesche: Uncomment if new tipranks is golden. TipRanks has a negative effect on prediction.
     # df_ranked = add_tip_ranks_2(df=df_merged, tr_file_path=constants.TIP_RANKED_DATA_PATH)
 
     return df_merged

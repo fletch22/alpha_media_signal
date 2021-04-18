@@ -355,7 +355,10 @@ def std_col(df: pd.DataFrame, col_name: str, standard_scaler: StandardScaler = S
 
 def add_buy_sell(df: pd.DataFrame):
     roi_threshold_pct = 0
+
+    # FIXME: 2021-04-11: chris.flesche: Exponential is experimental
     df.loc[:, 'stock_val_change'] = ((df['future_close'] - df['purchase_close']) / df['purchase_close']) - df["nasdaq_day_roi"]
+    df.loc[:, 'stock_val_change'] = df["stock_val_change"].apply(lambda svc: -pow(svc, 2) if svc < 0 else pow(svc, 2))
 
     df.loc[:, 'buy_sell'] = df['stock_val_change'].apply(lambda x: 1 if x >= roi_threshold_pct else -1)
 
@@ -556,7 +559,9 @@ def omit_columns(df: pd.DataFrame):
                  'place_name', "famasector", "f22_id",
                  'user_location', 'metadata_result_type', 'place_name', 'place_country',
                  'lang', 'in_reply_to_screen_name', 'lastupdated', 'created_at', "future_open", "future_close",
-                 "future_low", "future_high", "calendardate", "reportperiod", "dimension", "datekey"]
+                 "future_low", "future_high", "calendardate", "reportperiod", "dimension", "datekey",
+                 "prev_close", "prev_open", "prev_low", "prev_high", "prev_volume",
+                 "purchase_open", "purchase_low", "purchase_high", "purchase_close", "closeunadj"]
 
     narrow_cols = list(set(df.columns) - set(omit_cols))
 
@@ -612,7 +617,6 @@ def get_feature_columns(narrow_cols):
                  "stock_val_change", "roi", "user_screen_name",
                  "future_date", "user_follow_request_sent", "f22_ticker"}
     omit_cols |= {"nasdaq_day_roi"}
-    # End FIXME
     return list(set(narrow_cols) - omit_cols)
 
 

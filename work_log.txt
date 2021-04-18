@@ -1,3 +1,20 @@
+April 10th:
+
+    Ideas:
+    * Use prediction sum instead of just in all three.
+
+
+April 9th:
+
+	Try:
+
+		With/Without first 10k rows.
+            Status: Worked Great!
+		With/Without tipranks.
+            Status: Better without tip ranks.
+		Inner join on tipranks in sm_proc.
+            Status: Bad. Not enough df_predict.
+
 March 27th:
 
     Save deque of models + purchase_date

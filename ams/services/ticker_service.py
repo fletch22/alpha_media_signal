@@ -38,7 +38,10 @@ def get_ticker_eod_data(ticker: str) -> DataFrame:
     ticker_path = file_services.get_eod_ticker_file_path(ticker)
     df = None
     if ticker_path.exists():
-        df = pd.read_csv(str(ticker_path))
+        try:
+            df = pd.read_csv(str(ticker_path))
+        finally:
+            pass
 
     return df
 
@@ -119,43 +122,6 @@ def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_hold_days: int, nu
     return df_ticker
 
 
-def get_equity_on_prev_trading_day(df: pd.DataFrame, date_str: str) -> pd.DataFrame:
-    df_grouped = df.groupby(["f22_ticker"])
-
-    prev_date = date_utils.parse_std_datestring(date_str) + timedelta(days=-7)
-    prev_date_str = date_utils.get_standard_ymd_format(prev_date)
-    all_dfs = []
-    cols = ["prev_open", "prev_low", "prev_high", "prev_close", "prev_volume"]
-    all_cols = cols + ["ticker", "date"]
-
-    for ticker, df_g in df_grouped:
-        df_ticker = get_ticker_eod_data(ticker)
-        if df_ticker is not None:
-            df_in_range = df_ticker[(df_ticker["date"] > prev_date_str) & (df_ticker["date"] <= date_str)].copy()
-
-            df_in_range.loc[:, "prev_open"] = df_in_range["open"]
-            df_in_range.loc[:, "prev_low"] = df_in_range["low"]
-            df_in_range.loc[:, "prev_high"] = df_in_range["high"]
-            df_in_range.loc[:, "prev_close"] = df_in_range["close"]
-            df_in_range.loc[:, "prev_volume"] = df_in_range["volume"]
-
-            df_in_range.loc[:, (cols)] = df_in_range[cols].shift(1)
-
-            df_in_range = df_in_range[df_in_range["date"] == date_str][all_cols].copy()
-            all_dfs.append(df_in_range)
-
-    df_all_tickers = None
-    if len(all_dfs) > 0:
-        df_all_tickers = pd.concat(all_dfs, axis=0)
-
-    rem_cols = list(set(df.columns) - set(cols))
-
-    df_merged = pd.merge(df[rem_cols], df_all_tickers, how="inner", left_on=["f22_ticker", "date"], right_on=["ticker", "date"])
-    df_merged.drop(columns=["ticker"], inplace=True)
-
-    return df_merged
-
-
 def prev_up_or_down(df: pd.DataFrame) -> pd.DataFrame:
     df.loc[:, ("prev_close_1")] = df["close"].shift(1)
     df["prev_close_1"].fillna(df["close"], inplace=True)
@@ -187,6 +153,14 @@ def get_equity_on_dates(ticker: str, date_strs: List[str], num_hold_days: int, n
 
         df = prev_up_or_down(df=df)
 
+        df.loc[:, "prev_close"] = df["close"]
+        df.loc[:, "prev_open"] = df["open"]
+        df.loc[:, "prev_low"] = df["low"]
+        df.loc[:, "prev_high"] = df["high"]
+        df.loc[:, "prev_volume"] = df["volume"]
+        cols = ["prev_close", "prev_open", "prev_low", "prev_high", "prev_volume"]
+        df.loc[:, (cols)] = df[cols].shift(1)
+
         df.loc[:, "purchase_date"] = df["date"]
         df.loc[:, "purchase_open"] = df["open"]
         df.loc[:, "purchase_low"] = df["low"]
@@ -195,6 +169,9 @@ def get_equity_on_dates(ticker: str, date_strs: List[str], num_hold_days: int, n
         df.loc[:, "purchase_volume"] = df["volume"]
         cols = ["purchase_date", "purchase_open", "purchase_low", "purchase_high", "purchase_close", "purchase_volume"]
         df.loc[:, (cols)] = df[cols].shift(-num_days_until_purchase)
+
+        # FIXME: 2021-04-14: chris.flesche: Experimental
+        # df.loc[:, "purchase_date_price_movement"] = df["purchase_close"] - df["close"] / df["close"]
 
         # TODO: 2021-02-13: chris.flesche: Change these names to "sell_x"
         df.loc[:, "future_open"] = df["open"]

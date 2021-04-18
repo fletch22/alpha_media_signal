@@ -14,7 +14,7 @@ class TrainAndPredictionParamFactory:
                                num_hold_days: int,
                                max_date_str: str = None, min_date_str: str = None,
                                require_balance: bool = True,
-                               ):
+                               min_price: float = 0.):
         if min_date_str is None:
             min_date_str = EARLIEST_TWEET_DATE_STR
 
@@ -28,7 +28,8 @@ class TrainAndPredictionParamFactory:
                                                min_date_str=min_date_str,
                                                max_date_str=max_date_str,
                                                num_hold_days=num_hold_days,
-                                               require_balance=require_balance)
+                                               require_balance=require_balance,
+                                               min_price=min_price)
 
         return pred_params
 

@@ -24,7 +24,6 @@ class SplitDataFrames:
     def get_dataframe(self, date_str: str):
         logger.info(f"finding: {date_str}")
         for sd in self.dfs:
-            # logger.info(sd["date"].unique())
             if date_str in sd["date"].unique():
                 return sd
         return None

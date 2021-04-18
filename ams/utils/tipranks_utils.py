@@ -96,4 +96,19 @@ def agg_tipranks(df_stocks: pd.DataFrame):
 
     df = pd.concat(all_dfs, axis=0)
 
+    rm_mean = df["rating_momentum"].mean()
+    df["rating_momentum"].fillna(rm_mean)
+
+    trr_mean = df["tr_rating_roi"].mean()
+    df["tr_rating_roi"].fillna(trr_mean)
+
+    r_mean = df["rank"].mean()
+    df["rank"].fillna(r_mean)
+
+    r_mean = df["rating"].mean()
+    df["rating"].fillna(r_mean)
+
+    tp_mean = df["target_price"].mean()
+    df["target_price"].fillna(tp_mean)
+
     return df

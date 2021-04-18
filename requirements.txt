@@ -31,3 +31,4 @@ slackclient==2.2.0
 yfinance==0.1.54
 retry==0.9.2
 schedule==1.0.0
+shap==0.39.0
