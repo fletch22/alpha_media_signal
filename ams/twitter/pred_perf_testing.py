@@ -174,13 +174,13 @@ if __name__ == '__main__':
     # end_date_str = "2021-04-15"
     min_price = 5.
     max_price = None
-    min_volume = 0
+    min_volume = 100000
     num_hold_days = 1
     addtl_hold_days = 1
     investment = 10000
     pre_purchase_increase = None # -0.8
     start_dt = date_utils.parse_std_datestring(start_date_str)
-    size_buy_lot = None
+    size_buy_lot = 6
     training_or_real = TrainingOrReal.Training
 
     src_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "prediction_bucket")
