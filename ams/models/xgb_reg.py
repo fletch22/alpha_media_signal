@@ -12,9 +12,20 @@ from ams.twitter.twitter_ml_utils import transform_to_numpy, get_data_for_predic
 logger = logger_factory.create(__name__)
 
 
+# def get_weights(df):
+#     import numpy as np
+#     weights = df["days_since_earliest_date"].to_numpy()
+#     power = 3
+#     weights = np.array([pow(w, power) for w in weights])
+#     scaler = MinMaxScaler()
+#     results = scaler.fit_transform(weights.reshape(-1, 1))
+#
+#     return results
+
+# FIXME: 2021-04-18: chris.flesche: Testing
 def get_weights(df):
     import numpy as np
-    weights = df["days_since_earliest_date"].to_numpy()
+    weights = list(df["close"].to_numpy())
     power = 3
     weights = np.array([pow(w, power) for w in weights])
     scaler = MinMaxScaler()

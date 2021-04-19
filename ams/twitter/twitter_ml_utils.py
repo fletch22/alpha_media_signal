@@ -368,7 +368,7 @@ def add_tip_ranks(df: pd.DataFrame, tr_file_path: Path):
     df_ranked = pd.merge(df, df_tip_ranks, on=["date", "f22_ticker"], how="left")
 
     rows_are_null = df_ranked['target_price'].isnull()
-    df_ranked.loc[rows_are_null, "target_price"] = df_ranked["prev_close"] + .01
+    df_ranked.loc[rows_are_null, "target_price"] = df_ranked["close"] + .01
 
     df_ranked.loc[:, "rank_roi"] = df_ranked.apply(rank_roied, axis=1)
 
@@ -663,9 +663,9 @@ def merge_tweets_with_stock_data(df_twitter, df_stock_and_quarter):
         logger.info("Not enough data after merge.")
 
     # FIXME: 2021-04-03: chris.flesche: Uncomment if new tipranks is golden. TipRanks has a negative effect on prediction.
-    # df_ranked = add_tip_ranks_2(df=df_merged, tr_file_path=constants.TIP_RANKED_DATA_PATH)
+    df_ranked = add_tip_ranks(df=df_merged, tr_file_path=constants.TIP_RANKED_DATA_PATH)
 
-    return df_merged
+    return df_ranked
 
 
 def add_calendar_info(df: pd.DataFrame, columns_fundy: List[str], tweet_date_str: str, num_hold_days: int, oldest_tweet_date):

@@ -18,9 +18,9 @@ class TrainingOrReal(Enum):
     Real = "real"
 
 
-def start(src_path: Path, start_dt: datetime, num_hold_days: int, num_days_perf: int,
-          end_date_str: str = None, min_price: float = 0, size_buy_lot: int = None,
-          verbose: bool = False, addtl_hold_days: int = 0, training_or_real: TrainingOrReal = TrainingOrReal.Training,
+def start(src_path: Path, start_dt: datetime, num_hold_days: int,
+          end_date_str: str = None, min_price: float = 0, max_price: float = 0,
+          size_buy_lot: int = None, verbose: bool = False, addtl_hold_days: int = 0, training_or_real: TrainingOrReal = TrainingOrReal.Training,
           min_volume: int = None, pre_purchase_increase: float = None, investment=60000):
     from ams.pipes.p_make_prediction.mp_process import PREDICTIONS_CSV
     from ams.pipes.p_make_prediction.mp_process import MONEY_PREDICTIONS_CSV
@@ -33,15 +33,18 @@ def start(src_path: Path, start_dt: datetime, num_hold_days: int, num_days_perf:
 
     all_days_rois = []
 
-    for day_ndx in range(num_days_perf):
-        dt = start_dt + timedelta(days=day_ndx)
-        date_str = date_utils.get_standard_ymd_format(dt)
-        if end_date_str is not None and date_str > end_date_str:
-            break
+    date_strs = set(df_preds["purchase_date"].to_list())
+    date_strs = sorted(date_strs)
+
+    start_date_str = date_utils.get_standard_ymd_format(start_dt)
+    for day_ndx, purchase_date_str in enumerate(date_strs):
+        if purchase_date_str < start_date_str or end_date_str < purchase_date_str:
+            continue
         roi = get_days_roi_from_prediction_table(df_preds=df_preds,
-                                                 purchase_date_str=date_str,
+                                                 purchase_date_str=purchase_date_str,
                                                  num_hold_days=num_hold_days,
                                                  min_price=min_price,
+                                                 max_price=max_price,
                                                  size_buy_lot=size_buy_lot,
                                                  verbose=verbose,
                                                  addtl_hold_days=addtl_hold_days,
@@ -52,7 +55,7 @@ def start(src_path: Path, start_dt: datetime, num_hold_days: int, num_days_perf:
             all_days_rois.append(roi)
 
             investment += investment * roi
-            logger.info(f"Day: {day_ndx + 1}: Total: {investment:,.2f}")
+            logger.info(f"Trade day {day_ndx + 1}: Total: {investment:,.2f}")
 
     overall_mean = None
     if len(all_days_rois) > 0:
@@ -72,22 +75,24 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
                                        purchase_date_str: str,
                                        num_hold_days: int,
                                        min_price: float = None,
+                                       max_price: float = None,
                                        min_volume: int = None,
                                        size_buy_lot: int = None,
                                        verbose: bool = False,
                                        addtl_hold_days: int = 0,
                                        pre_purchase_increase: int = None):
     df = df_preds[(df_preds["purchase_date"] == purchase_date_str) & (df_preds["num_hold_days"] == num_hold_days)]
-    # df.sort_values(by=["prediction_mean_score"], ascending=False, inplace=False)
+
+    # logger.info(f"{purchase_date_str}; num rows found in predictions: {df.shape[0]}")
 
     tickers = df["f22_ticker"].to_list()
+    shuffle(tickers)
+
     rois = []
 
     matched_tickers = []
     for t in tickers:
         df_tick = ticker_service.get_ticker_eod_data(t)
-
-        # logger.info(f"{list(df_tick.columns)}")
 
         df_tick.sort_values(by=["date"], ascending=True, inplace=True)
 
@@ -108,9 +113,12 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
             # trade close to the close date. We'll see.
             rec_increase = (purchase_price - tweet_close) / tweet_close
             if pre_purchase_increase is not None and rec_increase < pre_purchase_increase:
+                logger.info("Skipping ticker because increase was less than minimum.")
                 continue
 
-            if min_price is None or min_price == 0 or purchase_price > min_price:
+            # if min_price is None or min_price == 0 or purchase_price > min_price:
+            if (min_price is None or purchase_price > min_price) and \
+                (max_price is None or purchase_price < max_price):
                 if df_tick.shape[0] == 0:
                     logger.info(f"No EOD stock data for {purchase_date_str}.")
                     continue
@@ -126,10 +134,6 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
                 if row is None:
                     continue
                 else:
-                    # if min_volume is not None and min_price is not None:
-                    #     if purchase_date_tick["volume"] * purchase_date_tick["close"] < min_volume * min_price:
-                    #         continue
-
                     if min_volume is not None and purchase_date_tick["volume"] <= min_volume:
                         continue
 
@@ -165,16 +169,18 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
 
 if __name__ == '__main__':
     start_date_str = "2020-10-01"
-    # start_date_str = "2021-03-20"
+    # start_date_str = "2021-04-15"
     end_date_str = date_utils.get_standard_ymd_format(datetime.now())
-    min_price = 0
+    # end_date_str = "2021-04-15"
+    min_price = 5.
+    max_price = None
     min_volume = 0
     num_hold_days = 1
     addtl_hold_days = 1
-    investment = 60000
-    pre_purchase_increase = 0 # -0.8
+    investment = 10000
+    pre_purchase_increase = None # -0.8
     start_dt = date_utils.parse_std_datestring(start_date_str)
-    size_buy_lot = 6
+    size_buy_lot = None
     training_or_real = TrainingOrReal.Training
 
     src_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "prediction_bucket")
@@ -182,9 +188,9 @@ if __name__ == '__main__':
     overall_roi = start(src_path=src_path,
                         start_dt=start_dt,
                         num_hold_days=num_hold_days,
-                        num_days_perf=255,
                         end_date_str=end_date_str,
                         min_price=min_price,
+                        max_price=max_price,
                         size_buy_lot=size_buy_lot,
                         pre_purchase_increase=pre_purchase_increase,
                         verbose=True,
@@ -193,7 +199,4 @@ if __name__ == '__main__':
                         min_volume=min_volume,
                         investment=investment)
 
-    if overall_roi is not None:
-        slack_service.send_direct_message_to_chris(message=f"PPT {overall_roi:.4f}")
-    else:
-        logger.info("There were no results.")
+    logger.info(f"PPT {overall_roi:.4f}")

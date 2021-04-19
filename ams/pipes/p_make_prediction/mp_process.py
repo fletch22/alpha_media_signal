@@ -134,9 +134,9 @@ def predict_day(dpi: DayPredictionInfo, persist_results: bool = True) -> (Union[
 def handle_buy_predictions(df_buy, tapp: TrainAndPredictionParams):
     df_buy = df_buy[["f22_ticker", "purchase_date", "future_date", "prediction"]].copy()
 
-    df_buy = get_buys_by_popularity(df=df_buy)
+    # df_buy = get_buys_by_popularity(df=df_buy)
     # FIXME: 2021-04-10: chris.flesche: For testing only
-    # df_buy = get_buys_by_score(df=df_buy, frac=.03, score_min=None)
+    df_buy = get_buys_by_score(df=df_buy, frac=.03, score_min=None)
 
     roi = None
     num_hold_days = 1
@@ -456,11 +456,6 @@ def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode, purc
     logger.info(f"Getting files from {src_path}")
 
     df = get_stocks_merged(stock_merge_drop_path=src_path)
-    # used_cols = set(df.columns)
-    # df = df[used_cols - unimportant_cols].copy()
-
-    # FIXME: 2021-04-09: chris.flesche: reduce columns as test:
-    # df = reduce_columns_test(df=df)
 
     logger.info(f"Stock-merged size: {df.shape[0]}")
 
