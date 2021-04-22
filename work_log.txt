@@ -1,3 +1,11 @@
+19 April:
+
+    Change weights:
+        User power 3, for open * volume
+        Try with agg tipranks instead of add_tipranks
+        Revert back to weight power 3 for open only
+
+
 April 10th:
 
     Ideas:
