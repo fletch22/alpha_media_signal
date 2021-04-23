@@ -105,8 +105,6 @@ def merge_with_stocks_for_day(tapp: TrainAndPredictionParams, output_parent_path
 
     df_twitter = easy_convert_columns(df=df)
 
-    # show_metrics(df_twitter, tapp, "df_twitter rows")
-
     df_sd_futured = get_stocks_based_on_tweets(df_tweets=df_twitter, tweet_date_str=tapp.tweet_date_str,
                                                num_hold_days=tapp.num_hold_days, num_days_until_purchase=tapp.num_days_until_purchase)
 
@@ -133,10 +131,10 @@ def merge_with_stocks_for_day(tapp: TrainAndPredictionParams, output_parent_path
     min_volume = None
     df_refined = twitter_service.refine_pool(df=df_days_until, min_volume=min_volume, max_price=None)
 
-    df_ticker_hotted, narrow_cols = one_hot(df=df_refined)
+    # df_ticker_hotted, narrow_cols = one_hot(df=df_refined)
 
     # NOTE: 2021-03-12: chris.flesche: Chop! Remove all rows after this date
-    df_ready = df_ticker_hotted[df_ticker_hotted["date"] <= tapp.tweet_date_str].copy()
+    df_ready = df_refined[df_refined["date"] <= tapp.tweet_date_str].copy()
 
     if df_ready is not None and df_ready.shape[0] > 0:
 

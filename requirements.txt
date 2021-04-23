@@ -32,3 +32,4 @@ yfinance==0.1.54
 retry==0.9.2
 schedule==1.0.0
 shap==0.39.0
+catboost==0.25.1

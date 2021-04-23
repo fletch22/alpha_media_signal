@@ -369,18 +369,16 @@ def get_nasdaq_tickers():
                             "relatedtickers"
                             ], inplace=True)
 
-    df_all_tickers = get_ticker_info()
-    df_rem = df_all_tickers[df_nasdaq.columns].copy()
+    # df_all_tickers = get_ticker_info()
+    # df_rem = df_all_tickers[df_nasdaq.columns].copy()
+    #
+    # columns = [c for c in df_rem.columns if str(df_rem[c].dtype) == "object"]
+    # columns.remove("ticker")
+    # df_one_hotted = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns)
 
-    columns = [c for c in df_rem.columns if str(df_rem[c].dtype) == "object"]
-    columns.remove("ticker")
+    df_nasdaq.rename(columns={"ticker": "ticker_drop"}, inplace=True)
 
-    df_one_hotted = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns)
-
-    # FIXME: 2021-01-02: chris.flesche: Should be moved to a later step or refactored out.
-    df_one_hotted.rename(columns={"ticker": "ticker_drop"}, inplace=True)
-
-    return df_one_hotted
+    return df_nasdaq
 
 
 def std_single_dataframe(df: pd.DataFrame, standard_scaler: StandardScaler):

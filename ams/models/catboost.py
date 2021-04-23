@@ -1,14 +1,14 @@
 import warnings
-from typing import List
+from typing import List, Tuple, Optional
 
+import numpy
 import pandas as pd
-import xgboost as xgb
 from sklearn.preprocessing import MinMaxScaler
 
 from ams.config import logger_factory
 from ams.pipes.p_make_prediction.DayPredictionInfo import DayPredictionInfo
-from ams.services.ticker_service import get_ticker_info, make_one_hotted
-from ams.twitter.twitter_ml_utils import transform_to_numpy, get_data_for_predictions, one_hot
+from ams.services import twitter_service
+from ams.twitter.twitter_ml_utils import get_data_for_predictions
 
 logger = logger_factory.create(__name__)
 
@@ -72,22 +72,41 @@ def split_train_test(df: pd.DataFrame, tweet_date_str: str) -> (pd.DataFrame, pd
     return df_train, df_test
 
 
+def transform_to_numpy(df: pd.DataFrame, narrow_cols: List[str], label_col: str = "buy_sell", require_balance: bool = True) -> \
+    Tuple[Optional[numpy.array], Optional[numpy.array], Optional[List[str]]]:
+    feature_cols = twitter_service.get_feature_columns(narrow_cols)
+
+    X_train_raw, y_train = twitter_service.split_df_for_learning(df=df, label_col=label_col, train_cols=feature_cols, require_balance=require_balance)
+
+    if X_train_raw is None or X_train_raw.shape[0] == 0:
+        return None, None, None
+
+    # standard_scaler = StandardScaler()
+    # standard_scaler = standard_scaler.fit(X_train_raw)
+    # X_train = standard_scaler.transform(X_train_raw)
+
+    X_train = X_train_raw
+
+    return X_train, y_train, feature_cols
+
+
 def train_predict(dpi: DayPredictionInfo,
                   label_col: str = "buy_sell",
                   require_balance: bool = True,
                   buy_thresh: float = 0.):
     narrow_cols = list(dpi.df.columns)
 
+    df = dpi.df
     # one hot
-    df_all_tickers = get_ticker_info()
+    # df_all_tickers = get_ticker_info()
     columns = [c for c in dpi.df.columns if str(dpi.df[c].dtype) == "object"]
     omit_cols = {'f22_ticker', 'future_date', 'date', 'purchase_date'}
-    columns = list(set(columns) - omit_cols)
-    for c in columns:
-        logger.info(c)
-
-    df = make_one_hotted(df=dpi.df, df_all_tickers=df_all_tickers, cols=columns)
-    df, _ = one_hot(df=df)
+    cat_columns = list(set(columns) - omit_cols)
+    # for c in columns:
+    #     logger.info(c)
+    #
+    # df = make_one_hotted(df=dpi.df, df_all_tickers=df_all_tickers, cols=columns)
+    # df, _ = one_hot(df=df)
 
     # df.drop(columns=["f22_ticker"], inplace=True)
 
@@ -100,38 +119,40 @@ def train_predict(dpi: DayPredictionInfo,
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="invalid value encountered in true_divide")
-        X_train, y_train, standard_scaler, feature_cols = transform_to_numpy(df=df_train,
-                                                                             narrow_cols=narrow_cols,
-                                                                             label_col=label_col,
-                                                                             require_balance=require_balance)
+        X_train, y_train, feature_cols = transform_to_numpy(df=df_train,
+                                              narrow_cols=narrow_cols,
+                                              label_col=label_col,
+                                              require_balance=require_balance)
 
     if X_train is None or X_train.shape[0] == 0 or y_train is None:
         logger.info("Not enough training data.")
         return None, None
 
-    # TODO: 2021-03-24: chris.flesche: Experimental
-    # xgb_args = dict(seed=42, reg_lambda=2,
-    #                 tree_method='gpu_hist', gpu_id=0, learning_rate=1.0,
-    #                 max_depth=7, n_estimators=110)
-
-    xgb_args = dict(seed=42, max_depth=4, tree_method='gpu_hist', gpu_id=0)
-
-    if not require_balance:
-        num_buy = df_train[df_train["stock_val_change"] > buy_thresh].shape[0]
-        num_sell = df_train[df_train["stock_val_change"] <= buy_thresh].shape[0]
-
-        balance_ratio = num_sell / num_buy
-
-        logger.info(f"Train Sell: {num_sell} / Buy: {num_buy}; ratio: {balance_ratio}")
-
-        xgb_args["scale_pos_weight"] = balance_ratio
+    # cat_args = dict(loss_function='RMSE', iterations=50)
+    # if not require_balance:
+    #     num_buy = df_train[df_train["stock_val_change"] > buy_thresh].shape[0]
+    #     num_sell = df_train[df_train["stock_val_change"] <= buy_thresh].shape[0]
+    #
+    #     balance_ratio = num_sell / num_buy
+    #
+    #     logger.info(f"Train Sell: {num_sell} / Buy: {num_buy}; ratio: {balance_ratio}")
+    #
+    #     cat_args["scale_pos_weight"] = balance_ratio
 
     # grid_search(X_train=X_train, y_train=y_train)
 
-    xgb_reg = xgb.XGBRegressor(**xgb_args)
-    model = xgb_reg.fit(X_train, y_train, sample_weight=get_weights(df=df_train))
-    dpi.append_model_info(model=model, standard_scaler=standard_scaler, feature_cols=feature_cols, narrow_cols=narrow_cols)
+    import catboost as cb
+    model = cb.CatBoostRegressor(loss_function='RMSE', iterations=5, silent=True)
 
+    import numpy as np
+    df_skinny = df[feature_cols].copy()
+    categorical_features_indices = np.where(df_skinny.dtypes != np.float)[0]
+
+    model.fit(X_train, y_train, cat_features=categorical_features_indices)
+
+    dpi.append_model_info(model=model, standard_scaler=None, feature_cols=feature_cols, narrow_cols=narrow_cols)
+
+    df_test.fillna("", inplace=True)
     return predict_with_model(narrow_cols=narrow_cols,
                               df_test=df_test,
                               dpi=dpi), df_test

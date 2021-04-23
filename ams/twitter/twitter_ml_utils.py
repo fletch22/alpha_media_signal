@@ -528,8 +528,8 @@ def get_data_for_predictions(df: pd.DataFrame,
 
     X_array_raw = np.array(df_features)
 
-    return standard_scaler.transform(X_array_raw)
-
+    # return standard_scaler.transform(X_array_raw)
+    return X_array_raw
 
 # NOTE: 2021-03-16: chris.flesche: Deprecated in favor of 'change_col_date_for_nan'.
 def add_future_date_for_nan(df: pd.DataFrame, num_days_in_future: int):

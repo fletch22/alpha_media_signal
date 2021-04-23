@@ -1,3 +1,11 @@
+22 April:
+
+    columns = [c for c in df_rem.columns if str(df_rem[c].dtype) == "object"]
+    columns.remove("ticker")
+    df_one_hotted = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns)
+
+    # df_ticker_hotted, narrow_cols = one_hot(df=df_refined)
+
 19 April:
 
     Change weights:

@@ -8,7 +8,7 @@ import pandas as pd
 
 from ams.config import constants, logger_factory
 from ams.config.constants import ensure_dir
-from ams.models import xgb_reg
+from ams.models import xgb_reg, catboost
 from ams.pipes.p_make_prediction.DayPredictionInfo import DayPredictionInfo, ImportantFeatures
 from ams.pipes.p_make_prediction.SplitDataFrames import SplitDataFrames
 from ams.pipes.p_make_prediction.TrainingBag import TrainingBag
@@ -23,28 +23,6 @@ logger = logger_factory.create(__name__)
 
 PREDICTIONS_CSV = "predictions.csv"
 MONEY_PREDICTIONS_CSV = "real_money_predictions.csv"
-
-
-def split_train_test(df: pd.DataFrame, tweet_date_str: str) -> (pd.DataFrame, pd.DataFrame):
-    logger.info(f"Splitting on tweet date {tweet_date_str}")
-
-    df_train = df[df["date"] < tweet_date_str].copy()
-    df_test = df[df["date"] == tweet_date_str].copy()
-
-    max_test = df_test['future_date'].max()
-    df_train = df_train[df_train["future_date"] < max_test].copy()
-
-    # FIXME: 2021-04-09: chris.flesche: For testing only. This avoids predicting when
-    # we have less than n rows.
-    if df_train.shape[0] < 10000:
-        return None, None
-
-    logger.info(f"Test data size: {df_test.shape[0]}")
-    logger.info(f"Train data size: {df_train.shape[0]}")
-    logger.info(f"Oldest date of train data (future_date): {df_train['future_date'].max()}")
-    logger.info(f"Oldest date of test data (future_date): {df_test['future_date'].max()}")
-
-    return df_train, df_test
 
 
 def get_real_money_preds_path(output_path: Path):
@@ -97,36 +75,33 @@ def get_adjusted_buy(df: pd.DataFrame):
 
 
 def predict_day(dpi: DayPredictionInfo, persist_results: bool = True) -> (Union[None, float], List[str]):
-    df_train, df_test = split_train_test(df=dpi.df, tweet_date_str=dpi.tapp.tweet_date_str)
+    # all_mod_preds, df_test = xgb_reg.train_predict(dpi=dpi,
+    #                                                label_col="stock_val_change",
+    #                                                require_balance=False,
+    #                                                buy_thresh=0)
 
-    if df_test is None or df_test.shape[0] == 0:
-        return None
+    all_mod_preds, df_test = catboost.train_predict(dpi=dpi,
+                                                   label_col="stock_val_change",
+                                                   require_balance=False,
+                                                   buy_thresh=0)
 
-    df_train = df_train.fillna(value=0)
+    roi = None
+    if df_test is not None:
+        all_buy_dfs = []
+        for amp in all_mod_preds:
+            col_preds = "prediction"
+            df_tmp = df_test.copy()
+            df_tmp.loc[:, col_preds] = amp
+            df_buy = get_adjusted_buy(df=df_tmp)
+            all_buy_dfs.append(df_buy)
 
-    all_mod_preds = xgb_reg.train_predict(df_train=df_train,
-                                          df_test=df_test.copy(),
-                                          narrow_cols=list(df_train.columns),
-                                          dpi=dpi,
-                                          label_col="stock_val_change",
-                                          require_balance=False,
-                                          buy_thresh=0)
+        df_buy = pd.concat(all_buy_dfs, axis=0)
+        logger.info(f"df_predict num rows: {df_test.shape[0]}: buy predictions: {df_buy.shape[0]}")
 
-    all_buy_dfs = []
-    for amp in all_mod_preds:
-        col_preds = "prediction"
-        df_tmp = df_test.copy()
-        df_tmp.loc[:, col_preds] = amp
-        df_buy = get_adjusted_buy(df=df_tmp)
-        all_buy_dfs.append(df_buy)
+        roi, df_buy = handle_buy_predictions(df_buy, tapp=dpi.tapp)
 
-    df_buy = pd.concat(all_buy_dfs, axis=0)
-    logger.info(f"df_predict num rows: {df_test.shape[0]}: buy predictions: {df_buy.shape[0]}")
-
-    roi, df_buy = handle_buy_predictions(df_buy, tapp=dpi.tapp)
-
-    if persist_results:
-        persist_predictions(df_buy=df_buy, tapp=dpi.tapp, output_path=dpi.output_path)
+        if persist_results:
+            persist_predictions(df_buy=df_buy, tapp=dpi.tapp, output_path=dpi.output_path)
 
     return roi
 
