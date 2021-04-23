@@ -27,12 +27,8 @@ logger = logger_factory.create(__name__)
 def get_weights(df):
     import numpy as np
     weights = list(df["close"].to_numpy())
-    power = 3
-    weights = np.array([pow(w, power) for w in weights])
-    scaler = MinMaxScaler()
-    results = scaler.fit_transform(weights.reshape(-1, 1))
-
-    return results
+    power = 2
+    return np.array([pow(w, power) for w in weights])
 
 
 def predict_with_model(df_test: pd.DataFrame,
@@ -148,7 +144,7 @@ def train_predict(dpi: DayPredictionInfo,
     df_skinny = df[feature_cols].copy()
     categorical_features_indices = np.where(df_skinny.dtypes != np.float)[0]
 
-    model.fit(X_train, y_train, cat_features=categorical_features_indices)
+    model.fit(X_train, y_train, cat_features=categorical_features_indices, sample_weight=get_weights(df=df_train))
 
     dpi.append_model_info(model=model, standard_scaler=None, feature_cols=feature_cols, narrow_cols=narrow_cols)
 

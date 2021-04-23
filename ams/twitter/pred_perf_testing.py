@@ -112,7 +112,7 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
             # time; but large EOD price fluxes may alter the equity's buy eligibility or I might not be able execute a
             # trade close to the close date. We'll see.
             rec_increase = (purchase_price - tweet_close) / tweet_close
-            if pre_purchase_increase is not None and rec_increase < pre_purchase_increase:
+            if pre_purchase_increase is not None and rec_increase > pre_purchase_increase:
                 logger.info("Skipping ticker because increase was less than minimum.")
                 continue
 
@@ -178,7 +178,7 @@ if __name__ == '__main__':
     num_hold_days = 1
     addtl_hold_days = 1
     investment = 10000
-    pre_purchase_increase = None # -0.8
+    pre_purchase_increase = 0 # -0.8
     start_dt = date_utils.parse_std_datestring(start_date_str)
     size_buy_lot = 6
     training_or_real = TrainingOrReal.Training
