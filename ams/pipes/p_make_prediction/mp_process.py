@@ -17,6 +17,7 @@ from ams.services import slack_service
 from ams.twitter import skip_day_predictor
 from ams.twitter.TrainAndPredictionParams import TrainAndPredictionParams, PredictionMode
 from ams.twitter.pred_perf_testing import get_days_roi_from_prediction_table
+from ams.utils import date_utils
 from ams.utils.date_utils import get_next_market_day_no_count_closed_days
 
 logger = logger_factory.create(__name__)
@@ -425,7 +426,7 @@ unimportant_cols = {"location_Democratic People'S Republic Of Korea", 'f22_ticke
                     'f22_ticker_SMIT', 'location_Argentina', 'f22_ticker_BHF', 'f22_ticker_CONE', 'f22_ticker_BNFT', 'f22_ticker_TSC', 'f22_ticker_TTEC'}
 
 
-def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode, purchase_date_str: str, send_msgs: bool = True):
+def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode, purchase_date_str: str, start_prediction_date_str: str = None, send_msgs: bool = True):
     ensure_dir(dest_path)
 
     logger.info(f"Getting files from {src_path}")
@@ -457,7 +458,7 @@ def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode, purc
         if send_msgs:
             slack_service.send_direct_message_to_chris(f"{tapp.purchase_date_str}: {str(tickers)}")
     else:
-        roi = train_skipping_data(output_path=dest_path, tapp=tapp, training_bag=training_bag, split_dfs=split_dfs)
+        roi = train_skipping_data(output_path=dest_path, tapp=tapp, training_bag=training_bag, split_dfs=split_dfs, start_prediction_date_str=start_prediction_date_str)
         if roi is not None:
             roi_all.append(roi)
 
@@ -511,7 +512,8 @@ def find_unimportant_features(important_feats: List[ImportantFeatures], narrow_c
 def train_skipping_data(output_path: Path,
                         tapp: TrainAndPredictionParams,
                         training_bag: TrainingBag.persist,
-                        split_dfs: SplitDataFrames) -> float:
+                        split_dfs: SplitDataFrames,
+                        start_prediction_date_str: str = None) -> float:
     has_more_days = True
     roi_all = []
     overall_roi = None
@@ -525,6 +527,10 @@ def train_skipping_data(output_path: Path,
 
     count = 0
     while has_more_days:
+        # if not has_more_days or (start_prediction_date_str is not None and dates[0] < start_prediction_date_str):
+        #     logger.info("continuing...")
+        #     continue
+
         df = split_dfs.get_dataframe(date_str=tapp.tweet_date_str)
         if df is not None:
 
@@ -537,9 +543,8 @@ def train_skipping_data(output_path: Path,
                 logger.info(f"Ongoing roi: {mean(roi_all)}")
 
         dates = dates[1:]
-        tapp.tweet_date_str = dates[0]
         has_more_days = len(dates) > 1
-
+        tapp.tweet_date_str = dates[0]
         count += 1
 
     if len(roi_all) > 0:
@@ -587,10 +592,13 @@ if __name__ == '__main__':
     # purchase_date_str = date_utils.get_standard_ymd_format(date=datetime.now())
     purchase_date_str = "2020-08-10"
 
+    start_prediction_date_str = None # "2020-04-20"
+
     roi = start(src_path=src_path,
                 dest_path=dest_path,
                 prediction_mode=prediction_mode,
                 send_msgs=False,
-                purchase_date_str=purchase_date_str)
+                purchase_date_str=purchase_date_str,
+                start_prediction_date_str=start_prediction_date_str)
 
     slack_service.send_direct_message_to_chris(f"Roi: {roi}")

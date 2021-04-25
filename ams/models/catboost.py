@@ -5,7 +5,7 @@ import numpy
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
-from ams.config import logger_factory
+from ams.config import logger_factory, constants
 from ams.pipes.p_make_prediction.DayPredictionInfo import DayPredictionInfo
 from ams.services import twitter_service
 from ams.twitter.twitter_ml_utils import get_data_for_predictions
@@ -138,11 +138,27 @@ def train_predict(dpi: DayPredictionInfo,
     # grid_search(X_train=X_train, y_train=y_train)
 
     import catboost as cb
-    model = cb.CatBoostRegressor(loss_function='RMSE', iterations=5, silent=True)
+    model = cb.CatBoostRegressor(loss_function='RMSE', iterations=5, silent=True, train_dir=constants.CATBOOST_TRAIN_DIR)
 
     import numpy as np
     df_skinny = df[feature_cols].copy()
     categorical_features_indices = np.where(df_skinny.dtypes != np.float)[0]
+
+    # grid = {'learning_rate': [0.03, 0.1],
+    #         'depth': [4, 6, 10],
+    #         'l2_leaf_reg': [1, 3, 5, 7, 9]}
+    # results: {'depth': 14, 'l2_leaf_reg': 7, 'learning_rate': 0.1}
+    #
+    # grid = {'learning_rate': [0.01, 0.03, 0.1],
+    #         'depth': [6, 10, 12, 14],
+    #         'l2_leaf_reg': [1, 3, 5, 7, 9]}
+    # results = {'depth': 6, 'l2_leaf_reg': 1, 'learning_rate': 0.1}
+    # grid_search_result = model.grid_search(grid,
+    #                                        X=X_train,
+    #                                        y=y_train,
+    #                                        plot=True)
+    # logger.info(grid_search_result)
+    # raise Exception("foo")
 
     model.fit(X_train, y_train, cat_features=categorical_features_indices, sample_weight=get_weights(df=df_train))
 

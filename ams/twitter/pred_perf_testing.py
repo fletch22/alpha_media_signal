@@ -3,6 +3,7 @@ from enum import Enum
 from pathlib import Path
 from random import shuffle
 from statistics import mean
+from typing import Optional
 
 import pandas as pd
 
@@ -19,8 +20,8 @@ class TrainingOrReal(Enum):
 
 
 def start(src_path: Path, start_dt: datetime, num_hold_days: int,
-          end_date_str: str = None, min_price: float = 0, max_price: float = 0,
-          size_buy_lot: int = None, verbose: bool = False, addtl_hold_days: int = 0, training_or_real: TrainingOrReal = TrainingOrReal.Training,
+          end_date_str: str = None, min_price: Optional[float] = 0, max_price: Optional[float] = 0,
+          size_buy_lot: Optional[int]  = None, verbose: bool = False, addtl_hold_days: int = 0, training_or_real: TrainingOrReal = TrainingOrReal.Training,
           min_volume: int = None, pre_purchase_increase: float = None, investment=60000):
     from ams.pipes.p_make_prediction.mp_process import PREDICTIONS_CSV
     from ams.pipes.p_make_prediction.mp_process import MONEY_PREDICTIONS_CSV
@@ -113,7 +114,6 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
             # trade close to the close date. We'll see.
             rec_increase = (purchase_price - tweet_close) / tweet_close
             if pre_purchase_increase is not None and rec_increase > pre_purchase_increase:
-                logger.info("Skipping ticker because increase was less than minimum.")
                 continue
 
             # if min_price is None or min_price == 0 or purchase_price > min_price:
@@ -169,7 +169,7 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
 
 if __name__ == '__main__':
     start_date_str = "2020-10-01"
-    # start_date_str = "2021-04-15"
+    # start_date_str = "2021-03-15"
     end_date_str = date_utils.get_standard_ymd_format(datetime.now())
     # end_date_str = "2021-04-15"
     min_price = 5.
@@ -178,9 +178,9 @@ if __name__ == '__main__':
     num_hold_days = 1
     addtl_hold_days = 1
     investment = 10000
-    pre_purchase_increase = 0 # -0.8
+    pre_purchase_increase = 0.
     start_dt = date_utils.parse_std_datestring(start_date_str)
-    size_buy_lot = 6
+    size_buy_lot = None
     training_or_real = TrainingOrReal.Training
 
     src_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "prediction_bucket")
