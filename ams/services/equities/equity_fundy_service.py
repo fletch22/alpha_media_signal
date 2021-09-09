@@ -26,3 +26,6 @@ def get_all_quarterly_data():
 
     return df_fil
 
+
+def filter_by_dimension(df: pd.DataFrame, efd: EquityFundaDimension):
+    return df[df["dimension"] == efd.value].copy()

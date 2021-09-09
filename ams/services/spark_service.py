@@ -8,7 +8,7 @@ from ams.config import logger_factory, constants
 logger = logger_factory.create(__name__)
 
 
-def _get_or_create(app_name, spark_driver_memory: str = "32G", max_cores: int = 15):
+def _get_or_create(app_name, spark_driver_memory: str = "62G", max_cores: int = 15):
     conf = SparkConf()
     conf.setAppName(app_name)
     conf.setMaster(f"local[{max_cores}]")
@@ -32,6 +32,10 @@ def _get_or_create(app_name, spark_driver_memory: str = "32G", max_cores: int = 
 
 
 def get_or_create(app_name: str):
+    spark_session = _get_or_create(app_name)
+
+    spark_session.stop()
+
     spark_session = _get_or_create(app_name)
 
     return spark_session

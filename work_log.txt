@@ -1,3 +1,9 @@
+4 May:
+
+    Create Spark job to create nasdaq daily roi
+    Ensure job updates if prev exists;
+    Modify buy_sell to not use  nasdaq_roi (?)
+
 22 April:
 
     columns = [c for c in df_rem.columns if str(df_rem[c].dtype) == "object"]

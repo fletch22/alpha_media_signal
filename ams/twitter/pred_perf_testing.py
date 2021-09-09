@@ -168,20 +168,20 @@ def get_days_roi_from_prediction_table(df_preds: pd.DataFrame,
 # Assert
 
 if __name__ == '__main__':
-    start_date_str = "2020-10-01"
-    # start_date_str = "2021-03-15"
+    # start_date_str = "2020-10-01"
+    start_date_str = "2021-03-01"
     end_date_str = date_utils.get_standard_ymd_format(datetime.now())
     # end_date_str = "2021-04-15"
-    min_price = 5.
+    min_price = 0.
     max_price = None
-    min_volume = 100000
+    min_volume = 0
     num_hold_days = 1
     addtl_hold_days = 1
     investment = 10000
-    pre_purchase_increase = 0.
+    pre_purchase_increase = 0.0
     start_dt = date_utils.parse_std_datestring(start_date_str)
     size_buy_lot = None
-    training_or_real = TrainingOrReal.Training
+    training_or_real = TrainingOrReal.Real
 
     src_path = Path(constants.TWITTER_OUTPUT_RAW_PATH, "prediction_bucket")
 

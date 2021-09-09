@@ -37,11 +37,14 @@ def does_ticker_data_exist(ticker: str):
 def get_ticker_eod_data(ticker: str) -> DataFrame:
     ticker_path = file_services.get_eod_ticker_file_path(ticker)
     df = None
-    if ticker_path.exists():
-        try:
+    try:
+        if ticker_path.exists():
             df = pd.read_csv(str(ticker_path))
-        finally:
-            pass
+    except BaseException as be:
+        logger.info(f"Encounter problem opening {ticker_path}.")
+        pass
+    finally:
+        pass
 
     return df
 
@@ -360,7 +363,7 @@ def make_f22_ticker_one_hotted(df_ranked: pd.DataFrame) -> (pd.DataFrame, Dict[s
     return pd.concat([df_ranked, df_new_col], axis=1), unique_tickers
 
 
-def get_nasdaq_tickers():
+def get_nasdaq_tickers() -> pd.DataFrame:
     df_nasdaq = get_nasdaq_info().copy()
 
     df_nasdaq.drop(columns=["firstpricedate", "lastpricedate", "firstquarter", "lastquarter",
@@ -368,13 +371,6 @@ def get_nasdaq_tickers():
                             "isdelisted", "name", "exchange", "firstadded", "permaticker", "sicindustry",
                             "relatedtickers"
                             ], inplace=True)
-
-    # df_all_tickers = get_ticker_info()
-    # df_rem = df_all_tickers[df_nasdaq.columns].copy()
-    #
-    # columns = [c for c in df_rem.columns if str(df_rem[c].dtype) == "object"]
-    # columns.remove("ticker")
-    # df_one_hotted = make_one_hotted(df=df_rem, df_all_tickers=df_all_tickers, cols=columns)
 
     df_nasdaq.rename(columns={"ticker": "ticker_drop"}, inplace=True)
 

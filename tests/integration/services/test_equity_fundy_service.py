@@ -1,10 +1,12 @@
 import pandas as pd
+from pyspark.sql import functions as F
 
 from ams.DateRange import DateRange
-from ams.services import ticker_service
-from ams.services.equities import equity_fundy_service
-
 from ams.config import logger_factory
+from ams.services import ticker_service
+from ams.services.equities import equity_fundy_service as efs
+from ams.services.equities.EquityFundaDimension import EquityFundaDimension
+from ams.utils import ticker_utils
 
 logger = logger_factory.create(__name__)
 
@@ -14,7 +16,7 @@ pd.set_option('display.width', 1000)
 
 
 def test_get_most_recent_quarter_data():
-    df = equity_fundy_service.get_most_recent_quarter_data()
+    df = efs.get_most_recent_quarter_data()
 
     tickers = ["AAPL", "IBM"]
     df_ticker = df[df["ticker"].isin(tickers)]
@@ -57,7 +59,7 @@ def test_get_top_100_market_cap():
 
 def test_most_rec_quarter_integration():
     # Arrange
-    df_equity_funds = equity_fundy_service.get_equity_fundies()
+    df_equity_funds = efs.get_equity_fundies()
 
     date_range = DateRange.from_date_strings(from_date_str="2018-10-01", to_date_str="2020-10-10")
 
@@ -121,3 +123,68 @@ def test_most_rec_quarter_join():
 
     # Assert
     assert (df_dd.shape[0] == 8)
+
+
+def test_get_top_prev():
+    # tickers = ticker_service.get_ticker_info()["ticker"].unique()
+    # tickers = ["GOOG", "NVDA", "FB", "MSFT", "AMZN", "AAPL", "DDOG"]
+    df_tickers = ticker_service.get_nasdaq_tickers()
+    tickers = df_tickers["ticker_drop"].unique().tolist()
+
+    logger.info(f"Number of tickers: {len(tickers)}")
+
+    # prev_days = int((365 * 1) / 2)
+    prev_days = 365 * 5
+    for year in range(2011, 2022):
+        to_date_str = f"{year}-01-01"
+        top_tickers = ticker_utils.get_top_roi_tickers(tickers=tickers, prev_days=prev_days, to_date_str=to_date_str, top_n=20)
+        print(f"{year}: {top_tickers}")
+
+
+def test_get_top_by_attribute():
+    df = efs.get_equity_fundies()
+
+    df = efs.filter_by_dimension(df=df, efd=EquityFundaDimension.AsReportedYearly)
+
+    assert df.shape[0] > 0
+
+    # logger.info()
+    # return
+
+    top_n = 100
+    attr_interest = "netinc" #"pe"
+    is_low_good = False
+    easy_trade = True
+
+    year_range = list(range(2015, 2021))
+    for year in year_range:
+        start_rep_year = f"{year}-01-01"
+        end_rep_year = f"{year}-12-31"
+
+        df_year = df[(df["reportperiod"] >= start_rep_year) & (df["reportperiod"] <= end_rep_year)]
+
+        tickers = df_year["ticker"].unique()
+
+        dr = DateRange.from_date_strings(from_date_str=start_rep_year, to_date_str=end_rep_year)
+        df_tickers = ticker_service.get_tickers_in_range(tickers, date_range=dr)
+        df_tickers = df_tickers.set_index(["ticker"])
+        mean_thing = df_tickers.groupby("ticker")["volume"].mean()
+        df_tickers["mean_vol"] = mean_thing
+        df_tickers = df_tickers.reset_index()
+
+        df_tickers = df_tickers.sort_values(["ticker", "date"])
+        des_cols = ["ticker"]
+        df_tickers = df_tickers.drop_duplicates(subset=des_cols, keep="first")[["ticker", "mean_vol"]].copy()
+
+        df_year = df_year.sort_values(["ticker", "reportperiod"])
+        df_year = df_year.drop_duplicates(subset=des_cols, keep="last").copy()
+
+        df_enh = pd.merge(left=df_year, right=df_tickers, on="ticker")
+
+        if easy_trade:
+            # df_enh = df_enh[(df_enh[attr_interest] >= 30)]
+            df_enh = df_enh[(df_enh["price"] * df_enh["mean_vol"]) > (10 * 250000)]
+
+        tickers = df_enh.sort_values(by=[attr_interest], ascending=is_low_good)["ticker"].values.tolist()
+
+        print(f"_{year}={tickers[:top_n]},")

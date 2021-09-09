@@ -6,3 +6,4 @@ class EquityFundaDimension(Enum):
   MostRecentTrailingYear = "MRT"
   MostRecentAnnual = "MRY"
   AsReportedQuarterly = "ARQ"
+  AsReportedYearly = "ARY"

@@ -14,6 +14,7 @@ from ams.pipes.p_make_prediction.SplitDataFrames import SplitDataFrames
 from ams.pipes.p_make_prediction.TrainingBag import TrainingBag
 from ams.pipes.p_stock_merge.sm_process import STOCKS_MERGED_FILENAME, get_stock_merge_trainer_params
 from ams.services import slack_service
+from ams.services.ticker_service import get_ticker_eod_data
 from ams.twitter import skip_day_predictor
 from ams.twitter.TrainAndPredictionParams import TrainAndPredictionParams, PredictionMode
 from ams.twitter.pred_perf_testing import get_days_roi_from_prediction_table
@@ -425,6 +426,16 @@ unimportant_cols = {"location_Democratic People'S Republic Of Korea", 'f22_ticke
                     'f22_ticker_AMYT', 'f22_ticker_XGN', 'f22_ticker_NEWT', 'f22_ticker_BFIN', 'f22_ticker_NLOK', 'f22_ticker_ADP', 'f22_ticker_OFIX', 'f22_ticker_SCWX',
                     'f22_ticker_SMIT', 'location_Argentina', 'f22_ticker_BHF', 'f22_ticker_CONE', 'f22_ticker_BNFT', 'f22_ticker_TSC', 'f22_ticker_TTEC'}
 
+def forward_fill(df: pd.DataFrame):
+    df.sort_values(by=["f22_ticker", "date"], inplace=True)
+    df_grouped = df.groupby(by=["f22_ticker"])
+
+    df_all = []
+    for ticker, df_tick in df_grouped:
+        df_tick.fillna(method="ffill", inplace=True)
+        df_all.append(df_tick)
+
+    return pd.concat(df_all, axis=0)
 
 def start(src_path: Path, dest_path: Path, prediction_mode: PredictionMode, purchase_date_str: str, start_prediction_date_str: str = None, send_msgs: bool = True):
     ensure_dir(dest_path)
@@ -527,13 +538,8 @@ def train_skipping_data(output_path: Path,
 
     count = 0
     while has_more_days:
-        # if not has_more_days or (start_prediction_date_str is not None and dates[0] < start_prediction_date_str):
-        #     logger.info("continuing...")
-        #     continue
-
         df = split_dfs.get_dataframe(date_str=tapp.tweet_date_str)
         if df is not None:
-
             dpi.set_df(df=df)
 
             roi = predict_day(dpi=dpi, persist_results=True)
@@ -549,11 +555,6 @@ def train_skipping_data(output_path: Path,
 
     if len(roi_all) > 0:
         overall_roi = mean(roi_all)
-
-    # unimportant_feats = find_unimportant_features(important_feats=dpi.important_feats,
-    #                                               narrow_cols=list(dpi.narrow_cols))
-    # if unimportant_feats is not None:
-    #     logger.info(f"Unimportant features: {unimportant_feats}")
 
     return overall_roi
 

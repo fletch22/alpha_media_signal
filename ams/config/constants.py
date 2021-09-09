@@ -142,6 +142,10 @@ slack_cred_path = os.path.join(CREDENTIALS_ROOT, 'slack.json')
 with open(slack_cred_path, "r") as f:
     SLACK_CREDENTIALS = json.loads(f.read())
 
+polygon_api_key_path = Path(CREDENTIALS_ROOT, "polygon.io.api_key")
+with open(polygon_api_key_path, "r") as f:
+    POLYGON_API_KEY = f.readline()
+
 US_MARKET_HOLIDAYS_PATH = Path(FIN_DATA, "us_market_holidays.csv")
 
 TWITTER_GREAT_REDUCTION_DIR = Path(TWITTER_OUTPUT_RAW_PATH, "great_reduction")
@@ -177,3 +181,5 @@ TWIT_STOCK_MERGE_DROP_PATH = Path(TWITTER_OUTPUT_RAW_PATH, "stock_merge_drop", "
 PERF_METRICS_ROIS = Path(TRANSIENT_DIR_PATH, "perf_metrics_rois.csv")
 
 CATBOOST_TRAIN_DIR = Path(TWITTER_INFERENCE_MODEL_PATH, "train")
+
+STOCK_AGG_DATAFILE = Path(OVERFLOW_DATA_PATH, "basic_stock_agg.parquet")

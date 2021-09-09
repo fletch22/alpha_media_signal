@@ -134,7 +134,6 @@ def train_predict(dpi: DayPredictionInfo,
     #     logger.info(f"Train Sell: {num_sell} / Buy: {num_buy}; ratio: {balance_ratio}")
     #
     #     cat_args["scale_pos_weight"] = balance_ratio
-
     # grid_search(X_train=X_train, y_train=y_train)
 
     import catboost as cb

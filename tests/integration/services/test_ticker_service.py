@@ -6,6 +6,7 @@ from statistics import mean
 from typing import Tuple, List
 
 import pandas as pd
+import requests
 
 from ams.DateRange import DateRange
 from ams.config import constants
@@ -1079,7 +1080,6 @@ def test_list_all_robinhood_eligible():
     logger.info(f"total: {total_nasdaq}; num_eligible: {num_nasdaq}")
 
 
-
 def test_get_equity_on_dates():
     # Arrange
     date_strs = ["2021-01-04", "2021-01-11"]
@@ -1088,3 +1088,30 @@ def test_get_equity_on_dates():
 
     # Assert
     logger.info(df["future_open"].to_list())
+
+
+def test_get_airlines():
+    # Arrange
+    # Act
+    df = ticker_service.get_nasdaq_info()
+    df_air = df[df["industry"].isin(['Airlines'])]
+
+    # Assert
+    print(df_air['ticker'].unique())
+
+
+def test_yfinance():
+    querystring = {"symbol": "AMRN", "region": "US"}
+
+    url = "https://apidojo-yahoo-finance-v1.p.rapidapi.com/stock/v2/get-summary"
+
+    headers = {
+        'x-rapidapi-key': "SIGN-UP-FOR-KEY",
+        'x-rapidapi-host': "apidojo-yahoo-finance-v1.p.rapidapi.com"
+    }
+
+    response = requests.request("GET", url, headers=headers, params=querystring)
+
+    print(response.text)
+    # get historical market data, here max is 5 years.
+    # logger.info(msft.history(period="max"))

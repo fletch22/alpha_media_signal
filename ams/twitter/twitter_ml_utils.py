@@ -636,6 +636,7 @@ def combine_with_quarterly_stock_data(df):
     df_drop_init = df_result.dropna(subset=["date"]).copy().drop(columns="lastupdated_eq_fun").copy()
     df_drop_future = df_drop_init[df_drop_init["date"] > df_drop_init["calendardate"]].copy()
     df_drop_future = df_drop_future.sort_values(by=["ticker", "date", "calendardate"], ascending=False).copy()
+    logger.info(f"Num after drop future:  {df_drop_future.shape}")
     df_stock_and_quarter = df_drop_future.drop_duplicates(subset=["ticker", "date"], keep="first").copy()
     logger.info("Finished merging in quarterly stock data.")
 
@@ -643,17 +644,9 @@ def combine_with_quarterly_stock_data(df):
 
 
 def merge_tweets_with_stock_data(df_twitter, df_stock_and_quarter):
-    df_nas_tickers_info = ticker_service.get_nasdaq_tickers().copy()
+    df_stock_merged = merge_with_stock_details(df_stock_and_quarter)
 
-    col_ticker = "ticker_drop"
-
-    df_stock_quart_info = pd.merge(df_stock_and_quarter, df_nas_tickers_info, how='inner', left_on=["ticker"], right_on=[col_ticker])
-    df_stock_quart_info.drop(columns=[col_ticker], inplace=True)
-
-    df_stock_renamed = df_stock_quart_info.rename(columns={"ticker": "f22_ticker"})
-
-    if 'None' in df_stock_renamed.columns:
-        df_stock_renamed.drop(columns=['None'], inplace=True)
+    df_stock_renamed = df_stock_merged.rename(columns={"ticker": "f22_ticker"})
 
     df_merged = pd.merge(df_twitter, df_stock_renamed, how='inner', on=["f22_ticker", "date"])
 
@@ -666,6 +659,18 @@ def merge_tweets_with_stock_data(df_twitter, df_stock_and_quarter):
     df_ranked = add_tip_ranks(df=df_merged, tr_file_path=constants.TIP_RANKED_DATA_PATH)
 
     return df_ranked
+
+
+def merge_with_stock_details(df_stock_and_quarter):
+    df_nas_tickers_info = ticker_service.get_nasdaq_tickers().copy()
+    col_ticker = "ticker_drop"
+    df_stock_quart_info = pd.merge(df_stock_and_quarter, df_nas_tickers_info, how='inner', left_on=["ticker"], right_on=[col_ticker])
+    df_stock_quart_info.drop(columns=[col_ticker], inplace=True)
+
+    if 'None' in df_stock_quart_info.columns:
+        df_stock_quart_info.drop(columns=['None'], inplace=True)
+
+    return df_stock_quart_info
 
 
 def add_calendar_info(df: pd.DataFrame, columns_fundy: List[str], tweet_date_str: str, num_hold_days: int, oldest_tweet_date):

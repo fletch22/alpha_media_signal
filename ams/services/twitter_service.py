@@ -356,7 +356,6 @@ def std_col(df: pd.DataFrame, col_name: str, standard_scaler: StandardScaler = S
 def add_buy_sell(df: pd.DataFrame):
     roi_threshold_pct = 0
 
-    # FIXME: 2021-04-11: chris.flesche: Exponential is experimental
     df.loc[:, 'stock_val_change'] = ((df['future_close'] - df['purchase_close']) / df['purchase_close']) - df["nasdaq_day_roi"]
     df.loc[:, 'stock_val_change'] = df["stock_val_change"].apply(lambda svc: -pow(svc, 2) if svc < 0 else pow(svc, 2))
 

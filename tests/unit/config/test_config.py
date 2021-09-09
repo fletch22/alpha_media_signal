@@ -1,18 +1,17 @@
 from ams.config import constants
-
-from ams.utils import pandas_utils
 from ams.config import logger_factory
+from ams.utils import pandas_utils
 
 logger = logger_factory.create(__name__)
 
 
 def test_config():
-  # Arrange
-  # Act
-  creds = constants.FLETCH22_CREDS
+    # Arrange
+    # Act
+    creds = constants.FLETCH22_CREDS
 
-  # Assert
-  assert (len(creds.api_key) > 10)
+    # Assert
+    assert (len(creds.api_key) > 10)
 
 
 COLS = ['location_Alaska; U.S.A', 'location_Czech Republic', 'industry_Confectioners',
@@ -225,35 +224,48 @@ COLS = ['location_Alaska; U.S.A', 'location_Czech Republic', 'industry_Confectio
 
 
 def test_find_columns_with_value():
-  import pandas as pd
-  df = pd.DataFrame([{"foo": "abc", "bar": "def"}])
+    import pandas as pd
+    df = pd.DataFrame([{"foo": "abc", "bar": "def"}])
 
-  # Act
-  cols = pandas_utils.find_columns_with_value(df=df, value_to_find='abc')
+    # Act
+    cols = pandas_utils.find_columns_with_value(df=df, value_to_find='abc')
 
-  # Assert
-  assert (len(cols) == 1)
-  assert (cols[0] == "foo")
+    # Assert
+    assert (len(cols) == 1)
+    assert (cols[0] == "foo")
 
 
 def test_foo():
-  cols = [c for c in COLS if not c.startswith("location_")
-          and not c.startswith("close_")
-          and not c.startswith("industry_")
-          and not c.startswith("famaindustry_")
-          and not c.startswith("currency_")
-          and not c.startswith("user_")
-          and not c.startswith("category_")
-          and not c.startswith("sector_")
-          and not c.startswith("sicsector_")
-          and not c.startswith("scalemarketcap_")
-          and not c.startswith("scalerevenue_")
-          ]
+    cols = [c for c in COLS if not c.startswith("location_")
+            and not c.startswith("close_")
+            and not c.startswith("industry_")
+            and not c.startswith("famaindustry_")
+            and not c.startswith("currency_")
+            and not c.startswith("user_")
+            and not c.startswith("category_")
+            and not c.startswith("sector_")
+            and not c.startswith("sicsector_")
+            and not c.startswith("scalemarketcap_")
+            and not c.startswith("scalerevenue_")
+            ]
 
-  logger.info(len(cols))
-  logger.info(cols)
+    logger.info(len(cols))
+    logger.info(cols)
 
-  import pandas as pd
-  df = pd.DataFrame([{"foo": "abc", "bar": "def"}])
+    import pandas as pd
+    df = pd.DataFrame([{"foo": "abc", "bar": "def"}])
 
-  logger.info(f"Columns matched: {pandas_utils.find_columns_with_value(df=df, value_to_find='abc')}")
+    logger.info(f"Columns matched: {pandas_utils.find_columns_with_value(df=df, value_to_find='abc')}")
+
+def generate_batch_data(x, y, batch_size: int):
+    for batch_ndx, i in enumerate(range(0, len(x) - batch_size, batch_size)):
+        print(i)
+
+        yield 1, 2, batch_ndx
+
+def test_enum():
+    x = [1, 2, 3, 4, 5, 6]
+    batch_size = 2
+
+    for val_1, val_2, batch_ndx in generate_batch_data(x=x, y=2, batch_size=batch_size):
+        print(batch_ndx)

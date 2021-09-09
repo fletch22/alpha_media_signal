@@ -7,7 +7,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 from ams.config import logger_factory
 from ams.pipes.p_make_prediction.DayPredictionInfo import DayPredictionInfo
-from ams.services.ticker_service import get_ticker_info, make_one_hotted
+from ams.services.ticker_service import get_ticker_info, make_one_hotted, get_ticker_eod_data
 from ams.twitter.twitter_ml_utils import transform_to_numpy, get_data_for_predictions, one_hot
 
 logger = logger_factory.create(__name__)
@@ -71,7 +71,6 @@ def split_train_test(df: pd.DataFrame, tweet_date_str: str) -> (pd.DataFrame, pd
 
     return df_train, df_test
 
-
 def train_predict(dpi: DayPredictionInfo,
                   label_col: str = "buy_sell",
                   require_balance: bool = True,
@@ -83,8 +82,6 @@ def train_predict(dpi: DayPredictionInfo,
     columns = [c for c in dpi.df.columns if str(dpi.df[c].dtype) == "object"]
     omit_cols = {'f22_ticker', 'future_date', 'date', 'purchase_date'}
     columns = list(set(columns) - omit_cols)
-    for c in columns:
-        logger.info(c)
 
     df = make_one_hotted(df=dpi.df, df_all_tickers=df_all_tickers, cols=columns)
     df, _ = one_hot(df=df)
