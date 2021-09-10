@@ -113,35 +113,59 @@ def test_get_maos():
     # 39th day; top rev prev year: .0038
     # 29th day; top rev prev year: 0.0022
     stock_dict = dict(
-        _2016=['AAPL', 'TM', 'MCK', 'ABC', 'COST', 'HMC', 'KR', 'WBA', 'CAH', 'MSFT', 'NTTYY', 'JXHLY', 'PG', 'SNE', 'PEP', 'VOD', 'INTC', 'DIS', 'HPQ', 'CSCO', 'SYY', 'FDX',
-               'BHP', 'TTM', 'MUFG', 'TSN', 'ORCL', 'DCMYY', 'SNEX', 'S', 'ACN', 'HPE', 'NKE', 'TFCF', 'DE', 'SMFG', 'RY', 'BTTGY', 'RAD', 'FLEX', 'QCOM', 'MFG', 'TD', 'MDT',
-               'ADNT', 'NGG', 'SBUX', 'DXC', 'BNS', 'IX', 'ACM', 'JBL', 'AVT', 'GIS', 'JCI', 'DEO', 'NGL', 'EMR', 'MU', 'CCL', 'WFM', 'PFGC', 'SSL', 'WBK', 'MON', 'BMO',
-               'WDC', 'IBN', 'ARMK', 'KMX', 'V', 'STX', 'NMR', 'SNX', 'SVU', 'VIAB', 'KYOCY', 'PH', 'BABA', 'TEL', 'J', 'BBBY', 'CSX', 'ODP', 'VEDL', 'WRK', 'ADP', 'DHI',
+        _2016=['AAPL', 'TM', 'MCK', 'ABC', 'COST', 'HMC', 'KR', 'WBA', 'CAH', 'MSFT', 'NTTYY', 'JXHLY', 'PG', 'SNE', 'PEP', 'VOD', 'INTC', 'DIS', 'HPQ', 'CSCO',
+               'SYY', 'FDX',
+               'BHP', 'TTM', 'MUFG', 'TSN', 'ORCL', 'DCMYY', 'SNEX', 'S', 'ACN', 'HPE', 'NKE', 'TFCF', 'DE', 'SMFG', 'RY', 'BTTGY', 'RAD', 'FLEX', 'QCOM', 'MFG',
+               'TD', 'MDT',
+               'ADNT', 'NGG', 'SBUX', 'DXC', 'BNS', 'IX', 'ACM', 'JBL', 'AVT', 'GIS', 'JCI', 'DEO', 'NGL', 'EMR', 'MU', 'CCL', 'WFM', 'PFGC', 'SSL', 'WBK', 'MON',
+               'BMO',
+               'WDC', 'IBN', 'ARMK', 'KMX', 'V', 'STX', 'NMR', 'SNX', 'SVU', 'VIAB', 'KYOCY', 'PH', 'BABA', 'TEL', 'J', 'BBBY', 'CSX', 'ODP', 'VEDL', 'WRK', 'ADP',
+               'DHI',
                'EL', 'HSIC', 'CM', 'BDX', 'AZO', 'NAV', 'PCP', 'TYC', 'AMAT', 'LEN', 'HRL', 'CAG'],
-        _2017=['WMT', 'TM', 'AAPL', 'MCK', 'ABC', 'CAH', 'COST', 'HMC', 'WBA', 'KR', 'NTTYY', 'MSFT', 'HD', 'TGT', 'SNE', 'PG', 'LOW', 'PEP', 'JXHLY', 'INTC', 'DELL', 'FDX',
-               'ACI', 'VOD', 'SYY', 'DIS', 'HPQ', 'CSCO', 'DCMYY', 'TTM', 'BBY', 'TSN', 'ORCL', 'ACN', 'BHP', 'NKE', 'S', 'TJX', 'RY', 'SMFG', 'BTTGY', 'DE', 'MDT', 'SNEX',
-               'HPE', 'MUFG', 'TFCF', 'TD', 'KHC', 'M', 'TECD', 'IX', 'USFD', 'FLEX', 'BABA', 'RAD', 'JCI', 'SBUX', 'QCOM', 'SHLDQ', 'DG', 'BNS', 'DLTR', 'MU', 'MFG', 'KSS',
-               'WDC', 'JBL', 'NGG', 'V', 'SPLS', 'ACM', 'AVGO', 'CCL', 'IBN', 'AVT', 'BMO', 'WBK', 'SNX', 'PFGC', 'ADNT', 'DEO', 'KMX', 'TAK', 'GIS', 'GPS', 'EMR', 'WRK',
+        _2017=['WMT', 'TM', 'AAPL', 'MCK', 'ABC', 'CAH', 'COST', 'HMC', 'WBA', 'KR', 'NTTYY', 'MSFT', 'HD', 'TGT', 'SNE', 'PG', 'LOW', 'PEP', 'JXHLY', 'INTC',
+               'DELL', 'FDX',
+               'ACI', 'VOD', 'SYY', 'DIS', 'HPQ', 'CSCO', 'DCMYY', 'TTM', 'BBY', 'TSN', 'ORCL', 'ACN', 'BHP', 'NKE', 'S', 'TJX', 'RY', 'SMFG', 'BTTGY', 'DE', 'MDT',
+               'SNEX',
+               'HPE', 'MUFG', 'TFCF', 'TD', 'KHC', 'M', 'TECD', 'IX', 'USFD', 'FLEX', 'BABA', 'RAD', 'JCI', 'SBUX', 'QCOM', 'SHLDQ', 'DG', 'BNS', 'DLTR', 'MU',
+               'MFG', 'KSS',
+               'WDC', 'JBL', 'NGG', 'V', 'SPLS', 'ACM', 'AVGO', 'CCL', 'IBN', 'AVT', 'BMO', 'WBK', 'SNX', 'PFGC', 'ADNT', 'DEO', 'KMX', 'TAK', 'GIS', 'GPS', 'EMR',
+               'WRK',
                'JWN', 'AMAT', 'MON', 'ARMK', 'TXT', 'DHI', 'VIAB', 'SSL', 'SWK', 'JCPNQ', 'ROST', 'K'],
-        _2018=['WMT', 'AAPL', 'TM', 'MCK', 'ABC', 'COST', 'CAH', 'HMC', 'WBA', 'KR', 'MSFT', 'HD', 'JNJ', 'DELL', 'SNE', 'TGT', 'INTC', 'LOW', 'PG', 'FDX', 'VOD', 'PEP',
-               'ACI', 'DIS', 'SYY', 'HPQ', 'CSCO', 'TTM', 'BHP', 'BBY', 'ACN', 'TSN', 'BABA', 'ORCL', 'MUFG', 'DE', 'NKE', 'TJX', 'TECD', 'BTTGY', 'SMFG', 'RY', 'S', 'HPE',
-               'TFCF', 'MU', 'MDT', 'TD', 'SNEX', 'KHC', 'FLEX', 'IX', 'M', 'SBUX', 'USFD', 'DG', 'JCI', 'MFG', 'QCOM', 'DLTR', 'JBL', 'BNS', 'DXC', 'RAD', 'NGG', 'AVGO',
-               'WDC', 'V', 'LEN', 'KSS', 'SNX', 'AVT', 'CCL', 'IBN', 'PFGC', 'BMO', 'ADNT', 'EMR', 'KMX', 'AMAT', 'SHLDQ', 'WRK', 'DEO', 'DHI', 'BDX', 'GPS', 'WBK', 'ARMK',
+        _2018=['WMT', 'AAPL', 'TM', 'MCK', 'ABC', 'COST', 'CAH', 'HMC', 'WBA', 'KR', 'MSFT', 'HD', 'JNJ', 'DELL', 'SNE', 'TGT', 'INTC', 'LOW', 'PG', 'FDX', 'VOD',
+               'PEP',
+               'ACI', 'DIS', 'SYY', 'HPQ', 'CSCO', 'TTM', 'BHP', 'BBY', 'ACN', 'TSN', 'BABA', 'ORCL', 'MUFG', 'DE', 'NKE', 'TJX', 'TECD', 'BTTGY', 'SMFG', 'RY', 'S',
+               'HPE',
+               'TFCF', 'MU', 'MDT', 'TD', 'SNEX', 'KHC', 'FLEX', 'IX', 'M', 'SBUX', 'USFD', 'DG', 'JCI', 'MFG', 'QCOM', 'DLTR', 'JBL', 'BNS', 'DXC', 'RAD', 'NGG',
+               'AVGO',
+               'WDC', 'V', 'LEN', 'KSS', 'SNX', 'AVT', 'CCL', 'IBN', 'PFGC', 'BMO', 'ADNT', 'EMR', 'KMX', 'AMAT', 'SHLDQ', 'WRK', 'DEO', 'DHI', 'BDX', 'GPS', 'WBK',
+               'ARMK',
                'GIS', 'TAK', 'JWN', 'PH', 'SVU', 'ROST', 'TEL', 'SWK', 'TXT', 'VEDL', 'ACM', 'KYOCY'],
-        _2019=['WMT', 'AAPL', 'TM', 'MCK', 'ABC', 'COST', 'CAH', 'HMC', 'WBA', 'KR', 'MSFT', 'HD', 'JNJ', 'DELL', 'SNE', 'TGT', 'INTC', 'LOW', 'PG', 'FDX', 'VOD', 'PEP',
-               'ACI', 'DIS', 'SYY', 'HPQ', 'CSCO', 'TTM', 'BHP', 'BBY', 'ACN', 'TSN', 'BABA', 'ORCL', 'MUFG', 'DE', 'NKE', 'TJX', 'TECD', 'BTTGY', 'SMFG', 'RY', 'S', 'HPE',
-               'TFCF', 'MU', 'MDT', 'TD', 'SNEX', 'KHC', 'FLEX', 'IX', 'M', 'SBUX', 'USFD', 'DG', 'JCI', 'MFG', 'QCOM', 'DLTR', 'JBL', 'BNS', 'DXC', 'RAD', 'NGG', 'AVGO',
-               'WDC', 'V', 'LEN', 'KSS', 'SNX', 'AVT', 'CCL', 'IBN', 'PFGC', 'BMO', 'ADNT', 'EMR', 'KMX', 'AMAT', 'SHLDQ', 'WRK', 'DEO', 'DHI', 'BDX', 'GPS', 'WBK', 'ARMK',
+        _2019=['WMT', 'AAPL', 'TM', 'MCK', 'ABC', 'COST', 'CAH', 'HMC', 'WBA', 'KR', 'MSFT', 'HD', 'JNJ', 'DELL', 'SNE', 'TGT', 'INTC', 'LOW', 'PG', 'FDX', 'VOD',
+               'PEP',
+               'ACI', 'DIS', 'SYY', 'HPQ', 'CSCO', 'TTM', 'BHP', 'BBY', 'ACN', 'TSN', 'BABA', 'ORCL', 'MUFG', 'DE', 'NKE', 'TJX', 'TECD', 'BTTGY', 'SMFG', 'RY', 'S',
+               'HPE',
+               'TFCF', 'MU', 'MDT', 'TD', 'SNEX', 'KHC', 'FLEX', 'IX', 'M', 'SBUX', 'USFD', 'DG', 'JCI', 'MFG', 'QCOM', 'DLTR', 'JBL', 'BNS', 'DXC', 'RAD', 'NGG',
+               'AVGO',
+               'WDC', 'V', 'LEN', 'KSS', 'SNX', 'AVT', 'CCL', 'IBN', 'PFGC', 'BMO', 'ADNT', 'EMR', 'KMX', 'AMAT', 'SHLDQ', 'WRK', 'DEO', 'DHI', 'BDX', 'GPS', 'WBK',
+               'ARMK',
                'GIS', 'TAK', 'JWN', 'PH', 'SVU', 'ROST', 'TEL', 'SWK', 'TXT', 'VEDL', 'ACM', 'KYOCY'],
-        _2020=['WMT', 'TM', 'AAPL', 'MCK', 'ABC', 'COST', 'CAH', 'HMC', 'WBA', 'MSFT', 'KR', 'HD', 'DELL', 'JNJ', 'SNE', 'TGT', 'INTC', 'LOW', 'FDX', 'DIS', 'PG', 'PEP',
-               'ACI', 'SYY', 'HPQ', 'VOD', 'BABA', 'CSCO', 'BHP', 'TTM', 'ACN', 'BBY', 'TSN', 'ORCL', 'DE', 'NKE', 'TJX', 'TECD', 'RY', 'MUFG', 'S', 'SNEX', 'TD', 'BTTGY',
-               'MDT', 'HPE', 'SMFG', 'SBUX', 'FLEX', 'USFD', 'DG', 'JBL', 'KHC', 'M', 'QCOM', 'JCI', 'SNX', 'BNS', 'MU', 'V', 'DLTR', 'AVGO', 'UNFI', 'LEN', 'IX', 'RAD',
-               'CCL', 'DXC', 'KSS', 'NGG', 'PFGC', 'AVT', 'BMO', 'TAK', 'IBN', 'MFG', 'EMR', 'WRK', 'KMX', 'DHI', 'BDX', 'GIS', 'GPS', 'WDC', 'ADNT', 'DEO', 'ARMK', 'JWN',
+        _2020=['WMT', 'TM', 'AAPL', 'MCK', 'ABC', 'COST', 'CAH', 'HMC', 'WBA', 'MSFT', 'KR', 'HD', 'DELL', 'JNJ', 'SNE', 'TGT', 'INTC', 'LOW', 'FDX', 'DIS', 'PG',
+               'PEP',
+               'ACI', 'SYY', 'HPQ', 'VOD', 'BABA', 'CSCO', 'BHP', 'TTM', 'ACN', 'BBY', 'TSN', 'ORCL', 'DE', 'NKE', 'TJX', 'TECD', 'RY', 'MUFG', 'S', 'SNEX', 'TD',
+               'BTTGY',
+               'MDT', 'HPE', 'SMFG', 'SBUX', 'FLEX', 'USFD', 'DG', 'JBL', 'KHC', 'M', 'QCOM', 'JCI', 'SNX', 'BNS', 'MU', 'V', 'DLTR', 'AVGO', 'UNFI', 'LEN', 'IX',
+               'RAD',
+               'CCL', 'DXC', 'KSS', 'NGG', 'PFGC', 'AVT', 'BMO', 'TAK', 'IBN', 'MFG', 'EMR', 'WRK', 'KMX', 'DHI', 'BDX', 'GIS', 'GPS', 'WDC', 'ADNT', 'DEO', 'ARMK',
+               'JWN',
                'ROST', 'EL', 'AMAT', 'SSL', 'SWK', 'PH', 'CM', 'ADP', 'WBK', 'ACM', 'K', 'TEL'],
-        _2021=['WMT', 'TM', 'AAPL', 'MCK', 'ABC', 'COST', 'CAH', 'MSFT', 'WBA', 'HMC', 'KR', 'HD', 'DELL', 'TGT', 'SNE', 'BABA', 'LOW', 'PG', 'FDX', 'DIS', 'ACI', 'VOD',
-               'SYY', 'CSCO', 'ACN', 'BBY', 'TSN', 'BHP', 'TJX', 'ORCL', 'NKE', 'TECD', 'RY', 'MUFG', 'TTM', 'TD', 'TAK', 'MDT', 'BTTGY', 'DG', 'JBL', 'UNFI', 'PFGC', 'SMFG',
-               'M', 'FLEX', 'BNS', 'DLTR', 'QCOM', 'SBUX', 'JCI', 'RAD', 'V', 'MU', 'IX', 'KMX', 'DHI', 'KSS', 'IBN', 'DXC', 'BMO', 'MFG', 'NGG', 'AVT', 'GIS', 'WRK', 'BDX',
-               'CRM', 'EMR', 'WDC', 'GPS', 'ROST', 'JWN', 'DEO', 'WBK', 'ADP', 'CM', 'EL', 'PH', 'TXT', 'J', 'ACM', 'BJ', 'LB', 'ARMK', 'INFY', 'ADNT', 'AZO', 'AMCR', 'FOXA',
+        _2021=['WMT', 'TM', 'AAPL', 'MCK', 'ABC', 'COST', 'CAH', 'MSFT', 'WBA', 'HMC', 'KR', 'HD', 'DELL', 'TGT', 'SNE', 'BABA', 'LOW', 'PG', 'FDX', 'DIS', 'ACI',
+               'VOD',
+               'SYY', 'CSCO', 'ACN', 'BBY', 'TSN', 'BHP', 'TJX', 'ORCL', 'NKE', 'TECD', 'RY', 'MUFG', 'TTM', 'TD', 'TAK', 'MDT', 'BTTGY', 'DG', 'JBL', 'UNFI',
+               'PFGC', 'SMFG',
+               'M', 'FLEX', 'BNS', 'DLTR', 'QCOM', 'SBUX', 'JCI', 'RAD', 'V', 'MU', 'IX', 'KMX', 'DHI', 'KSS', 'IBN', 'DXC', 'BMO', 'MFG', 'NGG', 'AVT', 'GIS',
+               'WRK', 'BDX',
+               'CRM', 'EMR', 'WDC', 'GPS', 'ROST', 'JWN', 'DEO', 'WBK', 'ADP', 'CM', 'EL', 'PH', 'TXT', 'J', 'ACM', 'BJ', 'LB', 'ARMK', 'INFY', 'ADNT', 'AZO',
+               'AMCR', 'FOXA',
                'TEL', 'NMR', 'BERY', 'JCPNQ', 'BBBY', 'LDOS', 'VEDL', 'CAG', 'SSL', 'NVDA'])
 
     # Bottom pe and untradable
@@ -178,110 +202,125 @@ def test_get_maos():
     #            'BILL', 'EGAN', 'AQUA', 'MJCO', 'TEAM', 'ENZ', 'EQOS', 'LOAC', 'MLAB', 'MTA', 'AGTC', 'LTRX', 'IIIV', 'NLOK', 'DRI', 'POST', 'EGHT', 'ANGO', 'DCT']
     # )
 
-    # 39th day; above 30 pe + tradeable; 0.0017
-    # 29th day; above 30 pe + tradeable; 0.0025
+    # 39th day; above 30 pe + tradeable; 0.0078
+    # 29th day; above 30 pe + tradeable; 0.0055
+    stock_dict = dict(
+        _2016=['POST', 'BNED', 'CSC', 'ASH', 'CSCO', 'LRN', 'MTSI', 'RAD', 'TEAM', 'CVLT', 'PTC', 'CVLT', 'CRS', 'MLAB', 'CUB', 'EPC', 'ABM', 'NYT', 'MCK', 'CSII', 'AVX',
+               'VIAV', 'RAMP', 'PZZA', 'MPSX', 'ZOES', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'GWRE', 'BRC', 'GWRE', 'SJR', 'EGHT', 'ODP', 'ASEI', 'NXGN', 'PCTY', 'LGF.B',
+               'DECK', 'HAIN', 'GWRE', 'GWRE', 'CIEN', 'ZOES', 'MYCC', 'RAMP', 'PTC', 'MOG.A', 'RXN', 'LOGI', 'HABT', 'EPAY', 'AVAV', 'PRGO', 'EPAY', 'KRNY', 'FNSR', 'DLB',
+               'POST', 'VSAT', 'NXGN', 'CUB', 'AIR', 'NTAP', 'VSAT', 'KTOS', 'AMD', 'MSGN', 'PLAY', 'GIMO', 'CMD', 'PLXS', 'SPH', 'EZPW', 'AIR', 'NAV', 'CRS', 'VRTU', 'HAE',
+               'JJSF', 'GPN', 'KLIC', 'MNR', 'WING', 'SYY', 'CUDA', 'PCTY', 'MLAB', 'RGS', 'CALM', 'AIR', 'ABMD', 'ISLE', 'GGG', 'SHAK', 'HAIN', 'SHAK'],
+        _2017=['TAST', 'WWW', 'POST', 'CSC', 'ASH', 'CSCO', 'LRN', 'MTSI', 'RAD', 'SUM', 'CRM', 'TEAM', 'CVLT', 'PTC', 'SUM', 'CVLT', 'CRS', 'CHS', 'MLAB', 'CUB', 'EPC',
+               'ABM', 'NYT', 'MCK', 'CSII', 'AVX', 'SUM', 'VIAV', 'IMBI', 'RAMP', 'PZZA', 'ZOES', 'HAWK', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'GWRE', 'BRC', 'GWRE', 'SJR',
+               'EGHT', 'ASEI', 'MRVL', 'NXGN', 'PCTY', 'LGF.B', 'DECK', 'HAIN', 'NORD', 'GWRE', 'GWRE', 'JNJ', 'CIEN', 'STAA', 'SUM', 'ZOES', 'MYCC', 'SLAB', 'RAMP', 'LNCE',
+               'COKE', 'PTC', 'MOG.A', 'RXN', 'ISIL', 'EBF', 'LOGI', 'CRM', 'HABT', 'EPAY', 'CY', 'AVAV', 'EPAY', 'ADSK', 'ANF', 'RH', 'ANF', 'ICHR', 'KRNY', 'FNSR', 'DLB',
+               'CRM', 'POST', 'VSAT', 'NXGN', 'CUB', 'CONN', 'AIR', 'NTAP', 'VSAT', 'ITGR', 'KTOS', 'MSGN', 'PLAY', 'CMD', 'PLXS', 'SPH', 'EZPW'],
+        _2018=['WWW', 'POST', 'BNED', 'ASH', 'CSCO', 'LRN', 'MTSI', 'RAD', 'HLNE', 'WINS', 'COHU', 'SUM', 'CRM', 'TEAM', 'CVLT', 'PTC', 'SUM', 'CVLT', 'CRS', 'CHS', 'MLAB',
+               'CUB', 'EPC', 'ABM', 'MCK', 'CSII', 'PRMW', 'AVX', 'SUM', 'VIAV', 'IMBI', 'RAMP', 'ZOES', 'HAWK', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'GWRE', 'BRC', 'GWRE',
+               'SJR', 'EGHT', 'ODP', 'MRVL', 'NXGN', 'PCTY', 'LGF.B', 'DECK', 'HAIN', 'AQUA', 'GWRE', 'GWRE', 'CIEN', 'STAA', 'SUM', 'ZOES', 'SLAB', 'PSDO', 'RAMP', 'LNCE',
+               'PTC', 'MOG.A', 'RXN', 'LOGI', 'CRM', 'HABT', 'EPAY', 'AVAV', 'EPAY', 'ADSK', 'WINS', 'ANF', 'RH', 'ANF', 'ICHR', 'KRNY', 'FNSR', 'DLB', 'CRM', 'POST', 'VSAT',
+               'NXGN', 'CUB', 'CONN', 'AIR', 'NTAP', 'VSAT', 'ITGR', 'AMD', 'MSGN', 'PLAY', 'ACB', 'CMD', 'PLXS', 'SPH', 'EZPW', 'AIR', 'MITK'],
+        _2019=['TAST', 'WWW', 'POST', 'BNED', 'ASH', 'CSCO', 'LRN', 'MTSI', 'SIGM', 'RAD', 'HLNE', 'COHU', 'SUM', 'CRM', 'TEAM', 'CVLT', 'PTC', 'SUM', 'CVLT', 'CRS', 'CHS',
+               'MLAB', 'CUB', 'EPC', 'ABM', 'NYT', 'MCK', 'CSII', 'PRMW', 'AVX', 'SUM', 'VIAV', 'IMBI', 'RAMP', 'PZZA', 'SRDX', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'GWRE',
+               'BRC', 'GWRE', 'SJR', 'EGHT', 'ODP', 'MRVL', 'NXGN', 'PCTY', 'LGF.B', 'DECK', 'HAIN', 'AQUA', 'GWRE', 'GWRE', 'JNJ', 'CIEN', 'STAA', 'CIVI', 'SUM', 'SLAB',
+               'PSDO', 'RAMP', 'COKE', 'PTC', 'MOG.A', 'RXN', 'LOGI', 'CRM', 'HABT', 'EPAY', 'CY', 'AVAV', 'EPAY', 'ADSK', 'ANF', 'RH', 'ANF', 'ICHR', 'KRNY', 'FNSR', 'DLB',
+               'DAVA', 'QTNA', 'CRM', 'POST', 'VSAT', 'NXGN', 'CUB', 'CONN', 'AIR', 'NTAP', 'VSAT', 'ITGR', 'KTOS', 'AMD', 'MSGN', 'PLAY', 'BGFV'],
+        _2020=['TAST', 'WWW', 'POST', 'BNED', 'ASH', 'CSCO', 'EPAC', 'LRN', 'MTSI', 'RAD', 'HLNE', 'COHU', 'SUM', 'CRM', 'TEAM', 'CVLT', 'PTC', 'ZM', 'SUM', 'CVLT', 'CRS',
+               'CHS', 'MLAB', 'CUB', 'EPC', 'ABM', 'NYT', 'MCK', 'CSII', 'PRMW', 'MSGS', 'AVX', 'SUM', 'VIAV', 'IMBI', 'RAMP', 'PZZA', 'NLOK', 'SRDX', 'MYGN', 'BDX', 'LNN',
+               'NUAN', 'MCK', 'GWRE', 'BRC', 'GWRE', 'SJR', 'EGHT', 'ODP', 'MRVL', 'NXGN', 'PCTY', 'LGF.B', 'DECK', 'HAIN', 'AQUA', 'GWRE', 'GWRE', 'JNJ', 'CIEN', 'SUM',
+               'SLAB', 'PSDO', 'RAMP', 'COKE', 'PTC', 'MOG.A', 'RXN', 'LOGI', 'CRM', 'EPAY', 'CY', 'AVAV', 'EPAY', 'ADSK', 'ANF', 'RH', 'ANF', 'GO', 'ICHR', 'KRNY', 'FNSR',
+               'DLB', 'DAVA', 'CRM', 'POST', 'VSAT', 'NXGN', 'CUB', 'CONN', 'IFMK', 'AIR', 'BBW', 'NTAP', 'VSAT', 'KTOS', 'AMD', 'MSGN', 'PLAY'],
+        _2021=['POST', 'BNED', 'ASH', 'CSCO', 'EPAC', 'LRN', 'MTSI', 'RAD', 'HLNE', 'CRM', 'TEAM', 'CVLT', 'PTC', 'ZM', 'CVLT', 'CRS', 'CHS', 'MLAB', 'CUB', 'EPC', 'MCK',
+               'CSII', 'MSGS', 'VIAV', 'RAMP', 'NLOK', 'SRDX', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'SMRTQ', 'GWRE', 'BRC', 'GWRE', 'SJR', 'EGHT', 'AVCT', 'MRVL', 'NXGN',
+               'PCTY', 'LGF.B', 'DECK', 'HAIN', 'AQUA', 'GWRE', 'GWRE', 'STAA', 'LAKE', 'RAMP', 'ELF', 'PTC', 'MOG.A', 'RXN', 'LOGI', 'CRM', 'AGTC', 'DGII', 'EPAY', 'AVAV',
+               'EPAY', 'ADSK', 'WINS', 'ANF', 'RH', 'ANF', 'KRNY', 'DLB', 'DAVA', 'CRM', 'POST', 'VSAT', 'NXGN', 'CUB', 'CONN', 'IFMK', 'AIR', 'BBW', 'NTAP', 'VSAT', 'MSGN',
+               'PLAY', 'ACB', 'CMD', 'PLXS', 'SPH', 'AIR', 'CRS', 'VRTU', 'VRNT', 'HAE', 'JJSF', 'VRNT', 'KLIC', 'MNR', 'TAK', 'MANU', 'SYY', 'PCTY']
+    )
+
+    # 39th day; High netinc; 0.0013
+    # 29th day; High netinc; 0.0010;
     # stock_dict = dict(
-    #     _2015=['POST', 'BNED', 'CSC', 'ASH', 'CSCO', 'LRN', 'MTSI', 'RAD', 'TEAM', 'CVLT', 'PTC', 'CVLT', 'CRS', 'MLAB', 'CUB', 'EPC', 'ABM', 'NYT', 'MCK', 'CSII', 'AVX',
-    #            'VIAV', 'RAMP', 'PZZA', 'MPSX', 'ZOES', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'GWRE', 'BRC', 'GWRE', 'SJR', 'EGHT', 'ODP', 'ASEI', 'NXGN', 'PCTY', 'LGF.B',
-    #            'DECK', 'HAIN', 'GWRE', 'GWRE', 'CIEN', 'ZOES', 'MYCC', 'RAMP', 'PTC', 'MOG.A', 'RXN', 'LOGI', 'HABT', 'EPAY', 'AVAV', 'PRGO', 'EPAY', 'KRNY', 'FNSR', 'DLB',
-    #            'POST', 'VSAT', 'NXGN', 'CUB', 'AIR', 'NTAP', 'VSAT', 'KTOS', 'AMD', 'MSGN', 'PLAY', 'GIMO', 'CMD', 'PLXS', 'SPH', 'EZPW', 'AIR', 'NAV', 'CRS', 'VRTU', 'HAE',
-    #            'JJSF', 'GPN', 'KLIC', 'MNR', 'WING', 'SYY', 'CUDA', 'PCTY', 'MLAB', 'RGS', 'CALM', 'AIR', 'ABMD', 'ISLE', 'GGG', 'SHAK', 'HAIN', 'SHAK'],
-    #     _2016=['TAST', 'WWW', 'POST', 'CSC', 'ASH', 'CSCO', 'LRN', 'MTSI', 'RAD', 'SUM', 'CRM', 'TEAM', 'CVLT', 'PTC', 'SUM', 'CVLT', 'CRS', 'CHS', 'MLAB', 'CUB', 'EPC',
-    #            'ABM', 'NYT', 'MCK', 'CSII', 'AVX', 'SUM', 'VIAV', 'IMBI', 'RAMP', 'PZZA', 'ZOES', 'HAWK', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'GWRE', 'BRC', 'GWRE', 'SJR',
-    #            'EGHT', 'ASEI', 'MRVL', 'NXGN', 'PCTY', 'LGF.B', 'DECK', 'HAIN', 'NORD', 'GWRE', 'GWRE', 'JNJ', 'CIEN', 'STAA', 'SUM', 'ZOES', 'MYCC', 'SLAB', 'RAMP', 'LNCE',
-    #            'COKE', 'PTC', 'MOG.A', 'RXN', 'ISIL', 'EBF', 'LOGI', 'CRM', 'HABT', 'EPAY', 'CY', 'AVAV', 'EPAY', 'ADSK', 'ANF', 'RH', 'ANF', 'ICHR', 'KRNY', 'FNSR', 'DLB',
-    #            'CRM', 'POST', 'VSAT', 'NXGN', 'CUB', 'CONN', 'AIR', 'NTAP', 'VSAT', 'ITGR', 'KTOS', 'MSGN', 'PLAY', 'CMD', 'PLXS', 'SPH', 'EZPW'],
-    #     _2017=['WWW', 'POST', 'BNED', 'ASH', 'CSCO', 'LRN', 'MTSI', 'RAD', 'HLNE', 'WINS', 'COHU', 'SUM', 'CRM', 'TEAM', 'CVLT', 'PTC', 'SUM', 'CVLT', 'CRS', 'CHS', 'MLAB',
-    #            'CUB', 'EPC', 'ABM', 'MCK', 'CSII', 'PRMW', 'AVX', 'SUM', 'VIAV', 'IMBI', 'RAMP', 'ZOES', 'HAWK', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'GWRE', 'BRC', 'GWRE',
-    #            'SJR', 'EGHT', 'ODP', 'MRVL', 'NXGN', 'PCTY', 'LGF.B', 'DECK', 'HAIN', 'AQUA', 'GWRE', 'GWRE', 'CIEN', 'STAA', 'SUM', 'ZOES', 'SLAB', 'PSDO', 'RAMP', 'LNCE',
-    #            'PTC', 'MOG.A', 'RXN', 'LOGI', 'CRM', 'HABT', 'EPAY', 'AVAV', 'EPAY', 'ADSK', 'WINS', 'ANF', 'RH', 'ANF', 'ICHR', 'KRNY', 'FNSR', 'DLB', 'CRM', 'POST', 'VSAT',
-    #            'NXGN', 'CUB', 'CONN', 'AIR', 'NTAP', 'VSAT', 'ITGR', 'AMD', 'MSGN', 'PLAY', 'ACB', 'CMD', 'PLXS', 'SPH', 'EZPW', 'AIR', 'MITK'],
-    #     _2018=['TAST', 'WWW', 'POST', 'BNED', 'ASH', 'CSCO', 'LRN', 'MTSI', 'SIGM', 'RAD', 'HLNE', 'COHU', 'SUM', 'CRM', 'TEAM', 'CVLT', 'PTC', 'SUM', 'CVLT', 'CRS', 'CHS',
-    #            'MLAB', 'CUB', 'EPC', 'ABM', 'NYT', 'MCK', 'CSII', 'PRMW', 'AVX', 'SUM', 'VIAV', 'IMBI', 'RAMP', 'PZZA', 'SRDX', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'GWRE',
-    #            'BRC', 'GWRE', 'SJR', 'EGHT', 'ODP', 'MRVL', 'NXGN', 'PCTY', 'LGF.B', 'DECK', 'HAIN', 'AQUA', 'GWRE', 'GWRE', 'JNJ', 'CIEN', 'STAA', 'CIVI', 'SUM', 'SLAB',
-    #            'PSDO', 'RAMP', 'COKE', 'PTC', 'MOG.A', 'RXN', 'LOGI', 'CRM', 'HABT', 'EPAY', 'CY', 'AVAV', 'EPAY', 'ADSK', 'ANF', 'RH', 'ANF', 'ICHR', 'KRNY', 'FNSR', 'DLB',
-    #            'DAVA', 'QTNA', 'CRM', 'POST', 'VSAT', 'NXGN', 'CUB', 'CONN', 'AIR', 'NTAP', 'VSAT', 'ITGR', 'KTOS', 'AMD', 'MSGN', 'PLAY', 'BGFV'],
-    #     _2019=['TAST', 'WWW', 'POST', 'BNED', 'ASH', 'CSCO', 'EPAC', 'LRN', 'MTSI', 'RAD', 'HLNE', 'COHU', 'SUM', 'CRM', 'TEAM', 'CVLT', 'PTC', 'ZM', 'SUM', 'CVLT', 'CRS',
-    #            'CHS', 'MLAB', 'CUB', 'EPC', 'ABM', 'NYT', 'MCK', 'CSII', 'PRMW', 'MSGS', 'AVX', 'SUM', 'VIAV', 'IMBI', 'RAMP', 'PZZA', 'NLOK', 'SRDX', 'MYGN', 'BDX', 'LNN',
-    #            'NUAN', 'MCK', 'GWRE', 'BRC', 'GWRE', 'SJR', 'EGHT', 'ODP', 'MRVL', 'NXGN', 'PCTY', 'LGF.B', 'DECK', 'HAIN', 'AQUA', 'GWRE', 'GWRE', 'JNJ', 'CIEN', 'SUM',
-    #            'SLAB', 'PSDO', 'RAMP', 'COKE', 'PTC', 'MOG.A', 'RXN', 'LOGI', 'CRM', 'EPAY', 'CY', 'AVAV', 'EPAY', 'ADSK', 'ANF', 'RH', 'ANF', 'GO', 'ICHR', 'KRNY', 'FNSR',
-    #            'DLB', 'DAVA', 'CRM', 'POST', 'VSAT', 'NXGN', 'CUB', 'CONN', 'IFMK', 'AIR', 'BBW', 'NTAP', 'VSAT', 'KTOS', 'AMD', 'MSGN', 'PLAY'],
-    #     _2020=['POST', 'BNED', 'ASH', 'CSCO', 'EPAC', 'LRN', 'MTSI', 'RAD', 'HLNE', 'CRM', 'TEAM', 'CVLT', 'PTC', 'ZM', 'CVLT', 'CRS', 'CHS', 'MLAB', 'CUB', 'EPC', 'MCK',
-    #            'CSII', 'MSGS', 'VIAV', 'RAMP', 'NLOK', 'SRDX', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'SMRTQ', 'GWRE', 'BRC', 'GWRE', 'SJR', 'EGHT', 'AVCT', 'MRVL', 'NXGN',
-    #            'PCTY', 'LGF.B', 'DECK', 'HAIN', 'AQUA', 'GWRE', 'GWRE', 'STAA', 'LAKE', 'RAMP', 'ELF', 'PTC', 'MOG.A', 'RXN', 'LOGI', 'CRM', 'AGTC', 'DGII', 'EPAY', 'AVAV',
-    #            'EPAY', 'ADSK', 'WINS', 'ANF', 'RH', 'ANF', 'KRNY', 'DLB', 'DAVA', 'CRM', 'POST', 'VSAT', 'NXGN', 'CUB', 'CONN', 'IFMK', 'AIR', 'BBW', 'NTAP', 'VSAT', 'MSGN',
-    #            'PLAY', 'ACB', 'CMD', 'PLXS', 'SPH', 'AIR', 'CRS', 'VRTU', 'VRNT', 'HAE', 'JJSF', 'VRNT', 'KLIC', 'MNR', 'TAK', 'MANU', 'SYY', 'PCTY']
+    #     _2016=['TLK', 'KEP', 'CIB', 'SHG', 'TM', 'KB', 'MUFG', 'SKM', 'LPL', 'SMFG', 'BCH', 'KT', 'NTTYY', 'HMC', 'BSAC', 'DCMYY', 'TSM', 'CAJ', 'PKX', 'CCU', 'TTM',
+    #            'IBN', 'CHL', 'HDB', 'WIT', 'AAPL', 'MBT', 'CHT', 'PTR', 'NVO', 'LFC', 'BIDU', 'SNP', 'SSL', 'ITUB', 'BABA', 'BRK.B', 'WFC', 'JPM', 'RDY', 'PHI',
+    #            'CEO', 'ASX', 'BBD', 'GILD', 'VZ', 'NVS', 'FMX', 'C', 'GOOGL', 'XOM', 'BAC', 'ERIC', 'HSBC', 'T', 'IBM', 'ABEV', 'MSFT', 'INTC', 'FNMA', 'TV', 'CHU',
+    #            'KOF', 'ORCL', 'RY', 'GM', 'YNDX', 'SPIL', 'CSCO', 'GSK', 'DIS', 'TFCF', 'BUD', 'CMCSA', 'WBK', 'TD', 'DD', 'AAL', 'F', 'KO', 'UAL', 'MDLZ', 'PG',
+    #            'BNS', 'PFE', 'AMGN', 'PM', 'NTES', 'FMCC', 'V', 'UBS', 'MS', 'GS', 'VOD', 'USB', 'UNH', 'PRU', 'PEP', 'MET', 'QCOM'],
+    #     _2017=['TLK', 'KEP', 'CIB', 'SHG', 'EC', 'TM', 'KB', 'SKM', 'PKX', 'LPL', 'SMFG', 'MUFG', 'KT', 'NTTYY', 'BCH', 'DCMYY', 'BSAC', 'EOCCY', 'HMC', 'TSM', 'IX',
+    #            'CAJ', 'SNE', 'CCU', 'HDB', 'CHL', 'IBN', 'TTM', 'NJDCY', 'WIT', 'BABA', 'MBT', 'SNP', 'AAPL', 'CHT', 'NVO', 'FMX', 'BRK.B', 'JPM', 'WFC', 'ITUB',
+    #            'ASX', 'MSFT', 'RDY', 'PHI', 'GOOGL', 'LFC', 'BBD', 'BAC', 'JNJ', 'AGN', 'C', 'WMT', 'MO', 'GILD', 'SSL', 'VZ', 'T', 'ABEV', 'FNMA', 'IBM', 'BIDU',
+    #            'NTES', 'CSCO', 'KOF', 'PG', 'RY', 'INTC', 'FB', 'EBR', 'SPIL', 'GM', 'DIS', 'ORCL', 'TD', 'CMCSA', 'PTR', 'XOM', 'FMCC', 'AMGN', 'GE', 'WBK', 'GS',
+    #            'EBAY', 'PFE', 'BNS', 'UNH', 'HD', 'PM', 'YNDX', 'LN', 'NVS', 'BMA', 'KO', 'PEP', 'TOT', 'RAI', 'V', 'MS', 'ABBV'],
+    #     _2018=['TLK', 'EC', 'KB', 'SHG', 'PKX', 'CIB', 'SKM', 'LPL', 'TM', 'KEP', 'NTTYY', 'DCMYY', 'SMFG', 'HMC', 'BCH', 'BSAC', 'KT', 'EOCCY', 'TSM', 'CAJ',
+    #            'MUFG', 'CCU', 'HDB', 'CHL', 'IBN', 'WIT', 'SNE', 'TTM', 'MBT', 'VEDL', 'SNP', 'AAPL', 'BRK.B', 'BABA', 'CHT', 'NVO', 'BTI', 'FMX', 'LFC', 'VZ', 'T',
+    #            'MSFT', 'CEO', 'ASX', 'PTR', 'ITUB', 'CMCSA', 'JPM', 'WFC', 'PFE', 'SSL', 'XOM', 'BIDU', 'BAC', 'BBD', 'FB', 'PG', 'TEO', 'WMT', 'PHI', 'GRVY',
+    #            'RDS.A', 'YPF', 'GOOGL', 'RDY', 'RY', 'KHC', 'HSBC', 'UNP', 'NTES', 'UNH', 'TD', 'MO', 'CHTR', 'CSCO', 'INTC', 'ORCL', 'YNDX', 'CVX', 'BMA', 'DIS',
+    #            'TGS', 'PAM', 'RIO', 'TOT', 'BA', 'SNY', 'LN', 'BNS', 'WBK', 'HD', 'PRU', 'EDN', 'NGG', 'F', 'NVS', 'BUD', 'ABEV', 'V', 'UMC'],
+    #     _2019=['TLK', 'EC', 'SHG', 'SKM', 'KB', 'CIB', 'TM', 'PKX', 'MUFG', 'HMC', 'SMFG', 'KT', 'BCH', 'BSAC', 'SNE', 'TSM', 'CCU', 'IX', 'CAJ', 'TAK', 'HDB',
+    #            'CHL', 'WIT', 'IBN', 'TTM', 'BABA', 'SNP', 'AAPL', 'PTR', 'CEO', 'YNDX', 'NVO', 'YPF', 'CHT', 'FMX', 'GOOGL', 'JPM', 'BAC', 'BIDU', 'ASX', 'CEPU',
+    #            'ITUB', 'RDS.A', 'WFC', 'FB', 'CHA', 'INTC', 'XOM', 'T', 'C', 'TGS', 'PAM', 'BBD', 'MSFT', 'FNMA', 'VZ', 'JNJ', 'KOF', 'CVX', 'MU', 'VEDL', 'HSBC',
+    #            'RIO', 'EBR', 'NVS', 'DIS', 'PEP', 'RY', 'AVGO', 'UNH', 'CMCSA', 'TOT', 'LFC', 'TD', 'PFE', 'ABEV', 'BA', 'GS', 'V', 'CHU', 'AMZN', 'WMT', 'RDY',
+    #            'PG', 'BP', 'UL', 'UN', 'BMA', 'VIV', 'MS', 'SSL', 'IBM', 'HD', 'BNS', 'AMGN', 'TEO', 'WBK', 'GM', 'PM', 'NGG'],
+    #     _2020=['TLK', 'EC', 'SHG', 'KB', 'CIB', 'TM', 'PKX', 'SNE', 'SKM', 'MUFG', 'KT', 'BSAC', 'HMC', 'SMFG', 'TSM', 'IX', 'HDB', 'CCU', 'TAK', 'CAJ', 'CHL',
+    #            'WIT', 'BABA', 'BRK.B', 'CEO', 'LFC', 'SNP', 'AAPL', 'MBT', 'VEDL', 'PTR', 'IBN', 'MSFT', 'NVO', 'JPM', 'GOOGL', 'CHT', 'BAC', 'ITUB', 'NTES', 'INTC',
+    #            'BBD', 'WFC', 'C', 'VZ', 'RDY', 'FB', 'ASX', 'PFE', 'RDS.A', 'JNJ', 'XOM', 'FNMA', 'T', 'UNH', 'CMCSA', 'RY', 'YNDX', 'TGS', 'PAM', 'KOF', 'JD', 'V',
+    #            'ABEV', 'NVS', 'TD', 'CSCO', 'AMZN', 'LBTYA', 'CHU', 'TOT', 'HD', 'ORCL', 'DIS', 'PBR', 'MRK', 'IBM', 'MS', 'KO', 'BUD', 'GS', 'WUBA', 'BNS', 'LLY',
+    #            'BHP', 'MA', 'RIO', 'ABBV', 'AMGN', 'EBR', 'HSBC', 'PEP', 'FMCC', 'COP', 'PM', 'TCOM', 'USB', 'WBK', 'AXP', 'GM'],
+    #     _2021=['TM', 'SNE', 'HMC', 'MUFG', 'IX', 'HDB', 'SMFG', 'BABA', 'WIT', 'IBN', 'AAPL', 'MSFT', 'TAK', 'RDY', 'WMT', 'PG', 'TD', 'RY', 'HD', 'CSCO', 'V',
+    #            'ORCL', 'BHP', 'BNS', 'VMW', 'QCOM', 'ACN', 'BMO', 'MDT', 'DELL', 'LOW', 'COST', 'NLOK', 'CM', 'TGT', 'TJX', 'EA', 'NVDA', 'MU', 'NKE', 'ADP', 'DHI',
+    #            'INFY', 'WBK', 'LRCX', 'GIS', 'TSN', 'EMR', 'APD', 'INTU', 'AZO', 'DG', 'ROST', 'KR', 'CPB', 'MRVL', 'BBY', 'DEO', 'FDX', 'NGG', 'ADI', 'KLAC', 'PH',
+    #            'HOLX', 'PAYX', 'ROK', 'STX', 'FOXA', 'CLX', 'SBUX', 'HRL', 'MCK', 'KMX', 'CTAS', 'BDX', 'CAG', 'DLTR', 'BF.B', 'NTAP', 'RJF', 'TXT', 'SWKS', 'BEN',
+    #            'XLNX', 'SJM', 'ULTA', 'CPRT', 'TDG', 'KSS', 'SJR', 'EL', 'VFC', 'LDOS', 'MXIM', 'RYAAY', 'LULU', 'JCI', 'RMD', 'AMCR', 'ATO']
     # )
 
-    # 39th day; High netinc; 0.0048; rerun with new list of tickers
-    # 29th day; High netinc; 0.0034; rerun with new list of tickers
-    # stock_dict = dict(
-    # _2015 = ['TM', 'NTTYY', 'DCMYY', 'SNE', 'HMC', 'MUFG', 'HDB', 'SMFG', 'BABA', 'WIT', 'IBN', 'AAPL', 'MSFT', 'INTC', 'RDY', 'PG', 'TD', 'RY', 'CSCO', 'V', 'ORCL', 'BHP',
-    #          'PEP', 'BNS', 'QCOM', 'ACN', 'BMO', 'MDT', 'TFCF', 'COST', 'CM', 'CSX', 'DE', 'HPQ', 'EA', 'CCL', 'ADBE', 'AVGO', 'AMAT', 'MU', 'NKE', 'ADP', 'DHI', 'INFY',
-    #          'WBK', 'MON', 'LRCX', 'AMTD', 'GIS', 'TSN', 'EMR', 'APD', 'LEN', 'INTU', 'AZO', 'KR', 'CPB', 'VIAB', 'PCP', 'DEO', 'YUM', 'FDX', 'NGG', 'GIB', 'ADI', 'KLAC',
-    #          'PH', 'HOLX', 'PAYX', 'A', 'HPE', 'COL', 'ROK', 'STX', 'GRMN', 'LHX', 'CLX', 'SBUX', 'HRL', 'MCK', 'KMX', 'CTAS', 'BDX', 'CAG', 'BF.B', 'NTAP', 'RJF', 'SWKS',
-    #          'BEN', 'XLNX', 'SJM', 'CPRT', 'TDG', 'HSIC', 'SJR', 'EL', 'MKC', 'MXIM', 'RYAAY', 'JCI'],
-    # _2016 = ['NJDCY', 'STJ', 'WFM', 'LLTC', 'SNDK', 'HAR', 'VAL1', 'ARG', 'ATW', 'CSC', 'IM', 'BRCD', 'PNRA', 'CLC', 'MESG', 'BWLD', 'GK', 'TFM', 'MFRM', 'ISIL', 'HW', 'NORD',
-    #          'QLGC', 'ISLE', 'PLKI', 'KKD', 'PTHN', 'NEWP', 'AEPI', 'TIVO1', 'NILE', 'MYCC', 'ACAT', 'SGI', 'BLOX', 'INVN', 'AMCC', 'APIC', 'JOY', 'RDEN', 'APOL'],
-    # _2017 = ['NTTYY', 'DCMYY', 'MON', 'CSRA', 'SPB1', 'FGL', 'MSCC', 'MENT', 'LNCE', 'BOBE', 'PRXL', 'CAFD', 'SHLM', 'XCRA', 'IXYS', 'AFAM', 'CUDA', 'ZOES', 'SHOR', 'BV1',
-    #          'XTLY', 'DDC', 'STRP', 'ALOG', 'HAWK', 'NMBL', 'PAY', 'SPLS'],
-    # _2018 = ['TFCF', 'COL', 'CA', 'ISCA', 'VSM', 'APU', 'ESIO', 'SONC', 'ESL', 'KMG', 'OCLR', 'LXFT', 'PERY', 'KLXI', 'CRCM', 'SVU', 'NXEO', 'ABAX', 'NEWM', 'FINL', 'QTNA',
-    #          'VSI', 'VCON', 'IDTI', 'KANG', 'LAYN', 'SIGM', 'TNTR'],
-    # _2019 = ['INTC', 'JNJ', 'PEP', 'DE', 'HPQ', 'CCL', 'ADBE', 'AVGO', 'AMAT', 'AMTD', 'KHC', 'LEN', 'VIAB', 'MFGP', 'GIB', 'A', 'HPE', 'ILMN', 'CDNS', 'JEF', 'K', 'SWK',
-    #          'GRMN', 'LHX', 'HSIC', 'SNA', 'GTES', 'MKC', 'KEYS', 'HBI', 'TOL', 'TSCO', 'SNPS', 'CERN', 'HAS', 'INFO', 'SNX', 'AAP', 'DOX', 'COO', 'PPC', 'RHT', 'TDY', 'DPZ',
-    #          'EV', 'LEVI', 'USFD', 'MIDD', 'GGG', 'AMD', 'NDSN', 'HEI', 'DAR', 'AVY', 'TTC', 'AVX', 'KBH', 'CRI', 'AZPN', 'GIL', 'CIEN', 'CRL', 'DNKN', 'RBC', 'LSTR', 'PKI',
-    #          'NAV', 'MASI', 'IAA', 'UFPI', 'GEF', 'FLO', 'VMI', 'FND', 'ZAYO', 'SFM', 'NYT', 'LFUS', 'WEN', 'FUL', 'BLMN', 'WWW', 'ABM', 'WW', 'DENN', 'KELYA', 'HNI', 'SAM',
-    #          'MLI', 'USNA', 'ODP', 'KTB', 'IRBT', 'SNEX', 'DORM', 'SNBR', 'IMKTA', 'TILE', 'SITE', 'BGS'],
-    # _2020 = ['TM', 'SNE', 'HMC', 'MUFG', 'IX', 'HDB', 'SMFG', 'BABA', 'WIT', 'IBN', 'AAPL', 'MSFT', 'TAK', 'RDY', 'WMT', 'PG', 'TD', 'RY', 'HD', 'CSCO', 'V', 'ORCL', 'BHP',
-    #          'BNS', 'VMW', 'QCOM', 'ACN', 'BMO', 'MDT', 'DELL', 'LOW', 'COST', 'NLOK', 'CM', 'TGT', 'TJX', 'EA', 'NVDA', 'MU', 'NKE', 'ADP', 'DHI', 'INFY', 'WBK', 'LRCX',
-    #          'GIS', 'TSN', 'EMR', 'APD', 'INTU', 'AZO', 'DG', 'ROST', 'KR', 'CPB', 'MRVL', 'BBY', 'DEO', 'FDX', 'NGG', 'ADI', 'KLAC', 'PH', 'HOLX', 'PAYX', 'ROK', 'STX',
-    #          'FOXA', 'CLX', 'SBUX', 'HRL', 'MCK', 'KMX', 'CTAS', 'BDX', 'CAG', 'DLTR', 'BF.B', 'NTAP', 'RJF', 'TXT', 'SWKS', 'BEN', 'XLNX', 'SJM', 'ULTA', 'CPRT', 'TDG',
-    #          'KSS', 'SJR', 'EL', 'VFC', 'LDOS', 'MXIM', 'RYAAY', 'LULU', 'JCI', 'RMD', 'AMCR', 'ATO']
-    # )
+    # 39th day; highest above 30pe+ and tradeable fixed 1; 0.0035
+    # 29th day; highest above 30pe+ and tradeable fixed 1; 0.0039
+    stock_dict = dict(
+        _2016=['GERN', 'BSFT', 'CSC', 'INCY', 'PENN', 'PCRX', 'MITT', 'FTI', 'TRU', 'SGRY', 'PEN', 'FTNT', 'YRCW', 'REXR', 'EGRX', 'AMZN', 'SNCR', 'ZOES', 'ATHN',
+               'GWRE', 'BRC', 'NFLX', 'ULTI', 'EGHT', 'ODP', 'ASEI', 'CX', 'CCOI', 'ALXN', 'FNV', 'CIEN', 'BKI', 'SPSC', 'MINI', 'FCPT', 'ENV', 'LOGI', 'AEM',
+               'HABT', 'MDSO', 'AVAV', 'FWONA', 'PRGO', 'RKUS', 'MOMO', 'ORC', 'EXAM', 'KRNY', 'FNSR', 'CXO', 'OLED', 'XXIA', 'ACOR', 'PNM', 'NUE', 'SSNC', 'PLAY',
+               'VIRT', 'GIMO', 'PRTY', 'KMI', 'UNVR', 'ZBH', 'PRE', 'KRG', 'AAWW', 'HAE', 'ATML', 'NBHC', 'MBLY', 'GPRE', 'CCRN', 'BLKB', 'NPTN', 'AVID', 'LOGM',
+               'SINA', 'IMMR', 'AIR', 'SCU', 'ISLE', 'WB', 'DOC', 'LYG', 'IRC', 'ITRI', 'PAYC', 'HTA', 'CCJ', 'BCR', 'OAK', 'HSC', 'RGEN', 'TVPT', 'ACAT', 'EQT',
+               'EQIX', 'WES', 'EDR', 'QTS'],
+        _2017=['TAST', 'MPLX', 'PEIX', 'ZLTQ', 'KRG', 'MTSI', 'BSFT', 'SEMG', 'TEAM', 'CVLT', 'BP', 'LOGM', 'KW', 'CHS', 'CUB', 'CEO', 'CC', 'TEVA', 'CMG', 'ACHC',
+               'ECHO', 'HAWK', 'TRP', 'SUI', 'ARRS', 'CHU', 'GWRE', 'CQH', 'NFLX', 'WEB', 'SUM', 'ZOES', 'MYCC', 'IQV', 'GKOS', 'RAMP', 'LNCE', 'ELF', 'SPSC',
+               'SALE', 'RMBS', 'TRCO', 'ERIC', 'HSTM', 'OFIX', 'BIO', 'SWC', 'OFC', 'WEX', 'GTT', 'CG', 'EQIX', 'ATHN', 'MORE', 'CONE', 'ICHR', 'INCY', 'ULTI',
+               'DEA', 'ANIP', 'BSM', 'NXPI', 'AXTA', 'SBAC', 'WAGE', 'FSP', 'VSAT', 'NXGN', 'FTNT', 'SHPG', 'PCH', 'HPP', 'ITGR', 'MSGN', 'AMZN', 'SITC', 'SU',
+               'SNCR', 'ERII', 'RP', 'SPH', 'ORC', 'GPT', 'BUD', 'MITK', 'AG', 'CHEF', 'PEN', 'CRS', 'KMPR', 'VRNT', 'LN', 'BKI', 'OMCL', 'ALRM', 'CCOI', 'TGE',
+               'HSBC', 'PTR', 'PTHN'],
+        _2018=['IONS', 'FTAI', 'WWW', 'RP', 'ASH', 'IT', 'SPSC', 'QTS', 'FLS', 'NSA', 'LRN', 'AM', 'KMI', 'RAD', 'HLNE', 'MCRN', 'VIRT', 'SID', 'EURN', 'BIP', 'PTC',
+               'MELI', 'SUM', 'PTEN', 'WAT', 'EPC', 'ABM', 'NYT', 'PEN', 'IMAX', 'RAMP', 'ACIW', 'ULTI', 'CARG', 'BSIG', 'REI', 'GRA', 'LX', 'MRVL', 'IR', 'CCOI',
+               'PCTY', 'LGF.B', 'DECK', 'BSX', 'ZBRA', 'NCSM', 'GWRE', 'JNJ', 'AAXN', 'USM', 'TREE', 'ALB', 'PSDO', 'TTEC', 'SRCL', 'AMPH', 'FTNT', 'BCO', 'LGND',
+               'GOL', 'AXTA', 'ORC', 'DEA', 'ABT', 'GRPN', 'WINS', 'RH', 'ANF', 'HSC', 'AMZN', 'SBAC', 'QGEN', 'ATVI', 'EQC', 'HR', 'CRY', 'CRM', 'WPM', 'POST',
+               'OFIX', 'KO', 'VSAT', 'EQIX', 'OPI', 'NFLX', 'BGFV', 'MTW', 'CCI', 'APPF', 'CHCT', 'SWIR', 'VRTX', 'DD', 'NAV', 'KRG', 'DLR', 'PUMP', 'COG', 'CWH'],
+        _2019=['AXS', 'CONE', 'EHTH', 'WP', 'CSCO', 'PODD', 'GNL', 'PDCE', 'CEVA', 'PEN', 'CSII', 'ATUS', 'AVX', 'SUM', 'SAIL', 'IMBI', 'PZZA', 'BDX', 'MCK', 'SWCH',
+               'SJR', 'NSA', 'ENV', 'SBAC', 'NXGN', 'PEGA', 'UNIT', 'TGP', 'HAIN', 'AQUA', 'CATM', 'PGRE', 'ACIA', 'NBIX', 'MEET', 'ALXN', 'STAA', 'AMH', 'APA',
+               'PTC', 'CXP', 'Y', 'CRM', 'SSRM', 'ADSW', 'ZNGA', 'EPAY', 'PAAS', 'EIGI', 'NUVA', 'BEP', 'FTAI', 'ANF', 'NEO', 'CWST', 'TERP', 'LBRDA', 'DLB', 'QTNA',
+               'SMLP', 'SYNH', 'DEA', 'ICUI', 'CUB', 'CONN', 'TPIC', 'NTAP', 'TDC', 'GDDY', 'ACB', 'PLXS', 'SAND', 'FARO', 'RGEN', 'OSPN', 'SJI', 'ELAN', 'PRNB',
+               'RP', 'AYX', 'TCMD', 'BRK.B', 'ALTR', 'INCY', 'CHCT', 'RGS', 'ULTI', 'GCP', 'ALRM', 'CARB', 'ABMD', 'VMW', 'HSKA', 'INXN', 'SHAK', 'JBGS', 'SSNC',
+               'ANGI', 'RCII', 'CMPR'],
+        _2020=['CWK', 'CEVA', 'CIIC', 'AAXN', 'PRA', 'ALUS', 'NOK', 'SUM', 'SBSW', 'SFTW', 'QTS', 'DRQ', 'ONTO', 'PODD', 'CVLT', 'F', 'MCK', 'PRMW', 'BAND', 'CRY',
+               'MSGS', 'VIAV', 'DOYU', 'NLOK', 'MYGN', 'LNN', 'GSHD', 'GWRE', 'SWCH', 'PEAK', 'INOV', 'NEO', 'PNTG', 'WTTR', 'E', 'BANC', 'BLKB', 'MMSI', 'SWI',
+               'FIS', 'NBIX', 'BIP', 'AMG', 'CXP', 'SLAB', 'FMX', 'UMH', 'DEA', 'COKE', 'AYX', 'RXN', 'RGEN', 'TREE', 'VRT', 'CY', 'HTA', 'BKR', 'EPAY', 'FOE',
+               'UEIC', 'DXCM', 'CSTL', 'CVA', 'GO', 'LBRDA', 'GSX', 'UNIT', 'AUDC', 'SBAC', 'CONE', 'LINX', 'LXFR', 'SSTI', 'ELAN', 'MNRL', 'IQV', 'BCO', 'WPM',
+               'KTOS', 'AMD', 'OPRT', 'BIDU', 'NXPI', 'FSP', 'GMRE', 'EZPW', 'AIR', 'COLD', 'ZNGA', 'HPP', 'KRUS', 'VRTU', 'VICR', 'HPK', 'FWONA', 'GKOS', 'VFF',
+               'GPN', 'KLIC', 'ATUS'],
+        _2021=['POST', 'EPAC', 'CRM', 'ZM', 'CRS', 'MLAB', 'SRDX', 'NUAN', 'MOG.A', 'ADSK', 'DAVA', 'AIR', 'CMD', 'VRNT', 'JJSF', 'TAK', 'SYY', 'PCTY', 'CALM',
+               'HQY', 'SLP', 'STAA', 'SMTC', 'SBUX', 'MSGE', 'AIT', 'EL', 'VIAV', 'JBL', 'DSGX', 'NXGN', 'BDX', 'AMSWA', 'MTN', 'PTC', 'VEEV', 'WBA', 'SMPL', 'HAE',
+               'CTLT', 'REX', 'NEOG', 'NKE', 'VAR', 'CMTL', 'NVDA', 'DGII', 'BRKS', 'FICO', 'MRCY', 'SLQT', 'NSSC', 'TDG', 'TFSL', 'OTEX', 'DEO', 'FLEX', 'JCI',
+               'JKHY', 'EGAN', 'HLNE', 'WDFC', 'EDU', 'LULU', 'LRN', 'RMD', 'EXPO', 'TECH', 'INTU', 'LITE', 'THR', 'RGLD', 'GBDC', 'COST', 'SR', 'FIVE', 'BF.B',
+               'ADI', 'V', 'FDS', 'EAT', 'SXI', 'AVAV', 'APD', 'MSFT', 'BRBR', 'EXP', 'KEM', 'LAKE', 'VFC', 'AAPL', 'FRHC', 'ETH', 'GMS', 'TTWO', 'ABMD', 'WGO',
+               'RAVN', 'RPM', 'PAHC']
+    )
 
-    # 39th day; highest above 30pe+ and tradeable fixed 1; 0.0038
-    # 29th day; highest above 30pe+ and tradeable fixed 1; 0.0022
-    # stock_dict = dict(
-    #     _2015=['GERN', 'BSFT', 'INCY', 'PENN', 'PEN', 'PCRX', 'MITT', 'TRU', 'FTNT', 'REXR', 'SGRY', 'ZOES', 'AMZN', 'FNV', 'ATHN', 'YRCW', 'EGRX', 'EGHT', 'GWRE', 'ODP',
-    #            'BRC', 'NFLX', 'AEM', 'CCOI', 'FTI', 'ASEI', 'LOGI', 'CIEN', 'AVAV', 'PRGO', 'BKI', 'ULTI', 'ALXN', 'EXAM', 'MINI', 'ENV', 'ORC', 'FCPT', 'CX', 'KRNY', 'FWONA',
-    #            'RKUS', 'DOC', 'CXO', 'HABT', 'FNSR', 'PNM', 'PLAY', 'SPSC', 'OLED', 'ISLE', 'XXIA', 'KMI', 'PRTY', 'MOMO', 'VIRT', 'WB', 'MDSO', 'GIMO', 'KRG', 'PRE', 'UNVR',
-    #            'SINA', 'ACOR', 'SSNC', 'ZBH', 'NPTN', 'ITRI', 'ATML', 'HAE', 'EDR', 'AAWW', 'NBHC', 'ELLI', 'EQIX', 'AFFX', 'PKX', 'IRC', 'LYG', 'AIR', 'HTA', 'AVID', 'BETR',
-    #            'BLKB', 'CCJ', 'EQT', 'BCR', 'SE1', 'ECHO', 'OAK', 'TVPT', 'MBLY', 'RGEN', 'QTS', 'ADPTQ', 'DPLO', 'GLOG', 'PTC', 'ACAT', 'LOGM'],
-    #     _2016=['TAST', 'CVLT', 'MPLX', 'ZLTQ', 'OMCL', 'PEIX', 'LOGM', 'MTSI', 'KRG', 'BSFT', 'TEAM', 'SEMG', 'BP', 'KW', 'CHS', 'CC', 'CUB', 'CX', 'ACHC', 'AGRO', 'NGD',
-    #            'CEO', 'TEVA', 'CMG', 'HAWK', 'TRP', 'ERII', 'ECHO', 'CHU', 'SUI', 'GKOS', 'ICHR', 'NFLX', 'MYCC', 'CQH', 'GWRE', 'ARRS', 'SUM', 'LNCE', 'RAMP', 'WEB', 'ZOES',
-    #            'ATHN', 'ELF', 'TRCO', 'INCY', 'OFIX', 'DEA', 'SALE', 'SWC', 'CG', 'CONE', 'EQIX', 'HSTM', 'BIO', 'RMBS', 'FTNT', 'GTT', 'CLNY', 'HPP', 'ULTI', 'ITGR', 'SBAC',
-    #            'MORE', 'ORC', 'NXPI', 'MSGN', 'SPSC', 'RP', 'AXTA', 'BSM', 'SHPG', 'AMZN', 'PEN', 'PCH', 'IQV', 'TGE', 'VSAT', 'SU', 'CRS', 'AG', 'ANIP', 'FSP', 'BUD', 'GPT',
-    #            'ALRM', 'SITC', 'NXGN', 'LN', 'KMPR', 'WAGE', 'MLNX', 'RDCM', 'BKI', 'CCOI', 'PTHN', 'HSBC', 'OCLR', 'CORT', 'SPH'],
-    #     _2017=['RDNT', 'RP', 'JELD', 'FTAI', 'WWW', 'CVLT', 'ASH', 'IT', 'VIRT', 'FLS', 'NSA', 'HLNE', 'LRN', 'KMI', 'MCRN', 'QTS', 'MELI', 'SID', 'AQUA', 'PTC', 'RAD', 'BIP',
-    #            'EURN', 'NYT', 'SUM', 'GOL', 'WAT', 'PEN', 'PTEN', 'ABM', 'IMAX', 'LX', 'EPC', 'AM', 'ACIW', 'ULTI', 'RAMP', 'CARG', 'REI', 'ZBRA', 'GRA', 'BSIG', 'AAXN',
-    #            'DECK', 'NCSM', 'MRVL', 'BSX', 'IR', 'PCTY', 'CCOI', 'LGF.B', 'CRM', 'RH', 'PSDO', 'AMD', 'TREE', 'GWRE', 'FTNT', 'JNJ', 'AKS', 'LGND', 'USM', 'SOI', 'AMZN',
-    #            'SRCL', 'TTEC', 'ABT', 'BCO', 'CRY', 'VER', 'AMPH', 'AXTA', 'CASA', 'ALB', 'ATVI', 'HSC', 'WINS', 'ORC', 'ANF', 'NFLX', 'DEA', 'QGEN', 'GRPN', 'NCMI', 'SBAC',
-    #            'EQC', 'GCI', 'VSAT', 'OFIX', 'APPF', 'WPM', 'VRTX', 'POST', 'KO', 'HR', 'NAV', 'GOOS', 'SWIR', 'CHU', 'SFUN'],
-    #     _2018=['AXS', 'EHTH', 'CONE', 'WP', 'CSCO', 'PODD', 'GNL', 'PDCE', 'CEVA', 'RH', 'PZZA', 'SUM', 'ATUS', 'PEN', 'CSII', 'CRM', 'SAIL', 'SWCH', 'GOOD', 'AVX', 'ENV',
-    #            'TGP', 'NXGN', 'PEGA', 'MCK', 'SBAC', 'NSA', 'BDX', 'IMBI', 'ACIA', 'PGRE', 'CATM', 'NBIX', 'MEET', 'ALXN', 'STAA', 'NURO', 'APA', 'ZNGA', 'HAIN', 'EPAY',
-    #            'NEO', 'CXP', 'AMH', 'SSRM', 'NTAP', 'CWST', 'ADSW', 'Y', 'FTAI', 'LBRDA', 'NUVA', 'ANF', 'QTNA', 'BEP', 'EIGI', 'UNIT', 'TCMD', 'TERP', 'SJR', 'PAAS', 'OSPN',
-    #            'SYNH', 'PTC', 'TDC', 'DEA', 'AQUA', 'TPIC', 'ALTR', 'PRNB', 'ICUI', 'SMLP', 'SAND', 'GDDY', 'RGEN', 'RP', 'AYX', 'INCY', 'ULTI', 'CHCT', 'ABMD', 'FARO',
-    #            'ELLI', 'PLXS', 'SSNC', 'SJI', 'CONN', 'CUB', 'GCP', 'IIPR', 'ALRM', 'HLNE', 'TME', 'INXN', 'SHAK', 'JBGS', 'HABT', 'ELAN', 'BRK.B', 'RCII'],
-    #     _2019=['CEVA', 'CWK', 'CIIC', 'AAXN', 'DKNG', 'PRA', 'ALUS', 'SBSW', 'NOK', 'SUM', 'SFTW', 'QTS', 'PODD', 'ONTO', 'BAND', 'MYGN', 'MCK', 'F', 'PRMW', 'DRQ', 'CVLT',
-    #            'VRT', 'CRY', 'VIAV', 'MSGS', 'VVNT', 'LNN', 'DOYU', 'INOV', 'GSHD', 'PEAK', 'GWRE', 'SWCH', 'NLOK', 'AYX', 'MMSI', 'NEO', 'FIS', 'BLKB', 'PNTG', 'BANC', 'SWI',
-    #            'GSX', 'BIP', 'CXP', 'WTTR', 'RXN', 'NBIX', 'DEA', 'HTA', 'E', 'SLAB', 'AMG', 'DXCM', 'SBAC', 'CY', 'NDLS', 'FMX', 'COKE', 'LBRDA', 'RGEN', 'TREE', 'GO', 'AIR',
-    #            'SSTI', 'CVA', 'EPAY', 'CONE', 'AUDC', 'BKR', 'GMRE', 'AMD', 'CSTL', 'IQV', 'KTOS', 'KRNT', 'ELAN', 'FOE', 'ZNGA', 'UNIT', 'WPM', 'GPN', 'WING', 'KRUS', 'SHAK',
-    #            'TW', 'BCO', 'COLD', 'HPP', 'OPRT', 'NXPI', 'MNRL', 'KLIC', 'MNR', 'CHCT', 'CDAY', 'ATUS', 'BKS', 'RCM', 'HPK'],
-    #     _2020=['POST', 'ZM', 'EPAC', 'CRM', 'MLAB', 'CRS', 'NUAN', 'MOG.A', 'DAVA', 'JJSF', 'AIR', 'TAK', 'ADSK', 'SLP', 'CMD', 'SYY', 'SBUX', 'EL', 'CALM', 'PCTY', 'VIAV',
-    #            'MSGE', 'AIT', 'JBL', 'VRNT', 'MTN', 'STAA', 'NXGN', 'HQY', 'PTC', 'CTLT', 'BDX', 'DSGX', 'VEEV', 'BRKS', 'LRN', 'AMSWA', 'EAT', 'WBA', 'HAE', 'SMTC', 'NVDA',
-    #            'NEOG', 'HLNE', 'NKE', 'TFSL', 'EDU', 'DGII', 'VAR', 'TDG', 'EGAN', 'FICO', 'FLEX', 'OTEX', 'WDFC', 'SMPL', 'JCI', 'CMTL', 'MRCY', 'INTU', 'NSSC', 'ELF', 'DEO',
-    #            'RGLD', 'LITE', 'EXPO', 'FRHC', 'SR', 'SLQT', 'GMS', 'ABMD', 'APPS', 'JKHY', 'GBDC', 'TECH', 'AVAV', 'LAKE', 'ADI', 'ETH', 'RMD', 'CLCT', 'TTWO', 'COST',
-    #            'QNST', 'EXP', 'LULU', 'KEM', 'BF.B', 'DLB', 'MCHP', 'TTEK', 'V', 'CTAS', 'CPRT', 'KLIC', 'VFC', 'QRVO', 'BR', 'RMR', 'SXI']
-    # )
-
+    num_days_under = 40
+    min_days_under_sought = 29
+    num_hold_days = 1
     all_rois = []
     for _year in sorted(stock_dict.keys()):
         year = int(_year[1:])
         tickers = stock_dict[_year]
         year_rois = []
-        num_days_under = 40
-        min_days_under_sought = 29
-        num_hold_days = 1
+
         start_dt_str = f"{year}-01-01"
         start_dt = date_utils.parse_std_datestring(start_dt_str)
 
@@ -353,3 +392,66 @@ def get_real_return(all_rois: List[float], init_inv: float):
     for r in all_rois:
         inv = inv + (inv * r)
     return inv
+
+
+def test_get_days_under():
+    tickers = ['IBM', 'NVDA', 'GOOGL', 'ABC', 'GE', 'FB']
+
+    # NOTE: 2021-09-09: chris.flesche: # 39th day; above 30 pe + tradeable; 0.0078
+    tickers = ['POST', 'BNED', 'ASH', 'CSCO', 'EPAC', 'LRN', 'MTSI', 'RAD', 'HLNE', 'CRM', 'TEAM', 'CVLT', 'PTC', 'ZM', 'CVLT', 'CRS', 'CHS', 'MLAB', 'CUB', 'EPC', 'MCK',
+               'CSII', 'MSGS', 'VIAV', 'RAMP', 'NLOK', 'SRDX', 'MYGN', 'BDX', 'LNN', 'NUAN', 'MCK', 'SMRTQ', 'GWRE', 'BRC', 'GWRE', 'SJR', 'EGHT', 'AVCT', 'MRVL', 'NXGN',
+               'PCTY', 'LGF.B', 'DECK', 'HAIN', 'AQUA', 'GWRE', 'GWRE', 'STAA', 'LAKE', 'RAMP', 'ELF', 'PTC', 'MOG.A', 'RXN', 'LOGI', 'CRM', 'AGTC', 'DGII', 'EPAY', 'AVAV',
+               'EPAY', 'ADSK', 'WINS', 'ANF', 'RH', 'ANF', 'KRNY', 'DLB', 'DAVA', 'CRM', 'POST', 'VSAT', 'NXGN', 'CUB', 'CONN', 'IFMK', 'AIR', 'BBW', 'NTAP', 'VSAT', 'MSGN',
+               'PLAY', 'ACB', 'CMD', 'PLXS', 'SPH', 'AIR', 'CRS', 'VRTU', 'VRNT', 'HAE', 'JJSF', 'VRNT', 'KLIC', 'MNR', 'TAK', 'MANU', 'SYY', 'PCTY']
+
+    date_str = "2021-09-01"
+    start_dt = date_utils.parse_std_datestring(date_str)
+    start_dt = start_dt + timedelta(hours=10)
+
+    num_days_to_test = 30
+    num_days_under = 40
+    for i in range(num_days_to_test):
+        start_dt = start_dt + timedelta(days=1)
+        start_dt_str = date_utils.get_standard_ymd_format(start_dt)
+        is_closed, _ = date_utils.is_stock_market_closed(start_dt)
+        if is_closed:
+            logger.info(f"Stock market closed {start_dt_str}")
+            continue
+
+        end_dt = start_dt + timedelta(days=1)
+        end_dt_str = date_utils.get_standard_ymd_format(end_dt)
+        dr = DateRange.from_date_strings(from_date_str=start_dt_str, to_date_str=end_dt_str)
+
+        logger.info(f"Looking at {start_dt_str} to {end_dt_str}")
+
+        df = ticker_utils.get_maos(tickers=tickers, dr=dr, num_days_under=num_days_under, add_future_cols=False)
+
+        # logger.info(f"Size of df: {df.shape[0]}")
+
+        df = df.sort_values(by=["ticker", "date"])
+
+        # logger.info(df[["ticker", "date"]].head(100))
+
+        # cols = [f"is_long_down_{x}" for x in range(num_days_under)]
+        # cols.append("ticker")
+        # logger.info(df[cols].head())
+
+        df_all = []
+        col_days_down = "days_down_in_a_row"
+        df[col_days_down] = -1
+        for x in range(num_days_under - 1, 0, -1):
+            col = f"is_long_down_{x}"
+
+            df_true = df[df[col] == True].copy()
+            if df_true.shape[0] > 0:
+                df_true[col_days_down] = x
+                df_all.append(df_true)
+
+            df = df[df[col] == False].copy()
+
+        if len(df_all) > 0:
+            df = pd.concat(df_all)
+
+        df = df.sort_values(col_days_down, ascending=False)
+
+        logger.info(df[["ticker", col_days_down]].head())

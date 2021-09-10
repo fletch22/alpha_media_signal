@@ -1098,20 +1098,3 @@ def test_get_airlines():
 
     # Assert
     print(df_air['ticker'].unique())
-
-
-def test_yfinance():
-    querystring = {"symbol": "AMRN", "region": "US"}
-
-    url = "https://apidojo-yahoo-finance-v1.p.rapidapi.com/stock/v2/get-summary"
-
-    headers = {
-        'x-rapidapi-key': "SIGN-UP-FOR-KEY",
-        'x-rapidapi-host': "apidojo-yahoo-finance-v1.p.rapidapi.com"
-    }
-
-    response = requests.request("GET", url, headers=headers, params=querystring)
-
-    print(response.text)
-    # get historical market data, here max is 5 years.
-    # logger.info(msft.history(period="max"))

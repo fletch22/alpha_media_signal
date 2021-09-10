@@ -575,11 +575,14 @@ def get_maos(tickers: List[str],
              ma_days: int = 20,
              num_days_under: int = 21,
              add_future_cols: bool = True):
-    buff_days = num_days_under + int((num_days_under / 7) * 2.5)
+    buff_days = (1 * num_days_under) + int((num_days_under / 7) * 4.5)
 
     dr_buffed = DateRange(from_date=dr.from_date - timedelta(days=buff_days), to_date=dr.to_date + timedelta(buff_days))
 
     df_ticks = ticker_service.get_tickers_in_range(tickers=tickers, date_range=dr_buffed)
+
+    # logger.info(f"Dates: {df_ticks['date'].unique()}")
+
     df_g = df_ticks.groupby("ticker")
     df_all = []
 
@@ -621,8 +624,11 @@ def get_maos(tickers: List[str],
                 df_t[col] = df_t[col] & df_t[f"was_close_under_20d_ma_{i}"]
 
         # NOTE: 2021-09-04: chris.flesche: Trims the buffered stuff off
-        df_t = df_t[(df_t["date"] > dr.from_date_str) & (df_t["date"] < dr.to_date_str)]
+        # logger.info(f"Num before date trim: {df_t.shape[0]}")
+        # logger.info(f"{dr.from_date_str} to {dr.to_date_str}")
+        df_t = df_t[(df_t["date"] >= dr.from_date_str) & (df_t["date"] < dr.to_date_str)]
 
+        # logger.info(f"Dates: {df_t['date'].unique()}")
         df_all.append(df_t)
 
     if len(df_all) > 0:

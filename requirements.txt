@@ -34,5 +34,5 @@ schedule==1.0.0
 shap==0.39.0
 catboost==0.25.1
 polygon-api-client
-
-
+finnhub-python
+retry-decorator==1.1.1

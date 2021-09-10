@@ -270,7 +270,7 @@ def get_tickers_in_range(tickers: List[str], date_range: DateRange) -> DataFrame
     for t in tickers:
         df = get_ticker_eod_data(ticker=t)
         if df is not None:
-            df_dated = df[(df['date'] > start_date_str) & (df['date'] < end_date_str)]
+            df_dated = df[(df['date'] >= start_date_str) & (df['date'] < end_date_str)]
             all_dfs.append(df_dated)
 
     return pd.concat(all_dfs)

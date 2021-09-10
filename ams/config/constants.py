@@ -15,6 +15,11 @@ def ensure_dir(dir):
     os.makedirs(dir, exist_ok=True)
 
 
+def get_api_key(file_path: Path):
+    with open(str(file_path), "r") as f:
+        return f.readline()
+
+
 if os.name == 'nt':
     WORKSPACE_PATH = Path('C:\\Users\\Chris\\workspaces\\')
     OVERFLOW_WORKSPACE_PATH = Path('D:\\workspaces\\')
@@ -142,9 +147,8 @@ slack_cred_path = os.path.join(CREDENTIALS_ROOT, 'slack.json')
 with open(slack_cred_path, "r") as f:
     SLACK_CREDENTIALS = json.loads(f.read())
 
-polygon_api_key_path = Path(CREDENTIALS_ROOT, "polygon.io.api_key")
-with open(polygon_api_key_path, "r") as f:
-    POLYGON_API_KEY = f.readline()
+finnhub_path = Path(CREDENTIALS_ROOT, "finnhub.io.api_key")
+FINNHUB_API_KEY = get_api_key(file_path=finnhub_path)
 
 US_MARKET_HOLIDAYS_PATH = Path(FIN_DATA, "us_market_holidays.csv")
 

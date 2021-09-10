@@ -144,7 +144,7 @@ def test_get_top_prev():
 def test_get_top_by_attribute():
     df = efs.get_equity_fundies()
 
-    df = efs.filter_by_dimension(df=df, efd=EquityFundaDimension.AsReportedYearly)
+    df = efs.filter_by_dimension(df=df, efd=EquityFundaDimension.MostRecentAnnual)
 
     assert df.shape[0] > 0
 
@@ -152,7 +152,7 @@ def test_get_top_by_attribute():
     # return
 
     top_n = 100
-    attr_interest = "netinc" #"pe"
+    attr_interest = "pe"
     is_low_good = False
     easy_trade = True
 
@@ -167,6 +167,11 @@ def test_get_top_by_attribute():
 
         dr = DateRange.from_date_strings(from_date_str=start_rep_year, to_date_str=end_rep_year)
         df_tickers = ticker_service.get_tickers_in_range(tickers, date_range=dr)
+
+        # df_tickers["mean_vol"] = df_tickers["volume"].mean()
+        # des_cols = ["ticker", "mean_vol"]
+        # df_tickers = df_tickers.drop_duplicates(subset=des_cols)[des_cols].copy()
+
         df_tickers = df_tickers.set_index(["ticker"])
         mean_thing = df_tickers.groupby("ticker")["volume"].mean()
         df_tickers["mean_vol"] = mean_thing
@@ -176,15 +181,17 @@ def test_get_top_by_attribute():
         des_cols = ["ticker"]
         df_tickers = df_tickers.drop_duplicates(subset=des_cols, keep="first")[["ticker", "mean_vol"]].copy()
 
+        # logger.info(df_tickers[["ticker", "mean_vol"]].head())
+
         df_year = df_year.sort_values(["ticker", "reportperiod"])
         df_year = df_year.drop_duplicates(subset=des_cols, keep="last").copy()
 
         df_enh = pd.merge(left=df_year, right=df_tickers, on="ticker")
 
         if easy_trade:
-            # df_enh = df_enh[(df_enh[attr_interest] >= 30)]
+            df_enh = df_enh[(df_enh[attr_interest] >= 30)]
             df_enh = df_enh[(df_enh["price"] * df_enh["mean_vol"]) > (10 * 250000)]
 
         tickers = df_enh.sort_values(by=[attr_interest], ascending=is_low_good)["ticker"].values.tolist()
 
-        print(f"_{year}={tickers[:top_n]},")
+        print(f"_{year + 1}={tickers[:top_n]},")
