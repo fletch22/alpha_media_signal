@@ -1443,9 +1443,9 @@ def test_split():
     # Arrange
     date_range = DateRange.from_date_strings(from_date_str="2020-12-17", to_date_str="2020-12-25")
     df_stock = ticker_service.get_ticker_eod_data("HEXO")
-    df_stock = df_stock[(df_stock["date"] >= date_range.from_date_str) & (df_stock["date"] <= date_range.to_date_str)]
+    df_stock = df_stock[(df_stock["date"] >= date_range.start_date_str) & (df_stock["date"] <= date_range.end_date_str)]
     df_stock.rename(columns={"ticker": "f22_ticker"}, inplace=True)
-    df_stock.loc[:, "purchase_date"] = date_range.from_date_str
+    df_stock.loc[:, "purchase_date"] = date_range.start_date_str
 
     df_stock_splits = stock_action_service.get_splits()[["ticker", "date", "value"]]
     print(df_stock.head())

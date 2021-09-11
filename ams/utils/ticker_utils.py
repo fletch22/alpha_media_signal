@@ -549,7 +549,7 @@ def get_complex_ma(tickers: List[str],
                 df_t[col] = df_t[col] & df_t[f"was_close_under_20d_ma_{i}"]
 
         # NOTE: 2021-09-04: chris.flesche: Trims the buffered stuff off
-        df_t = df_t[(df_t["date"] > sample_ticker_dr.from_date_str) & (df_t["date"] < sample_ticker_dr.to_date_str)]
+        df_t = df_t[(df_t["date"] > sample_ticker_dr.start_date_str) & (df_t["date"] < sample_ticker_dr.end_date_str)]
 
         if md_window is not None:
             snaps = []
@@ -575,19 +575,20 @@ def get_maos(tickers: List[str],
              ma_days: int = 20,
              num_days_under: int = 21,
              add_future_cols: bool = True):
+    df_result = None
     buff_days = (1 * num_days_under) + int((num_days_under / 7) * 4.5)
 
     dr_buffed = DateRange(from_date=dr.from_date - timedelta(days=buff_days), to_date=dr.to_date + timedelta(buff_days))
 
     df_ticks = ticker_service.get_tickers_in_range(tickers=tickers, date_range=dr_buffed)
 
-    # logger.info(f"Dates: {df_ticks['date'].unique()}")
+    # if df_ticks[df_ticks["date"] == dr.end_date_str].shape[0] == 0:
+    #     return df_result
 
     df_g = df_ticks.groupby("ticker")
     df_all = []
-
     new_cols = []
-    df_result = None
+
     for key, df_t in df_g:
         df_t["close_prev_1"] = df_t["close"].shift(1)
         df_t["was_up_0"] = df_t["close"] - df_t["close_prev_1"] > 0
@@ -598,6 +599,7 @@ def get_maos(tickers: List[str],
             new_cols.append(col_name)
 
         df_t["close_ma"] = df_t["close"].transform(lambda x: x.rolling(ma_days, 1).mean())
+        df_t["close_ma_1_day_before"] = df_t["close"].transform(lambda x: x.rolling(ma_days - 1, 1).mean())
 
         if add_future_cols:
             df_t["tomorrow_close"] = df_t["close"].shift(-1)
@@ -626,7 +628,7 @@ def get_maos(tickers: List[str],
         # NOTE: 2021-09-04: chris.flesche: Trims the buffered stuff off
         # logger.info(f"Num before date trim: {df_t.shape[0]}")
         # logger.info(f"{dr.from_date_str} to {dr.to_date_str}")
-        df_t = df_t[(df_t["date"] >= dr.from_date_str) & (df_t["date"] < dr.to_date_str)]
+        df_t = df_t[(df_t["date"] >= dr.start_date_str) & (df_t["date"] < dr.end_date_str)]
 
         # logger.info(f"Dates: {df_t['date'].unique()}")
         df_all.append(df_t)

@@ -45,9 +45,9 @@ def is_stock_market_closed(dt: datetime):
 
 
 def get_all_market_days_in_range(date_range: DateRange):
-    current_date_str = date_range.from_date_str
+    current_date_str = date_range.start_date_str
     market_days = []
-    while current_date_str < date_range.to_date_str:
+    while current_date_str < date_range.end_date_str:
         current_dt = date_utils.parse_std_datestring(current_date_str)
         is_closed, reached_end_of_data = is_stock_market_closed(dt=current_dt)
         if reached_end_of_data:

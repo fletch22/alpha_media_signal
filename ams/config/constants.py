@@ -89,6 +89,8 @@ SHARADAR_ACTIONS_FILEPATH = Path(SHARADAR_ACTIONS_DIR, "actions.csv")
 SHAR_SPLIT_EQUITY_EOD_DIR = Path(QUANDL_TBLS_DIR, "splits_eod")
 SHAR_TICKER_DETAIL_INFO_PATH = Path(QUANDL_TBLS_DIR, "shar_tickers.csv")
 
+SHAR_INDICATORS_CSV = Path(QUANDL_TBLS_DIR, "shar_indicators.csv")
+
 KAFKA_URL = "localhost:9092"
 
 GOOGLE_NEWS_OUTPUT_DIR_PATH = Path(OVERFLOW_DATA_PATH, "news\\google\\alpha_media_signal")

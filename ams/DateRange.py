@@ -15,9 +15,9 @@ class DateRange:
         return DateRange(from_date=from_date, to_date=to_date)
 
     @property
-    def from_date_str(self):
+    def start_date_str(self):
         return date_utils.get_standard_ymd_format(self.from_date)
 
     @property
-    def to_date_str(self):
+    def end_date_str(self):
         return date_utils.get_standard_ymd_format(self.to_date)

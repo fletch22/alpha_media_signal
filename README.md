@@ -108,3 +108,17 @@ Process Price Target:
 
     1. Download EOD dailies in stock_predictor.
     2. Execute create_tickers_available_on_day
+
+## Monte Carlo MA Bottom Feeder:
+
+### Exploration
+	
+	1. Learn Equity Fund Service indicators - func 'explain_fundy_fields'.
+	2. Get top n of some indicator 'A' from Equity Fund Service - func 'get_top_by_attribute'
+	3. Take list of stocks by year, submit to ma_bottom_feeder get_roi
+	4. Based on roi, select list of stocks.
+
+### Investment
+	
+	1. Choose recent stock list from above.
+	2. Get stock pick recommenations from ma_bottom_feeder func 'get_recommendations'
