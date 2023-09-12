@@ -1,12 +1,13 @@
 import statistics
 from datetime import timedelta
+from random import shuffle
 from typing import List, Dict
 
 import pandas as pd
 
 from ams.DateRange import DateRange
 from ams.config import logger_factory
-from ams.monte_carlo.ma_bottom_feed_data import stock_dict_high_divyield, stock_dict_30pe_tradeable_1
+from ams.monte_carlo.ma_bottom_feed_data import stock_dict_high_pe_above_30, stock_dict_low_evebitda
 from ams.services import realtime_quote_service, slack_service
 from ams.utils import ticker_utils, date_utils
 
@@ -17,28 +18,27 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 
-def get_roi(min_days_under_sought: int, stocks: Dict[str, List[str]]):
-    # tickers = ticker_service.get_ticker_info()["ticker"].unique()
-
-    num_days_under = 40
+def get_roi(min_days_under_sought: int, stocks: Dict[str, Dict], use_max_num_invs: bool = False):
+    num_days_under = 50
     num_hold_days = 1
     all_rois = []
-    for _year in sorted(stocks.keys()):
-        year = int(_year[1:])
-        tickers = stocks[_year]
+    num_years = len(stocks.keys())
+    for key, info in stocks.items():
         year_rois = []
 
-        start_dt_str = f"{year}-01-01"
-        start_dt = date_utils.parse_std_datestring(start_dt_str)
-
-        end_dt = start_dt + timedelta(days=365)
-        dr = DateRange(from_date=start_dt, to_date=end_dt)
+        start_dt_str = info["start_dt"]
+        end_dt_str = info["end_dt"]
+        tickers = info["tickers"]
+        dr = DateRange.from_date_strings(from_date_str=start_dt_str, to_date_str=end_dt_str)
+        start_dt = dr.from_date
 
         df = ticker_utils.get_maos(tickers=tickers, dr=dr, num_days_under=num_days_under)
 
         tar_dts = []
-        for k in range(365):
-            target_dt = start_dt + timedelta(days=k) + timedelta(hours=11)
+        target_dt = start_dt + timedelta(hours=11)
+
+        while target_dt < dr.to_date:
+            target_dt = target_dt + timedelta(days=1)
 
             is_closed, _ = date_utils.is_stock_market_closed(target_dt)
             if is_closed:
@@ -81,17 +81,27 @@ def get_roi(min_days_under_sought: int, stocks: Dict[str, List[str]]):
                         mean_roi = 0
                         if len(year_rois) > 0:
                             mean_roi = statistics.mean(year_rois)
-                        logger.info(f"{target_dt_str}: {ticker} roi: {roi:.4f}: mean_under_today: {mean_under_today:.1f}; mean roi so far: {mean_roi:.4f}")
-                        year_rois.append(roi)
+                        if roi > .5:
+                            print(f"\n\nXX-Large: {ticker}: {roi}\n\n")
+
+                        # NOTE: 2021-09-11: chris.flesche: The data on this date is suspiciously high
+                        if target_dt_str != "2019-11-15" and ticker != "GOVX":
+                            logger.info(f"{target_dt_str}: {ticker} roi: {roi:.4f}: mean_under_today: {mean_under_today:.1f}; mean roi so far: {mean_roi:.4f}")
+                            year_rois.append(roi)
 
         if len(year_rois) > 0:
-            logger.info(f"{year}: Num inv: {len(year_rois)}; Mean roi: {statistics.mean(year_rois):.4f}")
+            year = start_dt.year
+            period = info["period"]
+            logger.info(f"{year}_{period}: Num inv: {len(year_rois)}; Mean roi: {statistics.mean(year_rois):.4f}")
             all_rois += year_rois
 
-    if len(all_rois) > 0:
-        init_inv = 100
-        real_ret = get_real_return(all_rois, init_inv)
-        logger.info(f"\n\nInitial: 100: End with: {real_ret:,.2f}: overall mean roi: {statistics.mean(all_rois):.4f}\n\n")
+    if use_max_num_invs:
+        shuffle(all_rois)
+        max_num_invs = 250 * num_years
+        if len(all_rois) > max_num_invs:
+            all_rois = all_rois[:max_num_invs]
+
+    return all_rois, min_days_under_sought
 
 
 def get_real_return(all_rois: List[float], init_inv: float):
@@ -102,20 +112,25 @@ def get_real_return(all_rois: List[float], init_inv: float):
 
 
 def get_recommendations():
+    tickers = ['GOOGL', "AMZN"]
     # tickers = ['IBM', 'NVDA', 'GOOGL', 'ABC', 'GE', 'FB']
+    # tickers = ["AMZN", "AAPL", "COIN", "ADBE", "CRWD"]
 
     # NOTE: 2021-09-09: chris.flesche: # 39th day; above 30 pe + tradeable; 0.0078
-    tickers = stock_dict_30pe_tradeable_1["_2020"]
+    # tickers = stock_dict_low_evebitda["_2021_p0"]["tickers"]
 
-    date_str = "2021-09-09"
+    # tickers = ['QUOT', 'RNG', 'SDC', 'FEAC', 'HUBS', 'MNCL', 'MODN', 'OAC', 'AGNC', 'HYAC', 'ROKU', 'BYND', 'TDOC', 'ZG', 'PEN', 'RDFN', 'SITM', 'TCMD', 'WTRE', 'HCAC', 'PENN', 'ALGT', 'STAR', 'BYFC', 'FVRR', 'AVLR', 'AWI', 'SPOT', 'AAXN', 'SRCL', 'AMTX', 'LFAC', 'BDC', 'NET', 'WMG', 'CHEF', 'CNTY', 'SDGR', 'FSLY', 'OPES', 'BILL', 'TNDM', 'MUR', 'LMPX', 'TRNE', 'CMO', 'EVER', 'IRTC', 'DMYT', 'NLY', 'UPWK', 'WKHS', 'TEAM', 'TRHC', 'NEWR', 'APPN', 'SHOO', 'CDNA', 'AMRN', 'DK', 'TWLO', 'ZEN', 'EVBG', 'PDFS', 'BLFS', 'EFC', 'MXL', 'CYRX', 'MSGS', 'CVLT', 'TXG', 'EXTR', 'DKNG', 'MDP', 'GNMK', 'QTWO', 'PDD', 'CCXI', 'WIX', 'SVMK', 'PLUG', 'PDCE', 'INCY', 'CSII', 'GPMT', 'HLIT', 'RPD', 'NFE', 'NVRO', 'PEGA', 'PINS', 'HSII', 'GPRE', 'TRS', 'SILK', 'WK', 'OPRX', 'IMAX', 'LASR', 'GH']
+
+    date_str = "2021-09-17"
     start_dt = date_utils.parse_std_datestring(date_str)
     start_dt = start_dt + timedelta(hours=10)
 
-    num_days_to_test = 1
+    num_days_to_test = 10
     num_days_under = 40
     ma_days = 20
-    target_days_down = [29, 39]
+    target_days_down = list(range(20,31))
     all_msg = []
+    tickers_ided = set()
     for i in range(num_days_to_test):
         start_dt_str = date_utils.get_standard_ymd_format(start_dt)
         is_closed, _ = date_utils.is_stock_market_closed(start_dt)
@@ -138,7 +153,6 @@ def get_recommendations():
             df = df.sort_values(by=["ticker", "date"])
 
             # logger.info(df[["ticker", "date"]].head(100))
-
             # cols = [f"is_long_down_{x}" for x in range(num_days_under)]
             # cols.append("ticker")
             # logger.info(df[cols].head())
@@ -178,13 +192,17 @@ def get_recommendations():
 
                 pred_buy = "Yes" if (ma_proj > curr_price) else "No"
 
-                msg = f"{ticker}; buy: {pred_buy}; dd: {days_down}; last close: {close:.2f}; last ma: {close_ma:.2f}; current_price: {curr_price:.2f}; ma projected: {ma_proj:.2f}: "
-                all_msg.append(msg)
-
-                logger.info(msg)
+                if ticker not in tickers_ided:
+                    tickers_ided.add(ticker)
+                    msg = f"{ticker}; buy: {pred_buy}; dd: {days_down}; last close: {close:.2f}; last ma: {close_ma:.2f}; current_price: {curr_price:.2f}; ma projected: {ma_proj:.2f}: "
+                    all_msg.append(msg)
 
         start_dt = start_dt + timedelta(days=1)
 
     msgs = ", \n".join(all_msg)
     if msgs is not None:
-        slack_service.send_direct_message_to_chris(message=msgs)
+        logger.info(msgs)
+        # slack_service.send_direct_message_to_chris(message=msgs)
+
+if __name__ == '__main__':
+    get_recommendations()

@@ -590,45 +590,44 @@ def get_maos(tickers: List[str],
     new_cols = []
 
     for key, df_t in df_g:
-        df_t["close_prev_1"] = df_t["close"].shift(1)
-        df_t["was_up_0"] = df_t["close"] - df_t["close_prev_1"] > 0
+        df_t.loc[:, "close_prev_1"] = df_t["close"].shift(1)
+        df_t["was_up_0"] = (df_t["close"] - df_t["close_prev_1"] > 0).copy()
         for i in range(7):
             i = i + 1
             col_name = f"was_up_1_{i}"
-            df_t[col_name] = df_t[f"was_up_0"].shift(i)
+            df_t.loc[:, col_name] = df_t[f"was_up_0"].shift(i)
             new_cols.append(col_name)
 
-        df_t["close_ma"] = df_t["close"].transform(lambda x: x.rolling(ma_days, 1).mean())
-        df_t["close_ma_1_day_before"] = df_t["close"].transform(lambda x: x.rolling(ma_days - 1, 1).mean())
+        df_t.loc[:, "close_ma"] = df_t["close"].transform(lambda x: x.rolling(ma_days, 1).mean())
+        df_t.loc[:, "close_ma_1_day_before"] = df_t["close"].transform(lambda x: x.rolling(ma_days - 1, 1).mean())
 
         if add_future_cols:
-            df_t["tomorrow_close"] = df_t["close"].shift(-1)
-            df_t["fut_day_1_roi"] = (df_t["tomorrow_close"] - df_t["close"]) / df_t["close"]
-            df_t["fut_day_1_roi"] = df_t["fut_day_1_roi"].shift(-1)
+            df_t.loc[:, "tomorrow_close"] = df_t["close"].shift(-1)
+            df_t.loc[:, "fut_day_1_roi"] = (df_t["tomorrow_close"] - df_t["close"]) / df_t["close"]
             for i in range(2, 7 + 1):
                 col_name = f"fut_day_{i}_roi"
-                df_t[col_name] = df_t[f"fut_day_1_roi"].shift(-(i - 1))
+                df_t.loc[:, col_name] = df_t[f"fut_day_1_roi"].shift(-(i - 1))
                 new_cols.append(col_name)
 
-        df_t["was_close_under_20d_ma_0"] = df_t["close_ma"] - df_t["close"] > 0
+        df_t["was_close_under_20d_ma_0"] = (df_t["close_ma"] - df_t["close"] > 0).copy()
 
         for i in range(num_days_under):
             i = i + 1
             col_name = f"was_close_under_20d_ma_{i}"
-            df_t[col_name] = df_t[f"was_close_under_20d_ma_0"].shift(i)
+            df_t.loc[:, col_name] = df_t[f"was_close_under_20d_ma_0"].shift(i)
             new_cols.append(col_name)
 
-        df_t = df_t.dropna(subset=new_cols)
+        df_t = df_t.dropna(subset=new_cols).copy()
         for x in range(num_days_under):
             col = f"is_long_down_{x}"
-            df_t[col] = True
+            df_t.loc[:, col] = True
             for i in range(x):
-                df_t[col] = df_t[col] & df_t[f"was_close_under_20d_ma_{i}"]
+                df_t[col] = (df_t[col] & df_t[f"was_close_under_20d_ma_{i}"]).copy()
 
         # NOTE: 2021-09-04: chris.flesche: Trims the buffered stuff off
         # logger.info(f"Num before date trim: {df_t.shape[0]}")
         # logger.info(f"{dr.from_date_str} to {dr.to_date_str}")
-        df_t = df_t[(df_t["date"] >= dr.start_date_str) & (df_t["date"] < dr.end_date_str)]
+        df_t = (df_t[(df_t["date"] >= dr.start_date_str) & (df_t["date"] < dr.end_date_str)]).copy()
 
         # logger.info(f"Dates: {df_t['date'].unique()}")
         df_all.append(df_t)

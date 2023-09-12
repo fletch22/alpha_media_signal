@@ -1,3 +1,4 @@
+import json
 import time
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple
@@ -39,10 +40,10 @@ def get_ticker_eod_data(ticker: str) -> DataFrame:
     df = None
     try:
         if ticker_path.exists():
-            df = pd.read_csv(str(ticker_path))
+            df = pd.read_parquet(str(ticker_path))
     except BaseException as be:
-        logger.info(f"Encounter problem opening {ticker_path}.")
-        pass
+        logger.error(f"Encounter problem opening {ticker_path}.")
+        logger.error(be)
     finally:
         pass
 
@@ -110,7 +111,8 @@ def get_start_end_dates(date_strs: List[str]):
     return start_date_adj, end_date_adj
 
 
-def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_hold_days: int, num_days_until_purchase: int) -> pd.DataFrame:
+def get_ticker_on_dates(tick_dates: Dict[str, List[str]], num_hold_days: int,
+                        num_days_until_purchase: int) -> pd.DataFrame:
     all_dfs = []
     for ticker, date_strs in tick_dates.items():
         df_equity = get_equity_on_dates(ticker=ticker, date_strs=date_strs,
@@ -138,7 +140,8 @@ def prev_up_or_down(df: pd.DataFrame) -> pd.DataFrame:
     df["prev_close_3"].fillna(df["prev_close_2"], inplace=True)
     df.loc[:, f"up_or_down_3"] = ((df["prev_close_3"] - df["prev_close_2"]) > 0).astype(int)
 
-    df.loc[:, "3_down_in_row"] = ((df["prev_close_1"] == 0) & (df["prev_close_2"] == 0) & (df["prev_close_3"] == 0)).astype(int)
+    df.loc[:, "3_down_in_row"] = (
+            (df["prev_close_1"] == 0) & (df["prev_close_2"] == 0) & (df["prev_close_3"] == 0)).astype(int)
 
     cols = ["prev_close_1", "prev_close_2", "prev_close_3"]
     df.drop(columns=cols, inplace=True)
@@ -146,7 +149,8 @@ def prev_up_or_down(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def get_equity_on_dates(ticker: str, date_strs: List[str], num_hold_days: int, num_days_until_purchase: int) -> pd.DataFrame:
+def get_equity_on_dates(ticker: str, date_strs: List[str], num_hold_days: int,
+                        num_days_until_purchase: int) -> pd.DataFrame:
     df = get_ticker_eod_data(ticker)
     df_in_dates = None
     if df is not None:
@@ -185,7 +189,8 @@ def get_equity_on_dates(ticker: str, date_strs: List[str], num_hold_days: int, n
         cols = ["future_open", "future_low", "future_high", "future_close", "future_date"]
         df.loc[:, (cols)] = df[cols].shift(-(num_hold_days + num_days_until_purchase))
 
-        df_in_dates = df[df["date"].isin(date_strs)].copy()
+        if df.shape[0] > 0:
+            df_in_dates = df.iloc[[0]]
 
     return df_in_dates
 
@@ -299,7 +304,7 @@ def get_all_tickers():
     return tickers
 
 
-def get_tickers_w_filters(min_price: float = 5.0, min_volume: int = 100000):
+def get_tickers_w_filters(min_price: float = 5.0, max_price: float = None, min_volume: int = 100000):
     da_paths = file_services.walk(constants.SHAR_SPLIT_EQUITY_EOD_DIR)
 
     tickers = []
@@ -310,7 +315,7 @@ def get_tickers_w_filters(min_price: float = 5.0, min_volume: int = 100000):
         row = df.iloc[-1]
         price = row["close"]
         volume = row["volume"]
-        if price > min_price and volume > min_volume:
+        if price > min_price and volume > min_volume and (max_price is None or price < max_price):
             tickers.append(ticker)
 
     return tickers
@@ -327,7 +332,18 @@ def get_nasdaq_info():
     return df.loc[df["exchange"] == "NASDAQ"]
 
 
-def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[str]) -> (pd.DataFrame, Dict[str, List[str]]):
+def get_all_us_stocks() -> List[str]:
+    ti_df = get_ticker_info()
+    return ti_df[ti_df['exchange'].isin(['NYSE', 'NASDAQ'])]['ticker'].to_list()
+
+
+def get_all_technology_stocks():
+    with open(constants.STOCKS_US_TECH_STOCKS_PATH, "r") as f:
+        return json.loads(f.read())
+
+
+def make_one_hotted(df: pd.DataFrame, df_all_tickers: pd.DataFrame, cols: List[str]) -> (
+        pd.DataFrame, Dict[str, List[str]]):
     df_one_hots = []
     unknown_val = "<unknown>"
     for c in cols:
@@ -625,3 +641,51 @@ def get_most_recent_stock_values(ticker: str, attributes: Tuple[str, str, str, s
             result = tuple(values)
 
     return result
+
+
+def get_top_tickers(year, min_vol_price: float):
+    tickers = get_nasdaq_tickers()["ticker_drop"].values
+    gains = dict()
+    price_col = "close"
+
+    date_from_str = f"{year}-01-04"
+    date_to_str = f"{year}-12-31"
+    for ndx, t in enumerate(tickers):
+        if ndx % 1000 == 0:
+            logger.info(f"Processed {ndx} out of {len(tickers)}")
+        df = get_ticker_eod_data(ticker=t)
+
+        if df is not None:
+            df = df[(df["date"] > date_from_str) & (df["date"] < date_to_str)]
+            if df.shape[0] <= 2:
+                continue
+            volume = df["volume"].mean()
+            df = df.sort_values(by="date")
+            start_price = df.iloc[0][price_col]
+            end_price = df.iloc[-1][price_col]
+            vol_pric = volume * end_price
+            if vol_pric > min_vol_price:
+                roi = (end_price - start_price) / start_price
+                gains[t] = roi
+
+    sorted_gainers = dict(sorted(gains.items(), key=lambda item: -item[1]))
+    top_gainers = []
+
+    for key, value in sorted_gainers.items():
+        top_gainers.append(key)
+
+    return top_gainers
+
+
+def get_earliest_date(ticker: str):
+    df = get_ticker_eod_data(ticker=ticker)
+    df = df.sort_values(by=['date'], axis=0, ascending=True)
+    return df['date'].iloc[0]
+
+
+if __name__ == '__main__':
+    for year in range(2019, 2020):
+        min_vol_price = 500000
+        top_gainers = get_top_tickers(year, min_vol_price)
+
+        print(f"tickers_{year + 1} = {top_gainers[:10]}")

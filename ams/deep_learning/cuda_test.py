@@ -79,7 +79,7 @@ def run():
         for batch_idx, batch in enumerate(train_iter):
 
             # switch model to training mode, clear gradient accumulators
-            model.train();
+            model.train()
             opt.zero_grad()
 
             iterations += 1

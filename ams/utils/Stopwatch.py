@@ -19,4 +19,4 @@ class Stopwatch:
 
     def end(self, msg: str = "Time", print_elapsed=True):
         elapsed = round(time.time() - self.start_time, 4)
-        logger.info(f"{msg} elapsed: {elapsed}s")
+        logger.info(f"{msg} elapsed: {elapsed:,}s")

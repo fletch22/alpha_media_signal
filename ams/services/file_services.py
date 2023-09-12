@@ -143,7 +143,7 @@ def fast_copy(files_many: Sequence[Tuple[str, str]]):
 
 
 def get_eod_ticker_file_path(symbol: str) -> Path:
-    return Path(constants.SHAR_SPLIT_EQUITY_EOD_DIR, f"{symbol}.csv")
+    return Path(constants.SHAR_SPLIT_EQUITY_EOD_DIR, f"{symbol}.parquet")
 
 
 def get_single_file_from_path(dir_path: Path, filename_ends_with: str):

@@ -1,4 +1,8 @@
+from collections import namedtuple
+from typing import List
+
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 
 from ams.DateRange import DateRange
 from ams.config import constants, logger_factory
@@ -6,6 +10,8 @@ from ams.services import ticker_service
 from ams.services.equities.EquityFundaDimension import EquityFundaDimension
 
 logger = logger_factory.create(__name__)
+
+DrPeriod = namedtuple("DrPeriod", "date_range period")
 
 
 def get_equity_fundies():
@@ -35,65 +41,63 @@ def filter_by_dimension(df: pd.DataFrame, efd: EquityFundaDimension):
     return df[df["dimension"] == efd.value].copy()
 
 
-def get_top_by_attribute(indicator: str, is_low_good: bool ):
+def get_top_by_attribute(indicator: str, dr_period_list: List[DrPeriod], is_low_good: bool, efd: EquityFundaDimension = EquityFundaDimension.MostRecentAnnual):
     df = get_equity_fundies()
+    df_ti = ticker_service.get_ticker_info()
+    right_exch = df_ti[df_ti["exchange"].isin(["NASDAQ", "NYSE"])]["ticker"].unique()
 
-    df = filter_by_dimension(df=df, efd=EquityFundaDimension.MostRecentAnnual)
+    df = df[df["ticker"].isin(right_exch)]
+
+    df = filter_by_dimension(df=df, efd=efd)
 
     assert df.shape[0] > 0
 
-    # logger.info(list(df.columns))
-
     top_n = 100
     min_pe = 30
-
-    easy_trade = True
 
     l_or_h = "low" if is_low_good else "high"
     print(f"\n# 39th day: {l_or_h} {indicator}: ")
     print(f"# 29th day: {l_or_h} {indicator}: ")
     print(f"stock_dict_{l_or_h}_{indicator} = dict(")
 
-    year_range = list(range(2015, 2021))
-    for year in year_range:
-        start_rep_year = f"{year}-01-01"
-        end_rep_year = f"{year}-12-31"
+    for drp in dr_period_list:
+        dr = drp.date_range
 
-        df_year = df[(df["reportperiod"] >= start_rep_year) & (df["reportperiod"] <= end_rep_year)]
+        df_period = df[(df["reportperiod"] >= dr.start_date_str) & (df["reportperiod"] <= dr.end_date_str)]
 
-        tickers = df_year["ticker"].unique()
+        df_period = df_period.sort_values(by=["ticker", "reportperiod"])
 
-        dr = DateRange.from_date_strings(from_date_str=start_rep_year, to_date_str=end_rep_year)
+        tickers = df_period["ticker"].unique()
+
+        if len(tickers) == 0:
+            continue
         df_tickers = ticker_service.get_tickers_in_range(tickers, date_range=dr)
-
-        # df_tickers["mean_vol"] = df_tickers["volume"].mean()
-        # des_cols = ["ticker", "mean_vol"]
-        # df_tickers = df_tickers.drop_duplicates(subset=des_cols)[des_cols].copy()
 
         df_tickers = df_tickers.set_index(["ticker"])
         mean_thing = df_tickers.groupby("ticker")["volume"].mean()
         df_tickers["mean_vol"] = mean_thing
         df_tickers = df_tickers.reset_index()
 
-        df_tickers = df_tickers.sort_values(["ticker", "date"])
+        df_tickers = df_tickers.sort_values(["ticker", "date"], ascending=False)
         des_cols = ["ticker"]
         df_tickers = df_tickers.drop_duplicates(subset=des_cols, keep="first")[["ticker", "mean_vol"]].copy()
 
-        # logger.info(df_tickers[["ticker", "mean_vol"]].head())
+        df_period = df_period.sort_values(["ticker", "reportperiod"])
+        df_period = df_period.drop_duplicates(subset=des_cols, keep="last").copy()
 
-        df_year = df_year.sort_values(["ticker", "reportperiod"])
-        df_year = df_year.drop_duplicates(subset=des_cols, keep="last").copy()
+        df_enh = pd.merge(left=df_period, right=df_tickers, on="ticker")
 
-        df_enh = pd.merge(left=df_year, right=df_tickers, on="ticker")
-
-        if easy_trade:
-            if indicator == "pe":
-                df_enh = df_enh[(df_enh[indicator] >= min_pe)]
-            df_enh = df_enh[(df_enh["price"] * df_enh["mean_vol"]) > (10 * 250000)]
+        if indicator == "pe":
+            df_enh = df_enh[(df_enh[indicator] >= min_pe)]
+        df_enh = df_enh[(df_enh["price"] * df_enh["mean_vol"]) > (10 * 250000)]
 
         tickers = df_enh.sort_values(by=[indicator], ascending=is_low_good)["ticker"].values.tolist()
 
-        print(f"\t_{year + 1}={tickers[:top_n]},")
+        dr_tar = DateRange(from_date=dr.from_date + relativedelta(years=1), to_date=dr.to_date + relativedelta(years=1))
+
+        year = dr.from_date.year
+        print(
+            f"\t_{year + 1}_p{drp.period}={{'start_dt': '{dr_tar.start_date_str}', 'end_dt': '{dr_tar.end_date_str}', 'period': '{drp.period}', 'tickers': {tickers[:top_n]}}},")
     print(")")
 
 

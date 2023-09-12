@@ -1,10 +1,15 @@
+import math
+from datetime import timedelta
+
 import pandas as pd
 
 from ams.DateRange import DateRange
 from ams.config import logger_factory
 from ams.services import ticker_service
 from ams.services.equities import equity_fundy_service as efs
-from ams.utils import ticker_utils
+from ams.services.equities.EquityFundaDimension import EquityFundaDimension
+from ams.services.equities.equity_fundy_service import DrPeriod
+from ams.utils import ticker_utils, date_utils
 
 logger = logger_factory.create(__name__)
 
@@ -48,7 +53,9 @@ def test_get_top_100_market_cap():
 
     df_nasdaq.sort_values(by=["scalemarketcap"], ascending=False, inplace=True)
 
-    tickers = df_nasdaq.loc[:100, "ticker"].unique().tolist()
+    # Get top 100 rows from pandas dataframe
+    tickers = df_nasdaq.iloc[:100, :]["ticker"].unique().tolist()
+
     # Act
     logger.info(tickers)
 
@@ -70,6 +77,11 @@ def test_most_rec_quarter_integration():
     df_dd = df_drop_future.drop_duplicates(subset=["ticker"], keep="last")
 
     assert (df_dd.shape[0] == 2)
+
+
+
+
+
 
 
 def test_most_rec_quarter_join():
@@ -139,15 +151,46 @@ def test_get_top_prev():
         print(f"{year}: {top_tickers}")
 
 
-def test_get_top_by_attribute():
+def test_get_top_by_indicator():
     # netinccmn Net income for common shares
     # roe return on equity
     # roa return on assets
     # ev ent value
     # evebitda ratio ent val/ebitda
-    attr_interest = "evebitda"
+    start_year = 2014
+    end_year = 2015 # 2021
+    periodicity = 4
+    start_mo_day = "09-01"
+    end_mo_day = "09-30"
+    indicator = "evebitda"
     is_low_good = True
-    efs.get_top_by_attribute(indicator=attr_interest, is_low_good=is_low_good)
+    efd = EquityFundaDimension.MostRecentQuarterly # EquityFundaDimension.MostRecentAnnual
+
+    drps = []
+
+    num_periods = range(periodicity)
+    period_days = math.floor(365 / periodicity)
+
+    for year in range(start_year, end_year):
+        from_date_str = f"{year}-{start_mo_day}"
+        for ndx, i in enumerate(num_periods):
+            from_dt = date_utils.parse_std_datestring(from_date_str)
+
+            # NOTE: 2021-09-12: chris.flesche: If last period
+            if ndx + 1 < len(num_periods):
+                to_dt = from_dt + timedelta(days=period_days)
+                to_date_str = date_utils.get_standard_ymd_format(to_dt)
+            else:
+                to_date_str = f"{year}-{end_mo_day}"
+
+            # logger.info(f"{from_date_str} to {to_date_str}")
+            dr = DateRange.from_date_strings(from_date_str=from_date_str, to_date_str=to_date_str)
+            drp = DrPeriod(date_range=dr, period=i)
+            drps.append(drp)
+
+            from_date_str = to_date_str
+
+    efs.get_top_by_attribute(indicator=indicator, dr_period_list=drps, is_low_good=is_low_good, efd=efd)
 
 
 def test_explain_fundy_fields():

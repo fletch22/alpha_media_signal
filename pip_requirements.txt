@@ -3,7 +3,7 @@ searchtweets==1.7.6
 pandas_datareader==0.9.0
 yfinance==0.1.54
 google-colab==1.0.0
-pandas==1.1.0
+pandas==1.3.5
 tensorflow-hub==0.8.0
 tensorflow-gpu
 keras==2.4.3

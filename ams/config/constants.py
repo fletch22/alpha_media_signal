@@ -22,39 +22,30 @@ def get_api_key(file_path: Path):
 
 if os.name == 'nt':
     WORKSPACE_PATH = Path('C:\\Users\\Chris\\workspaces\\')
-    OVERFLOW_WORKSPACE_PATH = Path('D:\\workspaces\\')
+    OVERFLOW_WORKSPACE_PATH = Path('F:\\Users\\chris\\')
+    WORKSPACE_E_PATH = Path("E:\\workspaces\\")
 else:
     # /home/jupyter/alpha_media_signal/
     WORKSPACE_PATH = Path('/home', 'jupyter')
     OVERFLOW_WORKSPACE_PATH = Path('/home', 'jupyter', 'overflow_workspace')
+
+F_WORKSPACE_PATH = Path(r'F:\Users\Chris')
+DATA_PATH = Path(F_WORKSPACE_PATH, 'data')
 ensure_dir(str(OVERFLOW_WORKSPACE_PATH))
 
-DATA_PATH = Path(WORKSPACE_PATH, 'data')
 LOGGING_PATH = Path(DATA_PATH, 'logs', 'alpha_media_signal')
 ensure_dir(LOGGING_PATH)
 
 RESOURCES_PATH = Path(DATA_PATH, 'credentials')
 TWITTER_CREDS_PATH = Path(RESOURCES_PATH, "search_tweets_creds.yaml")
 
-with open(TWITTER_CREDS_PATH) as file:
-    # The FullLoader parameter handles the conversion from YAML
-    # scalar values to Python the dictionary format
-    creds_yaml = yaml.load(file, Loader=yaml.FullLoader)
-
 fletch22_key = 'search_tweets_fullarchive_development'
 standard_search_key = 'standard_search_tweets'
 rogd_key = "standard_search_tweets_rogd"
 
-FLETCH22_CREDS = Credentials(creds_yaml, fletch22_key)
-STANDARD_CREDS = Credentials(creds_yaml, standard_search_key)
-ROGD_CREDS = Credentials(creds_yaml, standard_search_key)
-
-CURRENT_CREDS = ROGD_CREDS
-
 TWITTER_OUTPUT_RAW_PATH = Path(DATA_PATH, 'twitter')
 TWITTER_RAW_TWEETS_PREFIX = 'tweets_raw'
 
-DATA_PATH = Path(WORKSPACE_PATH, 'data')
 OVERFLOW_DATA_PATH = Path(OVERFLOW_WORKSPACE_PATH, 'data')
 
 WEATHER_DATA_DIR = Path(OVERFLOW_DATA_PATH, "weather")
@@ -66,6 +57,13 @@ TWITTER_OVERFLOW_OUTPUT = Path(OVERFLOW_DATA_PATH, 'twitter')
 TWITTER_OVERFLOW_OUTPUT.mkdir(exist_ok=True)
 TICKER_NAME_SEARCHABLE_PATH = Path(TWITTER_OVERFLOW_OUTPUT, 'ticker_names_searchable.csv')
 
+SP500_PATH = Path(FIN_DATA, 'sp500')
+SP500_LIST_HIST_PATH = Path(SP500_PATH, "sp500_list.csv")
+SP500_LIST_HIST_REF_PATH = Path(SP500_PATH, "sp500_list_refined.csv")
+SP_TOP_N_PATH = Path(SP500_PATH, "sp500_top_n_path.csv")
+SP500_HTML_PATH = Path(SP500_PATH, "html")
+SP500_WIKI_TICKERS = Path(SP500_PATH, "wiki")
+
 TWITTER_TRASH_OUTPUT = Path(TWITTER_OVERFLOW_OUTPUT, "trash")
 ensure_dir(TWITTER_TRASH_OUTPUT)
 
@@ -73,23 +71,21 @@ YAHOO_OUTPUT_PATH = Path(FIN_DATA, 'yahoo')
 YAHOO_COMPANY_INFO = Path(YAHOO_OUTPUT_PATH, 'company_info')
 ensure_dir(str(YAHOO_COMPANY_INFO))
 
-QUANDL_TBLS_DIR = Path(FIN_DATA, 'quandl', 'tables')
-SHAR_TICKERS = os.path.join(QUANDL_TBLS_DIR, "shar_tickers.csv")
+QUANDL_DIR = os.path.join(FIN_DATA, "nasdaq")
+SHAR_TICKERS = os.path.join(QUANDL_DIR, "SHARADAR_TICKERS.csv")
 
-TOP_100K_WORDS_PATH = Path(DATA_PATH, 'english', 'top100KWords.txt')
+DAILY_STOCK_DIR = Path(QUANDL_DIR, 'daily')
+FUNDY_DIR = Path(QUANDL_DIR, 'fundamentals')
+SHAR_CORE_FUNDY_FILE_PATH = Path(QUANDL_DIR, "shar_core_fundamentals.csv")
 
-QUANDL_DIR = os.path.join(FIN_DATA, "quandl")
-QUANDL_TBLS_DIR = os.path.join(QUANDL_DIR, "tables")
-SHAR_CORE_FUNDY_FILE_PATH = Path(QUANDL_TBLS_DIR, "shar_core_fundamentals.csv")
-
-SHARADAR_ACTIONS_DIR = os.path.join(QUANDL_TBLS_DIR, "shar_actions")
+SHARADAR_ACTIONS_DIR = os.path.join(QUANDL_DIR, "shar_actions")
 ensure_dir(SHARADAR_ACTIONS_DIR)
 SHARADAR_ACTIONS_FILEPATH = Path(SHARADAR_ACTIONS_DIR, "actions.csv")
 
-SHAR_SPLIT_EQUITY_EOD_DIR = Path(QUANDL_TBLS_DIR, "splits_eod")
-SHAR_TICKER_DETAIL_INFO_PATH = Path(QUANDL_TBLS_DIR, "shar_tickers.csv")
+SHAR_SPLIT_EQUITY_EOD_DIR = Path(QUANDL_DIR, "splits_eod")
+SHAR_TICKER_DETAIL_INFO_PATH = Path(QUANDL_DIR, "SHARADAR_TICKERS.csv")
 
-SHAR_INDICATORS_CSV = Path(QUANDL_TBLS_DIR, "shar_indicators.csv")
+SHAR_INDICATORS_CSV = Path(QUANDL_DIR, "SHARADAR_INDICATORS.csv")
 
 KAFKA_URL = "localhost:9092"
 
@@ -152,6 +148,10 @@ with open(slack_cred_path, "r") as f:
 finnhub_path = Path(CREDENTIALS_ROOT, "finnhub.io.api_key")
 FINNHUB_API_KEY = get_api_key(file_path=finnhub_path)
 
+alpaca_cred_path = CREDENTIALS_ROOT / 'alpaca.json'
+with open(alpaca_cred_path, "r") as f:
+    ALPACA_CREDENTIALS = json.loads(f.read())['PAPER-API']
+
 US_MARKET_HOLIDAYS_PATH = Path(FIN_DATA, "us_market_holidays.csv")
 
 TWITTER_GREAT_REDUCTION_DIR = Path(TWITTER_OUTPUT_RAW_PATH, "great_reduction")
@@ -189,3 +189,22 @@ PERF_METRICS_ROIS = Path(TRANSIENT_DIR_PATH, "perf_metrics_rois.csv")
 CATBOOST_TRAIN_DIR = Path(TWITTER_INFERENCE_MODEL_PATH, "train")
 
 STOCK_AGG_DATAFILE = Path(OVERFLOW_DATA_PATH, "basic_stock_agg.parquet")
+
+E_DATA_PATH = Path(WORKSPACE_E_PATH, "data")
+WIKI_PAGES_PATH = Path(E_DATA_PATH, "wiki_pages")
+WIKI_ARTICLES_PATH = Path(WIKI_PAGES_PATH, "enwiki-latest-pages-articles.xml.bz2")
+WIKI_CORPUS_PATH = Path(WIKI_PAGES_PATH, "corpus")
+
+TOP_100K_WORDS_PATH = Path(DATA_PATH, 'english', 'top100KWords.txt')
+
+SURVIVOR_RESULTS_DIR = DATA_PATH / 'survivor'
+SURVIVOR_RESULTS_DIR.mkdir(exist_ok=True, parents=True)
+SURVIVOR_RESULTS_PATH = SURVIVOR_RESULTS_DIR / 'base_results.csv'
+
+STOCKS_US_LOW_PRICE_PATH = TESTS_RESOURCES / 'stocks_us_low_price.json'
+STOCKS_US_TECH_STOCKS_PATH = TESTS_RESOURCES / 'stocks_us_tech.json'
+
+# INSIDER_BUYS_DATA_PATH = Path(r'F:\Users\Chris\data\financial\insider_deals\misc\insider_buys.csv')
+INSIDER_DIR = FIN_DATA / 'insider_deals'
+INSIDER_BUYS_DATA_PATH = INSIDER_DIR / 'misc' / 'insider_buys.csv'
+INS_BUYS_SUBMISSIONS_DATA_PATH = INSIDER_DIR / 'combined' / 'all_SUBMISSIONS.csv'

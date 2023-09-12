@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+from random import random
+from typing import Tuple
 
 import pandas as pd
 import pytz
@@ -111,30 +113,37 @@ def skip_market_days(dt: datetime, num_market_days_to_skip: int):
     return dt
 
 
-def ensure_market_date(date_str):
+def ensure_market_date(date_str) -> Tuple[str, bool]:
     dt = parse_std_datestring(date_str)
     is_closed_date = is_stock_market_closed(dt=dt)
+    valid_dt_found = True
     if is_closed_date:
-        date_str = get_next_market_date(date_str, is_reverse=True)
+        date_str, valid_dt_found = get_next_market_date(date_str, is_reverse=True)
 
-    return date_str
+    return date_str, valid_dt_found
 
 
-def get_next_market_date(date_str: str, is_reverse: bool = False) -> str:
+def get_next_market_date(date_str: str, is_reverse: bool = False) -> Tuple[str, bool]:
     dt = parse_std_datestring(date_str)
-    return get_standard_ymd_format(find_next_market_open_day(dt, is_reverse=is_reverse))
+    dt, valid_dt_found = find_next_market_open_day(dt, is_reverse=is_reverse)
+    dt_str = None
+    if valid_dt_found:
+        dt_str = get_standard_ymd_format(dt)
+    return dt_str, valid_dt_found
 
 
-def find_next_market_open_day(dt: datetime, is_reverse: bool = False):
+def find_next_market_open_day(dt: datetime, is_reverse: bool = False) -> Tuple[datetime, bool]:
     day = -1 if is_reverse else 1
+    valid_dt_found = True
     while True:
         dt = dt + timedelta(days=day)
         is_closed, reached_end_of_data = is_stock_market_closed(dt)
         if reached_end_of_data:
-            raise Exception("While finding the next market open day, the system reached the end of the available data.")
+            valid_dt_found = False
+            break
         if not is_closed:
             break
-    return dt
+    return dt, valid_dt_found
 
 
 def is_stock_market_closed(dt: datetime):
@@ -155,7 +164,10 @@ def is_stock_market_closed(dt: datetime):
 def get_market_holidays() -> str:
     global stock_market_holidays
     if stock_market_holidays is None:
-        stock_market_holidays = pd.read_csv(constants.US_MARKET_HOLIDAYS_PATH)["date"].to_list()
+        df = pd.read_csv(constants.US_MARKET_HOLIDAYS_PATH, header=0)
+        df['date'] = pd.to_datetime(df['date'], format='%m/%d/%y')
+        df['date'] = df['date'].dt.strftime(STANDARD_DAY_FORMAT)
+        stock_market_holidays = df["date"].to_list()
 
     return stock_market_holidays
 
@@ -169,3 +181,19 @@ def get_days_between(date_str_1: str, date_str_2: str):
     dt_1 = parse_std_datestring(date_str_1)
     dt_2 = parse_std_datestring(date_str_2)
     return abs((dt_2 - dt_1).days)
+
+
+def get_random_past_date(from_str: str = "2012-01-01",
+                         to_str: str = "2020-12-31",
+                         end_buffer_days: int = 10):
+    import random
+    from_dt = datetime.strptime(from_str, STANDARD_DAY_FORMAT)
+    to_dt = datetime.strptime(to_str, STANDARD_DAY_FORMAT)
+    diff_days = (to_dt - from_dt).days - end_buffer_days
+    while True:
+        random_number_of_days = random.randrange(0, diff_days)
+        rnd_date = from_dt + timedelta(days=random_number_of_days)
+
+        is_closed, _ = is_stock_market_closed(rnd_date)
+        if not is_closed:
+            return rnd_date
